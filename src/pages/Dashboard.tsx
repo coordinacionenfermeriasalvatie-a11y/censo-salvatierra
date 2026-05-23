@@ -87,6 +87,9 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
               📊 Tablero Maestro
             </button>
           )}
+          <button onClick={() => navigate('/instructivo')} style={styles.botonInstructivo}>
+            📖 Instructivo
+          </button>
           <button onClick={onCerrarSesion} style={styles.botonSalir}>
             Cerrar sesion
           </button>
@@ -237,6 +240,18 @@ const styles: Record<string, React.CSSProperties> = {
     background: '#C39C59',
     border: '1px solid #C39C59',
     color: '#fff',
+    padding: '6px 12px',
+    fontSize: 12,
+    fontWeight: 600,
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    marginRight: 8
+  },
+  botonInstructivo: {
+    background: '#fff',
+    border: '1px solid #0E6755',
+    color: '#0E6755',
     padding: '6px 12px',
     fontSize: 12,
     fontWeight: 600,

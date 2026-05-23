@@ -8,6 +8,7 @@ import { VistaImpresionRecetario } from './pages/VistaImpresionRecetario'
 import { VistaImpresionDietas } from './pages/VistaImpresionDietas'
 import { VistaImpresionProductividad } from './pages/VistaImpresionProductividad'
 import { TableroMaestro } from './pages/TableroMaestro'
+import { Instructivo } from './pages/Instructivo'
 export function App() {
   const { session, perfil, cargando, cerrarSesion } = useAuth()
 
@@ -46,6 +47,7 @@ export function App() {
         />
         <Route path="/servicio/:servicioId" element={<VistaServicio />} />
         <Route path="/tablero" element={<TableroMaestro />} />
+        <Route path="/instructivo" element={<Instructivo />} />
        <Route path="/imprimir/dietas/:servicioId" element={<VistaImpresionDietas />} />
         <Route path="/imprimir/productividad/:anio/:mes" element={<VistaImpresionProductividad />} /> 
         <Route path="/imprimir/recetario/:servicioId" element={<VistaImpresionRecetario />} />
