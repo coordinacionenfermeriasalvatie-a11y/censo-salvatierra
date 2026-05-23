@@ -354,7 +354,7 @@ export function VistaServicio() {
             {/* BLOQUE 8 - Badge de enfermero asignado */}
             {(() => {
               const asig = c.paciente_id ? asignaciones[c.paciente_id] : null;
-              const puedeAsignar = perfil && ['subjefe','supervisor','gestor'].includes(perfil.rol);
+              const puedeAsignar = perfil && ['jefe','subjefe','supervisor','gestor'].includes(perfil.rol);
               const estilo = asig ? badgeEnfermero : badgeSinAsignar;
               return (
                 <div

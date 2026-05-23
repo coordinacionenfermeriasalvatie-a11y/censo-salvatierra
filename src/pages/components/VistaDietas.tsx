@@ -28,6 +28,8 @@ const CONSISTENCIAS_FALLBACK = ['NORMAL', 'PICADA', 'PAPILLA', 'LIQUIDA', 'PURES
 
 export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
   const { perfil } = useAuth();
+  // Enfermeria de piso solo tiene acceso de LECTURA a dietas
+  const soloLectura = perfil?.rol === 'enfermera';
   const [renglones, setRenglones] = useState<DietaRenglon[]>([]);
   const [tiposDieta, setTiposDieta] = useState<string[]>(TIPOS_DIETA_FALLBACK);
   const [consistencias, setConsistencias] = useState<string[]>(CONSISTENCIAS_FALLBACK);
@@ -106,7 +108,13 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
         >
           🖨️ Imprimir Dietas
         </button>
-      </div>      {error && <div style={errorBanner}>⚠️ {error}</div>}
+      </div>
+      {soloLectura && (
+        <div style={{ background: '#fff7e0', color: '#7d5b2f', padding: '8px 14px', borderRadius: 4, marginBottom: 10, fontSize: 12, border: '1px solid #C39C59' }}>
+          📖 Modo solo lectura — Las dietas las captura/edita el gestor o jefe de servicio.
+        </div>
+      )}
+      {error && <div style={errorBanner}>⚠️ {error}</div>}
 
       {renglones.length === 0 ? (
         <div style={vacio}>No hay pacientes activos en este servicio.</div>
@@ -135,7 +143,7 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
                       defaultValue={r.tipo_dieta || ''}
                       onChange={e => guardarCampo(r.paciente_id, 'tipo_dieta', e.target.value)}
                       style={input}
-                      disabled={guardando === r.paciente_id}
+                      disabled={soloLectura || guardando === r.paciente_id}
                     >
                       <option value="">--</option>
                       {tiposDieta.map(t => <option key={t} value={t}>{t}</option>)}
@@ -146,7 +154,7 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
                       defaultValue={r.consistencia || ''}
                       onChange={e => guardarCampo(r.paciente_id, 'consistencia', e.target.value)}
                       style={input}
-                      disabled={guardando === r.paciente_id}
+                      disabled={soloLectura || guardando === r.paciente_id}
                     >
                       <option value="">--</option>
                       {consistencias.map(c => <option key={c} value={c}>{c}</option>)}
@@ -155,12 +163,12 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
                   <td style={tdEditable}>
                     <input type="text" defaultValue={r.restricciones || ''}
                       onBlur={e => { if (e.target.value !== (r.restricciones || '')) guardarCampo(r.paciente_id, 'restricciones', e.target.value); }}
-                      style={input} disabled={guardando === r.paciente_id} placeholder="--" />
+                      style={input} disabled={soloLectura || guardando === r.paciente_id} placeholder="--" />
                   </td>
                   <td style={tdEditable}>
                     <input type="text" defaultValue={r.observaciones || ''}
                       onBlur={e => { if (e.target.value !== (r.observaciones || '')) guardarCampo(r.paciente_id, 'observaciones', e.target.value); }}
-                      style={input} disabled={guardando === r.paciente_id} placeholder="--" />
+                      style={input} disabled={soloLectura || guardando === r.paciente_id} placeholder="--" />
                   </td>
                 </tr>
               ))}

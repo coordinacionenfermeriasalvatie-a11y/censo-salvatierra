@@ -78,6 +78,8 @@ const FRECUENCIAS_COMUNES = [
 
 export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
   const { perfil } = useAuth();
+  // Enfermeria de piso solo tiene acceso de LECTURA al recetario
+  const soloLectura = perfil?.rol === 'enfermera';
 
   const [pacientes, setPacientes] = useState<PacienteAgrupado[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -288,7 +290,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           onBlur={e => { if (e.target.value !== med.medicamento) actualizarMedicamento(pacienteId, med.id, 'medicamento', e.target.value); }}
           style={inputMed}
           placeholder="Escribe para buscar..."
-          disabled={guardando === med.id}
+          disabled={soloLectura || guardando === med.id}
           aria-label="Medicamento (escribe para buscar, ❌ para borrar)"
         />
       </td>
@@ -297,7 +299,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           value={med.via}
           onChange={e => actualizarMedicamento(pacienteId, med.id, 'via', e.target.value)}
           style={inputSm}
-          disabled={guardando === med.id}
+          disabled={soloLectura || guardando === med.id}
         >
           <option value="">--</option>
           {VIAS_COMUNES.map(v => <option key={v} value={v}>{v}</option>)}
@@ -308,7 +310,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           value={med.frecuencia}
           onChange={e => actualizarMedicamento(pacienteId, med.id, 'frecuencia', e.target.value)}
           style={inputSm}
-          disabled={guardando === med.id}
+          disabled={soloLectura || guardando === med.id}
         >
           <option value="">--</option>
           {FRECUENCIAS_COMUNES.map(f => <option key={f} value={f}>{f}</option>)}
@@ -319,7 +321,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           value={med.solicitada}
           onChange={e => actualizarMedicamento(pacienteId, med.id, 'solicitada', parseInt(e.target.value))}
           style={{ ...inputSm, textAlign: 'center' }}
-          disabled={guardando === med.id}
+          disabled={soloLectura || guardando === med.id}
         >
           {CANTIDADES_RECETARIO.map(n => <option key={n} value={n}>{n}</option>)}
         </select>
@@ -329,7 +331,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           value={med.dispensada}
           onChange={e => actualizarMedicamento(pacienteId, med.id, 'dispensada', parseInt(e.target.value))}
           style={{ ...inputSm, textAlign: 'center' }}
-          disabled={guardando === med.id}
+          disabled={soloLectura || guardando === med.id}
         >
           {CANTIDADES_RECETARIO.map(n => <option key={n} value={n}>{n}</option>)}
         </select>
@@ -338,7 +340,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
         <button
           onClick={() => borrarMedicamento(pacienteId, med.id, med.medicamento)}
           style={btnBorrar}
-          disabled={guardando === med.id}
+          disabled={soloLectura || guardando === med.id}
           title="Borrar medicamento"
         >✕</button>
       </td>
@@ -362,7 +364,13 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
         >
           🖨️ Imprimir Recetario
         </button>
-      </div>      {error && <div style={errorBanner}>⚠️ {error}</div>}
+      </div>
+      {soloLectura && (
+        <div style={{ background: '#fff7e0', color: '#7d5b2f', padding: '8px 14px', borderRadius: 4, marginTop: 8, marginBottom: 10, fontSize: 12, border: '1px solid #C39C59' }}>
+          📖 Modo solo lectura — Las recetas las captura/edita el gestor o jefe de servicio.
+        </div>
+      )}
+      {error && <div style={errorBanner}>⚠️ {error}</div>}
 
       {pacientes.length === 0 ? (
         <div style={vacio}>No hay pacientes activos en este servicio.</div>
@@ -470,7 +478,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
                   <button
                     onClick={() => agregarMedicamento(p.paciente_id)}
                     style={btnAgregar}
-                    disabled={guardando === p.paciente_id}
+                    disabled={soloLectura || guardando === p.paciente_id}
                   >
                     + Agregar medicamento
                   </button>

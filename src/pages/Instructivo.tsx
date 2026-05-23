@@ -50,7 +50,7 @@ const SECCIONES: Seccion[] = [
           'NIVEL 1 — Acceso Total (jefe / subjefe): hospital completo, Tablero Día/Semana/Mes, reportes mensuales oficiales, gestión de usuarios.',
           'NIVEL 2 — Acceso Hospital (supervisor): ve y edita todos los servicios, Tablero solo Día, sin reportes mensuales ni alta de usuarios.',
           'NIVEL 3 — Acceso Servicio (jefe de servicio / gestor): edita un solo servicio asignado, Tablero solo Día de su servicio.',
-          'NIVEL 4 — Captura (enfermera de piso): captura en un solo servicio asignado, sin acceso al Tablero Maestro.',
+          'NIVEL 4 — Captura (Enfermería de piso): captura solo en los pacientes asignados por el gestor para su turno; solo lectura en dietas y recetario.',
         ],
       },
     ],
@@ -85,7 +85,7 @@ const SECCIONES: Seccion[] = [
         titulo: '3. Cerrar sesión',
         pasos: [
           'Click el botón "Cerrar sesión" arriba a la derecha de cualquier pantalla.',
-          'Importante: al terminar tu turno, cierra sesión si compartes la tablet con otra enfermera.',
+          'Importante: al terminar tu turno, cierra sesión si compartes la tablet con otro miembro del personal.',
         ],
       },
     ],
@@ -258,7 +258,7 @@ const SECCIONES: Seccion[] = [
         pasos: [
           'Al final del turno, revisa la pestaña Productividad del servicio.',
           'Verifica que las celdas automáticas (verde/azul/lavanda/durazno) cuadren con los eventos realizados.',
-          'Si una enfermera olvidó marcar un evento como Realizada, edita el evento desde Control y se reflejará automáticamente.',
+          'Si la enfermera/o de piso olvidó marcar un evento como Realizada, edita el evento desde Control y se reflejará automáticamente.',
         ],
       },
     ],
@@ -270,79 +270,74 @@ const SECCIONES: Seccion[] = [
   {
     key: 'n4_captura',
     nivel: 'Nivel 4',
-    titulo: 'Captura del Servicio',
-    roles: 'Enfermera de piso',
-    subtitulo: 'Captura datos del paciente en tu servicio asignado durante tu turno. Sin acceso a otros servicios ni al Tablero.',
+    titulo: 'Enfermería de piso',
+    roles: 'Personal operativo (enfermera/enfermero) — solo pacientes asignados',
+    subtitulo: 'Captura datos solo en pacientes asignados por el gestor durante tu turno. Solo lectura en dietas y recetario. Sin acceso a otros servicios ni al Tablero.',
     color: '#5a4a8a',
     permisos: [
-      { texto: 'Capturar y editar pacientes de tu servicio en tu turno', permitido: true },
-      { texto: 'Llenar dietas, recetario, control y productividad', permitido: true },
-      { texto: 'Imprimir tu hoja de servicio para pase de visita', permitido: true },
-      { texto: 'Ingresar y egresar pacientes', permitido: true },
+      { texto: 'Ver SOLO los pacientes asignados por el gestor para tu turno', permitido: true },
+      { texto: 'Editar Control (hoja + eventos clínicos) de tus pacientes asignados', permitido: true },
+      { texto: 'Leer dietas y recetario de tus pacientes asignados', permitido: true },
+      { texto: 'Acceso activo durante tu turno + 30 min de gracia al final', permitido: true },
+      { texto: 'Editar dietas o recetario', permitido: false },
+      { texto: 'Ingresar nuevos pacientes o egresarlos', permitido: false },
+      { texto: 'Ver pacientes no asignados a ti', permitido: false },
       { texto: 'Acceder a otros servicios del hospital', permitido: false },
       { texto: 'Acceder al Tablero Maestro', permitido: false },
-      { texto: 'Editar capturas históricas de otros turnos', permitido: false },
     ],
     contenido: [
       {
-        titulo: '1. Entrar a tu servicio',
+        titulo: '1. Cómo funciona tu acceso',
+        pasos: [
+          'El gestor (jefe de servicio) te asigna pacientes para tu turno antes o durante tu jornada.',
+          'Al iniciar sesión solo ves a los pacientes que tienes asignados ESE turno (no todos los del servicio).',
+          'Tu acceso se mantiene durante tu turno completo + 30 minutos después (gracia para cerrar capturas).',
+          'Al pasar al siguiente turno, dejas de ver esos pacientes automáticamente.',
+        ],
+      },
+      {
+        titulo: '2. Entrar a tu servicio',
         pasos: [
           'En el Dashboard ves solo tu servicio. Toca la tarjeta.',
           'Verás 5 pestañas: Censo · Dietas · Recetario · Control · Productividad.',
+          'En Censo aparece la lista solo de TUS pacientes asignados en este turno.',
         ],
       },
       {
-        titulo: '2. Ingresar un paciente nuevo',
+        titulo: '3. Consultar Dietas (solo lectura)',
         pasos: [
-          'Pestaña "Censo" → botón "+ Ingresar paciente".',
-          'Llena: nombre completo, edad, género, NSS/CURP, diagnóstico de ingreso, especialidad.',
-          'Selecciona la cama disponible.',
-          'Al guardar, el sistema registra fecha y hora automáticas.',
+          'Pestaña "Dietas" → revisas tipo, consistencia, restricciones y observaciones.',
+          'NO puedes editar — los selectores están deshabilitados.',
+          'Si necesitas un cambio, avisa al gestor para que lo capture.',
         ],
       },
       {
-        titulo: '3. Capturar Dietas',
+        titulo: '4. Consultar Recetario (solo lectura)',
         pasos: [
-          'Pestaña "Dietas" → cada paciente aparece como tarjeta.',
-          'Selecciona tipo de dieta del catálogo (normal, blanda, líquidos, etc.) y restricciones.',
-          'Los cambios se guardan automáticamente.',
+          'Pestaña "Recetario" → revisas los medicamentos prescritos por paciente.',
+          'NO puedes agregar, editar ni borrar medicamentos.',
+          'Si encuentras una discrepancia, repórtala al gestor o jefe de servicio.',
         ],
       },
       {
-        titulo: '4. Capturar Recetario',
-        pasos: [
-          'Pestaña "Recetario" → busca el medicamento por nombre (594 medicamentos en catálogo).',
-          'Captura dosis, vía, horario y número de aplicaciones del día (0-5).',
-          'Para borrar entrada incorrecta usa el botón ❌.',
-        ],
-      },
-      {
-        titulo: '5. Llenar Control (eventos clínicos)',
+        titulo: '5. Llenar Control (única pestaña con escritura)',
         pasos: [
           'Pestaña "Control" → toca al paciente para expandir su tarjeta.',
-          'Eventos como sondas, accesos vasculares, curaciones, procedimientos se gestionan con tarjetas individuales.',
-          'AGREGAR: toca "+ Nuevo evento" → selecciona código → confirma.',
-          'MARCAR REALIZADO: en la tarjeta del evento toca "⏱️ Ahora" o cambia estado a "Realizada".',
-          'EDITAR FECHA: ícono ✎ junto a la fecha → ajusta con el picker.',
+          'Aquí SÍ puedes editar: eventos clínicos (sondas, accesos vasculares, curaciones, procedimientos).',
+          'AGREGAR: "+ Nuevo evento" → selecciona código → confirma.',
+          'MARCAR REALIZADO: "⏱️ Ahora" o cambia estado a "Realizada".',
+          'EDITAR FECHA: ícono ✎ junto a la fecha.',
           'RETIRAR sonda/acceso: cambia estado a "Retirada".',
-          'CANCELAR evento creado por error: toca la ✕ y confirma.',
+          'CANCELAR evento creado por error: ✕ y confirma.',
+          'IMPORTANTE: solo puedes editar durante tu turno + 30 min de gracia.',
         ],
       },
       {
         titulo: '6. Productividad del turno',
         pasos: [
-          'Pestaña "Productividad" → matriz de indicadores × días.',
-          'Celdas amarillas: captura manual (tócalas para editar).',
-          'Celdas verdes/azules/lavanda/durazno: automáticas (no editables; modifica el evento que las generó).',
-          'El sistema cuenta automáticamente: ingresos, eventos realizados, continuidad de sondas/accesos por turno.',
-        ],
-      },
-      {
-        titulo: '7. Egresar un paciente',
-        pasos: [
-          'Pestaña "Censo" → toca el paciente que va a egresar.',
-          'Botón "Egresar" → selecciona motivo (alta, traslado, defunción, voluntario, fuga).',
-          'Captura observaciones si aplica. Al confirmar, la cama queda disponible y el paciente se archiva.',
+          'La productividad se calcula sola al marcar eventos como Realizada.',
+          'No tienes que capturar productividad manualmente para tus eventos.',
+          'Las celdas se llenan automáticamente: ingresos, eventos realizados, continuidad de sondas/accesos por turno.',
         ],
       },
     ],
@@ -362,7 +357,7 @@ function nivelLabel(rol: Rol | null | undefined): string {
   if (k === 'n1_total') return 'Nivel 1 · Acceso Total';
   if (k === 'n2_hospital') return 'Nivel 2 · Acceso Hospital';
   if (k === 'n3_servicio') return 'Nivel 3 · Acceso Servicio';
-  if (k === 'n4_captura') return 'Nivel 4 · Captura del Servicio';
+  if (k === 'n4_captura') return 'Nivel 4 · Enfermería de piso (pacientes asignados)';
   return 'Sin nivel asignado';
 }
 
