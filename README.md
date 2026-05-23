@@ -65,3 +65,4 @@ censo-salvatierra/
 
 Proyecto institucional. Uso exclusivo para el Hospital General con
 Especialidades "Juan María de Salvatierra" - IMSS Bienestar.
+# censo-salvatierra.
