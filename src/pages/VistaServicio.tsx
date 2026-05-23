@@ -93,6 +93,10 @@ export function VistaServicio() {
   const navigate = useNavigate();
   const { perfil } = useAuth();
 
+  // Enfermeria de piso solo tiene acceso de LECTURA al censo
+  // (no puede ingresar ni egresar pacientes)
+  const censoSoloLectura = perfil?.rol === 'enfermera';
+
   const servicioIdNum = servicioId ? parseInt(servicioId, 10) : null;
 
   const [servicio, setServicio] = useState<Servicio | null>(null);
@@ -269,6 +273,8 @@ export function VistaServicio() {
   }, [pestana, servicioIdNum]);
 
   const onCamaClick = (cama: CamaEstado) => {
+    // Enfermeria: lectura. Click no abre modales de ingreso/egreso.
+    if (censoSoloLectura) return;
     if (cama.paciente_id) {
       setModalEgreso({
         pacienteId: cama.paciente_id,
@@ -315,7 +321,12 @@ export function VistaServicio() {
       <button
         key={c.cama_id}
         onClick={() => onCamaClick(c)}
-        style={{ ...camaCard, ...(ocupada ? camaOcupada : camaLibre), ...(noCensable ? camaNoCensable : {}) }}
+        style={{
+          ...camaCard,
+          ...(ocupada ? camaOcupada : camaLibre),
+          ...(noCensable ? camaNoCensable : {}),
+          cursor: censoSoloLectura ? 'default' : 'pointer',
+        }}
       >
         {noCensable && <div style={badgeNoCensable}>📋 NO CENSABLE</div>}
         <div style={camaNumero}>{c.numero_cama}</div>
@@ -419,6 +430,11 @@ export function VistaServicio() {
 
       {pestana === 'censo' && (
         <>
+          {censoSoloLectura && (
+            <div style={{ background: '#fff7e0', color: '#7d5b2f', padding: '8px 14px', borderRadius: 4, margin: '0 0 10px', fontSize: 12, border: '1px solid #C39C59' }}>
+              📖 Censo en modo solo lectura — Solo ves los pacientes asignados a ti en este turno. El ingreso y egreso lo realiza el gestor del servicio.
+            </div>
+          )}
           {/* Sección 1: camas censables */}
           <div style={camasGrid}>
             {camasCensables.map(renderCama)}
