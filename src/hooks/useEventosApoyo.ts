@@ -68,6 +68,11 @@ export function useEventosApoyo(pacienteIds: string[]) {
   // Para evitar fetch duplicado en re-renders cuando pacienteIds es la misma lista pero array nueva
   const lastKeyRef = useRef<string>('');
 
+  // Ref espejo de `eventos` para acceso read-only en callbacks sin
+  // depender de la state (evita re-crear callbacks y romper memoización).
+  const eventosRef = useRef<Evento[]>([]);
+  useEffect(() => { eventosRef.current = eventos; }, [eventos]);
+
   const idsKey = useMemo(() => [...pacienteIds].sort().join(','), [pacienteIds]);
 
   const cargar = useCallback(async () => {
@@ -151,10 +156,12 @@ export function useEventosApoyo(pacienteIds: string[]) {
   ): Promise<MutationResult> => {
     if (!perfil) return { ok: false, error: 'Sin sesion activa' };
 
-    const prevSnapshot = eventos;
-    setEventos(prev =>
-      prev.map(e => (e.id === id ? { ...e, ...cambios, actualizado_en: new Date().toISOString() } as Evento : e))
-    );
+    // Snapshot via functional setState para no depender de `eventos` en el closure
+    let prevSnapshot: Evento[] = [];
+    setEventos(prev => {
+      prevSnapshot = prev;
+      return prev.map(e => (e.id === id ? { ...e, ...cambios, actualizado_en: new Date().toISOString() } as Evento : e));
+    });
 
     const update = {
       ...cambios,
@@ -171,12 +178,14 @@ export function useEventosApoyo(pacienteIds: string[]) {
       return { ok: false, error: err.message };
     }
     return { ok: true };
-  }, [perfil, eventos]);
+  }, [perfil]);
 
   const cambiarEstado = useCallback((id: string, nuevoEstado: EstadoEvento): Promise<MutationResult> => {
     const cambios: Partial<Evento> = { estado: nuevoEstado };
     if (nuevoEstado === 'Realizada') {
-      const ev = eventos.find(e => e.id === id);
+      // Solo poner fecha_realizacion si no existia (preserva fecha original
+      // si la transicion es Realizada -> Cancelada -> Realizada).
+      const ev = eventosRef.current.find(e => e.id === id);
       if (!ev?.fecha_realizacion) cambios.fecha_realizacion = new Date().toISOString();
     } else if (nuevoEstado === 'Retirada') {
       cambios.fecha_retiro = new Date().toISOString();
@@ -185,7 +194,7 @@ export function useEventosApoyo(pacienteIds: string[]) {
       cambios.fecha_retiro = null;
     }
     return actualizar(id, cambios);
-  }, [actualizar, eventos]);
+  }, [actualizar]);
 
   const cancelar = useCallback((id: string) => cambiarEstado(id, 'Cancelada'), [cambiarEstado]);
 

@@ -1,20 +1,21 @@
 // src/pages/TableroMaestro.tsx
-// BLOQUE 6 — Tablero Maestro (solo Jefe/Subjefe de Enfermería)
+// BLOQUE 6 — Tablero Maestro (Jefe/Subjefe/Supervisor/Gestor según rol)
 // Hospital General IMSS-Bienestar "Juan María de Salvatierra"
 //
-// v6 (2026-05-23):
-//   - Selector de PERIODO: Día / Semana / Mes
+// Características:
+//   - Selector de PERIODO: Día / Semana / Mes (Semana/Mes solo jefe/subjefe)
 //   - Date picker para día/semana (semana = lunes-domingo de la fecha)
 //   - Día y semana: desglose por turno M/V/N + Total
 //   - Mes mantiene comportamiento original (usa vistas v_tablero_*)
 //   - Performance: Promise.all en lugar de await secuencial
 //   - Productividad lookup via Map (O(1) vs O(n) por celda)
-//   - Fix: typo 's' línea 379 que rompía TypeScript
+//   - Gestor: scope automático a su servicio asignado
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { exportarProductividadMensual } from '../utils/exportarProductividad';
+// exportarProductividadMensual se carga dinamicamente al hacer click en Exportar
+// para evitar incluir exceljs (~600KB) en el bundle principal.
 import {
   ROLES_VEN_TABLERO,
   ROLES_TABLERO_COMPLETO,
@@ -241,12 +242,20 @@ export function TableroMaestro() {
                .eq('mes', dias[0].mes)
                .in('dia', dias.map(d => d.dia));
         } else {
-          // Rango cruza meses (caso raro: semana atravesando fin/inicio de mes).
-          // PostgREST no tiene OR multi-columna trivial, así que pedimos sin filtro
-          // de dia/mes y filtramos en cliente.
-          q = q
-            .gte('anio', dias[0].anio)
-            .lte('anio', dias[dias.length-1].anio);
+          // Rango cruza meses (caso: semana lun-dom atravesando fin/inicio).
+          // Agrupamos por (anio, mes) y construimos OR con clausulas
+          // "(anio.eq.X,mes.eq.M,dia.in.(d1,d2,...))" para no descargar el año.
+          const porAnioMes = new Map<string, number[]>();
+          for (const d of dias) {
+            const k = `${d.anio}-${d.mes}`;
+            if (!porAnioMes.has(k)) porAnioMes.set(k, []);
+            porAnioMes.get(k)!.push(d.dia);
+          }
+          const clausulas = Array.from(porAnioMes.entries()).map(([k, ds]) => {
+            const [anioStr, mesStr] = k.split('-');
+            return `and(anio.eq.${anioStr},mes.eq.${mesStr},dia.in.(${ds.join(',')}))`;
+          });
+          q = q.or(clausulas.join(','));
         }
         if (servicioRestriccion != null) q = q.eq('servicio_id', servicioRestriccion);
         promProductividad = q;
@@ -360,7 +369,11 @@ export function TableroMaestro() {
     } finally {
       setCargando(false);
     }
-  }, [tieneAcceso, anio, mes, periodo, fechaSel, rangoFechas, servicioRestriccion]);
+    // rangoFechas se deriva de [periodo, fechaSel, anio, mes] (mismo useMemo)
+    // asi que lo omitimos de las deps para no causar un doble fetch cuando
+    // ambos cambian a la vez.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tieneAcceso, anio, mes, periodo, fechaSel, servicioRestriccion]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -402,6 +415,8 @@ export function TableroMaestro() {
     setExportando(true);
     setError(null);
     try {
+      // Dynamic import: exceljs solo se descarga aqui (lazy)
+      const { exportarProductividadMensual } = await import('../utils/exportarProductividad');
       await exportarProductividadMensual(
         anio, mes,
         perfil.nombre_completo || 'Subjefe de Enfermería',

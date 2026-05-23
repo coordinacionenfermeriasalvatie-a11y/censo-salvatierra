@@ -1,14 +1,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Suspense, lazy } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
-import { VistaServicio } from './pages/VistaServicio'
-import { VistaImpresionControl } from './pages/VistaImpresionControl'
-import { VistaImpresionRecetario } from './pages/VistaImpresionRecetario'
-import { VistaImpresionDietas } from './pages/VistaImpresionDietas'
-import { VistaImpresionProductividad } from './pages/VistaImpresionProductividad'
-import { TableroMaestro } from './pages/TableroMaestro'
-import { Instructivo } from './pages/Instructivo'
+
+// Code-splitting: estas paginas pesadas se cargan solo cuando se visitan.
+// Reduce el bundle inicial de ~424KB gzip a ~150KB gzip aproximadamente.
+const VistaServicio              = lazy(() => import('./pages/VistaServicio').then(m => ({ default: m.VistaServicio })))
+const VistaImpresionControl      = lazy(() => import('./pages/VistaImpresionControl').then(m => ({ default: m.VistaImpresionControl })))
+const VistaImpresionRecetario    = lazy(() => import('./pages/VistaImpresionRecetario').then(m => ({ default: m.VistaImpresionRecetario })))
+const VistaImpresionDietas       = lazy(() => import('./pages/VistaImpresionDietas').then(m => ({ default: m.VistaImpresionDietas })))
+const VistaImpresionProductividad = lazy(() => import('./pages/VistaImpresionProductividad').then(m => ({ default: m.VistaImpresionProductividad })))
+const TableroMaestro             = lazy(() => import('./pages/TableroMaestro').then(m => ({ default: m.TableroMaestro })))
+const Instructivo                = lazy(() => import('./pages/Instructivo').then(m => ({ default: m.Instructivo })))
+
 export function App() {
   const { session, perfil, cargando, cerrarSesion } = useAuth()
 
@@ -38,22 +43,30 @@ export function App() {
     )
   }
 
+  const fallbackCarga = (
+    <div style={pantallaCargando}>
+      <p>Cargando...</p>
+    </div>
+  )
+
   return (
     <BrowserRouter>
-      <Routes>
-        <Route
-          path="/"
-          element={<Dashboard perfil={perfil} onCerrarSesion={cerrarSesion} />}
-        />
-        <Route path="/servicio/:servicioId" element={<VistaServicio />} />
-        <Route path="/tablero" element={<TableroMaestro />} />
-        <Route path="/instructivo" element={<Instructivo />} />
-       <Route path="/imprimir/dietas/:servicioId" element={<VistaImpresionDietas />} />
-        <Route path="/imprimir/productividad/:anio/:mes" element={<VistaImpresionProductividad />} /> 
-        <Route path="/imprimir/recetario/:servicioId" element={<VistaImpresionRecetario />} />
-        <Route path="/imprimir/control/:servicioId" element={<VistaImpresionControl />} />
-        <Route path="*" element={<Navigate to="/" />} />
-      </Routes>
+      <Suspense fallback={fallbackCarga}>
+        <Routes>
+          <Route
+            path="/"
+            element={<Dashboard perfil={perfil} onCerrarSesion={cerrarSesion} />}
+          />
+          <Route path="/servicio/:servicioId" element={<VistaServicio />} />
+          <Route path="/tablero" element={<TableroMaestro />} />
+          <Route path="/instructivo" element={<Instructivo />} />
+          <Route path="/imprimir/dietas/:servicioId" element={<VistaImpresionDietas />} />
+          <Route path="/imprimir/productividad/:anio/:mes" element={<VistaImpresionProductividad />} />
+          <Route path="/imprimir/recetario/:servicioId" element={<VistaImpresionRecetario />} />
+          <Route path="/imprimir/control/:servicioId" element={<VistaImpresionControl />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }

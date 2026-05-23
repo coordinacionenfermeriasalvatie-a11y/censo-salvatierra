@@ -10,7 +10,7 @@
 // Estados con color:
 //   Solicitada amber / Pendiente naranja / Realizada verde / Retirada gris / Cancelada gris tachado.
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { Evento, EstadoEvento } from '../../hooks/useEventosApoyo';
 
 interface Props {
@@ -73,6 +73,13 @@ export const EventCard: React.FC<Props> = ({
   const [editObs, setEditObs] = useState(false);
   const [obsTexto, setObsTexto] = useState(evento.observaciones ?? '');
   const [trabajando, setTrabajando] = useState(false);
+
+  // Sincronizar obsTexto con el prop cuando evento.observaciones cambia desde
+  // fuera (ej. recarga de la lista). Solo sincronizamos cuando NO estamos
+  // editando, para no pisar lo que el usuario esta escribiendo.
+  useEffect(() => {
+    if (!editObs) setObsTexto(evento.observaciones ?? '');
+  }, [evento.observaciones, editObs]);
 
   const colores = ESTADO_COLOR[evento.estado];
   const cancelada = evento.estado === 'Cancelada';
