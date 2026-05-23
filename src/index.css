@@ -1,0 +1,81 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: #F5F1E8;
+  color: #265C4E;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Mejor scroll en iOS */
+  -webkit-overflow-scrolling: touch;
+  /* Evita zoom accidental al doble-tap en iOS */
+  touch-action: manipulation;
+}
+
+button {
+  font-family: inherit;
+  /* Feedback visual al tocar en mobile */
+  -webkit-tap-highlight-color: rgba(14, 103, 85, 0.18);
+}
+
+button:hover {
+  opacity: 0.9;
+}
+
+button:active {
+  transform: scale(0.98);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid #0E6755;
+  outline-offset: -1px;
+}
+
+/* ============================================================
+   RESPONSIVE — móviles y tabletas
+   Breakpoints:
+     - <= 480px : móvil chico (iPhone SE)
+     - <= 768px : móvil/tableta vertical
+     - <= 1024px: tableta horizontal
+   ============================================================ */
+
+/* Touch targets mínimos en pantallas táctiles */
+@media (hover: none) and (pointer: coarse) {
+  button {
+    /* Mínimo recomendado Apple (44pt) / Material (48dp) para targets táctiles */
+    min-height: 36px;
+  }
+  /* Inputs nativos suficientemente grandes para iOS sin trigger de zoom */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Tabletas verticales y móviles grandes */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+  }
+  /* Tablas siguen siendo scrollable horizontal — no las achicamos */
+}
+
+/* Móviles */
+@media (max-width: 480px) {
+  body {
+    font-size: 13px;
+  }
+}
+
+/* Para impresión, scrollbar y elementos solo visibles en pantalla */
+@media print {
+  body {
+    background: white;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

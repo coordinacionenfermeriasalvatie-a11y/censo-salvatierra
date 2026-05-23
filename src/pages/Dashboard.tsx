@@ -1,0 +1,352 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import type { OcupacionServicio, Perfil } from '../types'
+import {
+  ROLES_VEN_TABLERO,
+  esAdminGlobal,
+  tieneScopeDeServicio,
+} from '../types'
+
+interface Props {
+  perfil: Perfil
+  onCerrarSesion: () => void
+}
+
+export function Dashboard({ perfil, onCerrarSesion }: Props) {
+  const navigate = useNavigate()
+  const [servicios, setServicios] = useState<OcupacionServicio[]>([])
+  const [cargando, setCargando] = useState(true)
+
+  useEffect(() => {
+    cargarOcupacion()
+    const interval = setInterval(cargarOcupacion, 30000)
+    return () => clearInterval(interval)
+  }, [])
+
+  async function cargarOcupacion() {
+    const { data, error } = await supabase
+      .from('v_ocupacion_servicios')
+      .select('*')
+      .order('orden')
+
+    if (!error && data) {
+      setServicios(data as OcupacionServicio[])
+    }
+    setCargando(false)
+  }
+
+  // Filtrar servicios por scope del rol.
+  // - jefe/subjefe/supervisor: ven todos
+  // - gestor/enfermera: solo el suyo
+  const serviciosVisibles = useMemo(() => {
+    if (tieneScopeDeServicio(perfil.rol) && perfil.servicio_id != null) {
+      return servicios.filter(s => s.servicio_id === perfil.servicio_id)
+    }
+    return servicios
+  }, [servicios, perfil.rol, perfil.servicio_id])
+
+  const totalCamas = serviciosVisibles.reduce((s, srv) => s + srv.total_camas, 0)
+  const totalOcupadas = serviciosVisibles.reduce((s, srv) => s + Number(srv.camas_ocupadas), 0)
+  const porcentajeGlobal =
+    totalCamas > 0 ? Math.round((totalOcupadas / totalCamas) * 100) : 0
+  const esAdmin = esAdminGlobal(perfil.rol)
+
+  function colorOcupacion(pct: number): string {
+    if (pct >= 80) return '#A32D2D'
+    if (pct >= 60) return '#C39C59'
+    if (pct > 0) return '#5CAB34'
+    return '#888780'
+  }
+
+  return (
+    <div style={styles.contenedor}>
+      <header style={styles.header}>
+        <div style={styles.headerLogos}>
+          <img
+            src="/logos/imss_bienestar.png"
+            alt="IMSS Bienestar"
+            style={styles.logoChico}
+          />
+          <img
+            src="/logos/LOGO_HOSPITAL.jpg"
+            alt="Hospital Juan Maria de Salvatierra"
+            style={styles.logoChico}
+          />
+        </div>
+
+        <div style={styles.headerUsuario}>
+          <div style={{ textAlign: 'right' }}>
+            <p style={styles.nombreUsuario}>{perfil.nombre_completo}</p>
+            <p style={styles.matricula}>
+              Matricula {perfil.matricula} - {perfil.rol.toUpperCase()}
+            </p>
+          </div>
+          {ROLES_VEN_TABLERO.includes(perfil.rol) && (
+            <button onClick={() => navigate('/tablero')} style={styles.botonTablero}>
+              📊 Tablero Maestro
+            </button>
+          )}
+          <button onClick={onCerrarSesion} style={styles.botonSalir}>
+            Cerrar sesion
+          </button>
+        </div>
+      </header>
+
+      <main style={styles.main}>
+        <h2 style={styles.tituloPagina}>
+          {esAdmin ? 'Tablero general del hospital' : `Tablero de tu servicio`}
+        </h2>
+        <p style={styles.fecha}>
+          {new Date().toLocaleDateString('es-MX', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+          })}
+        </p>
+
+        <div style={styles.kpisGrid}>
+          <KpiCard etiqueta="Camas totales" valor={totalCamas} color="#0E6755" />
+          <KpiCard etiqueta="Ocupadas" valor={totalOcupadas} color="#5CAB34" />
+          <KpiCard
+            etiqueta="Disponibles"
+            valor={totalCamas - totalOcupadas}
+            color="#5978BB"
+          />
+          <KpiCard
+            etiqueta="% Ocupacion"
+            valor={`${porcentajeGlobal}%`}
+            color="#C39C59"
+          />
+        </div>
+
+        <h3 style={styles.tituloSeccion}>
+          {esAdmin ? 'Servicios del hospital' : 'Mi servicio'}
+        </h3>
+
+        {cargando ? (
+          <p style={styles.cargando}>Cargando ocupacion...</p>
+        ) : (
+          <div style={styles.serviciosGrid}>
+            {serviciosVisibles.map(s => (
+              <button
+                key={s.servicio_id}
+                onClick={() => navigate(`/servicio/${s.servicio_id}`)}
+                style={styles.tarjetaServicio}
+              >
+                <div style={styles.tarjetaCabecera}>
+                  <span style={styles.tarjetaNombre}>{s.servicio}</span>
+                  <span
+                    style={{
+                      ...styles.tarjetaPct,
+                      color: colorOcupacion(Number(s.porcentaje_ocupacion))
+                    }}
+                  >
+                    {Math.round(Number(s.porcentaje_ocupacion))}%
+                  </span>
+                </div>
+                <p style={styles.tarjetaDetalle}>
+                  {s.camas_ocupadas} de {s.total_camas} camas
+                </p>
+                <div style={styles.barra}>
+                  <div
+                    style={{
+                      ...styles.barraInterna,
+                      width: `${s.porcentaje_ocupacion}%`,
+                      background: colorOcupacion(Number(s.porcentaje_ocupacion))
+                    }}
+                  />
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
+  )
+}
+
+function KpiCard({
+  etiqueta,
+  valor,
+  color
+}: {
+  etiqueta: string
+  valor: number | string
+  color: string
+}) {
+  return (
+    <div style={{ ...styles.kpi, borderLeftColor: color }}>
+      <p style={styles.kpiEtiqueta}>{etiqueta}</p>
+      <p style={{ ...styles.kpiValor, color }}>{valor}</p>
+    </div>
+  )
+}
+
+const COLOR_VERDE_IMSS = '#0E6755'
+const COLOR_DORADO = '#C39C59'
+const COLOR_FONDO = '#F5F1E8'
+const COLOR_VERDE_OSCURO = '#265C4E'
+
+const styles: Record<string, React.CSSProperties> = {
+  contenedor: {
+    minHeight: '100vh',
+    background: COLOR_FONDO
+  },
+  header: {
+    background: '#FFFFFF',
+    borderBottom: `3px solid ${COLOR_DORADO}`,
+    padding: '12px 24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+    flexWrap: 'wrap'
+  },
+  headerLogos: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 16,
+    flexWrap: 'wrap'
+  },
+  logoChico: {
+    height: 40,
+    width: 'auto',
+    objectFit: 'contain'
+  },
+  headerUsuario: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end'
+  },
+  nombreUsuario: {
+    margin: 0,
+    fontSize: 13,
+    color: COLOR_VERDE_IMSS,
+    fontWeight: 500
+  },
+  matricula: {
+    margin: 0,
+    fontSize: 11,
+    color: COLOR_VERDE_OSCURO
+  },
+  botonTablero: {
+    background: '#C39C59',
+    border: '1px solid #C39C59',
+    color: '#fff',
+    padding: '6px 12px',
+    fontSize: 12,
+    fontWeight: 600,
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    marginRight: 8
+  },
+  botonSalir: {
+    background: 'transparent',
+    border: `1px solid ${COLOR_VERDE_OSCURO}`,
+    color: COLOR_VERDE_OSCURO,
+    padding: '6px 12px',
+    fontSize: 12,
+    borderRadius: 4,
+    cursor: 'pointer'
+  },
+  main: {
+    padding: 'clamp(12px, 3vw, 24px)',
+    maxWidth: 1280,
+    margin: '0 auto'
+  },
+  tituloPagina: {
+    margin: 0,
+    fontSize: 22,
+    color: COLOR_VERDE_IMSS,
+    fontWeight: 500
+  },
+  fecha: {
+    margin: '4px 0 24px',
+    fontSize: 13,
+    color: COLOR_VERDE_OSCURO,
+    textTransform: 'capitalize'
+  },
+  kpisGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+    gap: 12,
+    marginBottom: 32
+  },
+  kpi: {
+    background: '#FFFFFF',
+    borderLeft: '4px solid',
+    borderRadius: '0 6px 6px 0',
+    padding: 16
+  },
+  kpiEtiqueta: {
+    margin: 0,
+    fontSize: 12,
+    color: COLOR_VERDE_OSCURO
+  },
+  kpiValor: {
+    margin: '6px 0 0',
+    fontSize: 28,
+    fontWeight: 500
+  },
+  tituloSeccion: {
+    margin: '0 0 12px',
+    fontSize: 16,
+    color: COLOR_VERDE_IMSS,
+    fontWeight: 500
+  },
+  cargando: {
+    color: COLOR_VERDE_OSCURO,
+    fontSize: 14
+  },
+  serviciosGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gap: 10
+  },
+  tarjetaServicio: {
+    background: '#FFFFFF',
+    border: `1px solid ${COLOR_DORADO}`,
+    borderRadius: 6,
+    padding: 14,
+    cursor: 'pointer',
+    textAlign: 'left',
+    fontFamily: 'inherit',
+    transition: 'transform 0.1s'
+  },
+  tarjetaCabecera: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6
+  },
+  tarjetaNombre: {
+    fontSize: 14,
+    fontWeight: 500,
+    color: COLOR_VERDE_IMSS
+  },
+  tarjetaPct: {
+    fontSize: 14,
+    fontWeight: 500
+  },
+  tarjetaDetalle: {
+    margin: 0,
+    fontSize: 12,
+    color: COLOR_VERDE_OSCURO
+  },
+  barra: {
+    marginTop: 8,
+    background: COLOR_FONDO,
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden'
+  },
+  barraInterna: {
+    height: '100%',
+    transition: 'width 0.3s'
+  }
+}

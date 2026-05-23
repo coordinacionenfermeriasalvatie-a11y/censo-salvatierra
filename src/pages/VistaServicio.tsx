@@ -1,0 +1,640 @@
+// src/pages/VistaServicio.tsx
+// Vista de cada servicio con menú de pestañas:
+// Censo · Dietas · Recetario · Control · Productividad
+// PARCHE v4.3 — sección colapsable "Egresados Recientes"
+// PARCHE v4.4 — soporte visual para camillas NO CENSABLES (badge + estilo)
+// PARCHE v4.5 — secciones separadas: censables arriba, camillas no censables abajo
+//               + contador dual "X de N censables · Y de M camillas"
+// PARCHE v4.6 — columna DIAGNÓSTICO en tabla de egresados recientes
+import React, { useEffect, useState, useCallback } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { ModalIngreso } from './components/ModalIngreso';
+import { ModalEgreso } from './components/ModalEgreso';
+import { ModalAsignarEnfermero } from './components/ModalAsignarEnfermero';
+import { MenuPestanas, Pestana } from './components/MenuPestanas';
+import { VistaDietas } from './components/VistaDietas';
+import { VistaRecetario } from './components/VistaRecetario';
+import { VistaFormatoControl } from './components/VistaFormatoControl';
+import { VistaProductividad } from './components/VistaProductividad';
+
+interface Servicio {
+  id: number;
+  codigo: string;
+  nombre: string;
+}
+
+interface CamaEstado {
+  cama_id: number;
+  subservicio_id: number;
+  subservicio: string;
+  numero_cama: string;
+  es_censable: boolean;
+  paciente_id: string | null;
+  nombre_paciente: string | null;
+  edad: number | null;
+  genero: string | null;
+  diagnostico_ingreso: string | null;
+  fecha_ingreso: string | null;
+}
+
+// Trazabilidad — completitud por paciente desde v_paciente_completitud_dia
+interface Completitud {
+  tiene_dieta: boolean;
+  tiene_receta: boolean;
+  tiene_control: boolean;
+}
+
+// PARCHE v4.3 — Tipo para pacientes egresados (sección colapsable inferior)
+// PARCHE v4.6 — Se agrega diagnostico_ingreso para mostrarlo en la tabla
+interface Egresado {
+  paciente_id: string;
+  numero_cama: string;
+  subservicio: string;
+  nombre_paciente: string;
+  edad: number;
+  diagnostico_ingreso: string | null;
+  genero: string;
+  fecha_ingreso: string;
+  fecha_egreso: string;
+  hora_egreso: string;
+  motivo_nombre: string;
+  destino_egreso: string | null;
+  dias_estancia: number | null;
+  egresado_por_nombre: string | null;
+}
+
+// PERF — Caché de datos por servicio (sobrevive desmonte del componente)
+// TTL corto: 30s — equilibrio entre velocidad y frescura en un censo hospitalario
+type ServiceCacheData = {
+  servicio: Servicio;
+  camas: CamaEstado[];
+  egresados: Egresado[];
+  asignaciones: Record<string, { nombre: string; codigo: string }>;
+  completitud: Record<string, Completitud>;
+  fetchedAt: number;
+};
+const CACHE_TTL_MS = 30_000;
+const servicioCache = new Map<number, ServiceCacheData>();
+
+function leerCache(servicioId: number): ServiceCacheData | null {
+  const entry = servicioCache.get(servicioId);
+  if (!entry) return null;
+  if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) {
+    servicioCache.delete(servicioId);
+    return null;
+  }
+  return entry;
+}
+
+export function VistaServicio() {
+  const { servicioId } = useParams<{ servicioId: string }>();
+  const navigate = useNavigate();
+  const { perfil } = useAuth();
+
+  const servicioIdNum = servicioId ? parseInt(servicioId, 10) : null;
+
+  const [servicio, setServicio] = useState<Servicio | null>(null);
+  const [camas, setCamas] = useState<CamaEstado[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pestana, setPestana] = useState<Pestana>('censo');
+
+  const [modalIngreso, setModalIngreso] = useState<{ camaId: number; subservicioId: number; numeroCama: string } | null>(null);
+  const [modalEgreso, setModalEgreso] = useState<{ pacienteId: string; numeroCama: string; nombre: string; fechaIngreso: string } | null>(null);
+  const [modalAsignar, setModalAsignar] = useState<{ pacienteId: string; nombre: string; numeroCama: string } | null>(null);
+  const [asignaciones, setAsignaciones] = useState<Record<string, { nombre: string; codigo: string }>>({});
+
+  // Trazabilidad — mapa paciente_id -> flags de completitud del día
+  const [completitud, setCompletitud] = useState<Record<string, Completitud>>({});
+
+  // PARCHE v4.3 — Estado para sección Egresados
+  const [egresados, setEgresados] = useState<Egresado[]>([]);
+  const [egresadosAbiertos, setEgresadosAbiertos] = useState(false);
+
+  // PARCHE v4.5 — Estado para sección Camillas (NO CENSABLES)
+  const [camillasAbiertas, setCamillasAbiertas] = useState(true);
+
+  const cargar = useCallback(async (force = false) => {
+    if (!servicioIdNum) return;
+    // PERF — Cache hit: hidratar estado y salir (sin red)
+    if (!force) {
+      const cached = leerCache(servicioIdNum);
+      if (cached) {
+        setServicio(cached.servicio);
+        setCamas(cached.camas);
+        setEgresados(cached.egresados);
+        setAsignaciones(cached.asignaciones);
+        setCompletitud(cached.completitud);
+        setCargando(false);
+        setError(null);
+        return;
+      }
+    }
+    setCargando(true);
+    setError(null);
+    try {
+      // PERF — 5 consultas en paralelo (antes en serie)
+      const [servRes, camasRes, egrRes, asigRes, complRes] = await Promise.all([
+        supabase
+          .from('servicios')
+          .select('id, codigo, nombre')
+          .eq('id', servicioIdNum)
+          .single(),
+        supabase
+          .from('v_camas_estado')
+          .select('*')
+          .eq('servicio_id', servicioIdNum)
+          .order('subservicio')
+          .order('numero_cama_sort'),
+        supabase
+          .from('v_egresados_servicio')
+          .select('*')
+          .eq('servicio_id', servicioIdNum)
+          .order('fecha_egreso', { ascending: false })
+          .order('hora_egreso', { ascending: false })
+          .limit(50),
+        supabase
+          .from('v_asignaciones_actuales')
+          .select('paciente_id, enfermero_nombre, categoria_codigo')
+          .eq('servicio_id', servicioIdNum)
+          .not('enfermero_nombre', 'is', null),
+        supabase
+          .from('v_paciente_completitud_dia')
+          .select('paciente_id, tiene_dieta, tiene_receta, tiene_control'),
+      ]);
+
+      // Críticas: servicio y camas
+      if (servRes.error) throw servRes.error;
+      if (camasRes.error) throw camasRes.error;
+      setServicio(servRes.data);
+      setCamas(camasRes.data || []);
+
+      // PARCHE v4.3 — Egresados (degradación elegante si falla)
+      if (egrRes.error) {
+        console.warn('No se pudieron cargar egresados:', egrRes.error.message);
+        setEgresados([]);
+      } else {
+        setEgresados((egrRes.data || []) as Egresado[]);
+      }
+
+      // BLOQUE 8 — Asignaciones del turno actual
+      if (asigRes.error) {
+        console.warn('No se pudieron cargar asignaciones:', asigRes.error.message);
+        setAsignaciones({});
+      } else {
+        const mapa: Record<string, { nombre: string; codigo: string }> = {};
+        (asigRes.data || []).forEach((row: any) => {
+          mapa[row.paciente_id] = {
+            nombre: row.enfermero_nombre,
+            codigo: row.categoria_codigo
+          };
+        });
+        setAsignaciones(mapa);
+      }
+
+      // Trazabilidad — completitud del día
+      let mapaCompletitud: Record<string, Completitud> = {};
+      if (complRes.error) {
+        console.warn('No se pudo cargar completitud:', complRes.error.message);
+        setCompletitud({});
+      } else {
+        (complRes.data || []).forEach((row: any) => {
+          mapaCompletitud[row.paciente_id] = {
+            tiene_dieta: !!row.tiene_dieta,
+            tiene_receta: !!row.tiene_receta,
+            tiene_control: !!row.tiene_control,
+          };
+        });
+        setCompletitud(mapaCompletitud);
+      }
+
+      // PERF — Guardar en caché para próximas visitas (TTL 30s)
+      const asignacionesParaCache: Record<string, { nombre: string; codigo: string }> = {};
+      (asigRes.data || []).forEach((row: any) => {
+        if (row.enfermero_nombre) {
+          asignacionesParaCache[row.paciente_id] = {
+            nombre: row.enfermero_nombre,
+            codigo: row.categoria_codigo
+          };
+        }
+      });
+      servicioCache.set(servicioIdNum, {
+        servicio: servRes.data,
+        camas: camasRes.data || [],
+        egresados: egrRes.error ? [] : ((egrRes.data || []) as Egresado[]),
+        asignaciones: asignacionesParaCache,
+        completitud: mapaCompletitud,
+        fetchedAt: Date.now(),
+      });
+    } catch (e: any) {
+      setError(e.message || 'Error al cargar el servicio');
+    } finally {
+      setCargando(false);
+    }
+  }, [servicioIdNum]);
+
+  useEffect(() => { cargar(); }, [cargar]);
+
+  // Refrescar completitud al regresar al censo — captura hecha en otra pestaña
+  // (Dietas/Recetario/Control) se refleja en los chips sin recargar todo
+  useEffect(() => {
+    if (pestana !== 'censo' || !servicioIdNum) return;
+    let cancelado = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('v_paciente_completitud_dia')
+        .select('paciente_id, tiene_dieta, tiene_receta, tiene_control');
+      if (cancelado || error) {
+        if (error) console.warn('Refresco de completitud falló:', error.message);
+        return;
+      }
+      const mapaC: Record<string, Completitud> = {};
+      (data || []).forEach((row: any) => {
+        mapaC[row.paciente_id] = {
+          tiene_dieta: !!row.tiene_dieta,
+          tiene_receta: !!row.tiene_receta,
+          tiene_control: !!row.tiene_control,
+        };
+      });
+      setCompletitud(mapaC);
+      // PERF — sincronizar con el caché para que próximas visitas vean los chips frescos
+      const cached = servicioCache.get(servicioIdNum);
+      if (cached) {
+        servicioCache.set(servicioIdNum, { ...cached, completitud: mapaC, fetchedAt: Date.now() });
+      }
+    })();
+    return () => { cancelado = true; };
+  }, [pestana, servicioIdNum]);
+
+  const onCamaClick = (cama: CamaEstado) => {
+    if (cama.paciente_id) {
+      setModalEgreso({
+        pacienteId: cama.paciente_id,
+        numeroCama: cama.numero_cama,
+        nombre: cama.nombre_paciente || '',
+        fechaIngreso: cama.fecha_ingreso || '',
+      });
+    } else {
+      setModalIngreso({
+        camaId: cama.cama_id,
+        subservicioId: cama.subservicio_id,
+        numeroCama: cama.numero_cama,
+      });
+    }
+  };
+
+  if (cargando) {
+    return <div style={contenedor}><div style={{ padding: 40, textAlign: 'center', color: '#265C4E' }}>Cargando servicio...</div></div>;
+  }
+
+  if (error || !servicio) {
+    return (
+      <div style={contenedor}>
+        <div style={{ padding: 40, textAlign: 'center', color: '#A32D2D' }}>{error || 'Servicio no encontrado'}</div>
+        <button onClick={() => navigate('/')} style={botonVolver}>← Volver al tablero</button>
+      </div>
+    );
+  }
+
+  // PARCHE v4.5 — Separar camas en dos grupos: censables y no censables (camillas)
+  const camasCensables   = camas.filter(c =>  c.es_censable);
+  const camasNoCensables = camas.filter(c => !c.es_censable);
+
+  const ocupadasCensables   = camasCensables.filter(c => c.paciente_id).length;
+  const totalCensables      = camasCensables.length;
+  const ocupadasCamillas    = camasNoCensables.filter(c => c.paciente_id).length;
+  const totalCamillas       = camasNoCensables.length;
+
+  // Función auxiliar para renderizar una tarjeta de cama
+  const renderCama = (c: CamaEstado) => {
+    const ocupada = !!c.paciente_id;
+    const noCensable = !c.es_censable;
+    return (
+      <button
+        key={c.cama_id}
+        onClick={() => onCamaClick(c)}
+        style={{ ...camaCard, ...(ocupada ? camaOcupada : camaLibre), ...(noCensable ? camaNoCensable : {}) }}
+      >
+        {noCensable && <div style={badgeNoCensable}>📋 NO CENSABLE</div>}
+        <div style={camaNumero}>{c.numero_cama}</div>
+        {ocupada ? (
+          <>
+            <div style={camaNombre}>{c.nombre_paciente}</div>
+            <div style={camaDx}>{c.diagnostico_ingreso}</div>
+            {/* Trazabilidad — chips de completitud del día (dieta/receta/control) */}
+            {(() => {
+              const comp = c.paciente_id ? completitud[c.paciente_id] : undefined;
+              const goTo = (p: Pestana) => (e: React.MouseEvent) => {
+                e.stopPropagation();
+                setPestana(p);
+              };
+              return (
+                <div style={chipsRow}>
+                  <span
+                    style={chip(!!comp?.tiene_dieta)}
+                    onClick={goTo('dietas')}
+                    title={comp?.tiene_dieta ? 'Dieta capturada' : 'Sin dieta — click para capturar'}
+                  >🍽️</span>
+                  <span
+                    style={chip(!!comp?.tiene_receta)}
+                    onClick={goTo('recetario')}
+                    title={comp?.tiene_receta ? 'Recetario con medicamentos' : 'Sin receta — click para capturar'}
+                  >💊</span>
+                  <span
+                    style={chip(!!comp?.tiene_control)}
+                    onClick={goTo('control')}
+                    title={comp?.tiene_control ? 'Formato de control capturado' : 'Sin control — click para capturar'}
+                  >📋</span>
+                </div>
+              );
+            })()}
+            <div style={camaSubservicio}>{c.subservicio}</div>
+            {/* BLOQUE 8 - Badge de enfermero asignado */}
+            {(() => {
+              const asig = c.paciente_id ? asignaciones[c.paciente_id] : null;
+              const puedeAsignar = perfil && ['subjefe','supervisor','gestor'].includes(perfil.rol);
+              const estilo = asig ? badgeEnfermero : badgeSinAsignar;
+              return (
+                <div
+                  style={{ ...estilo, cursor: puedeAsignar ? 'pointer' : 'default' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (puedeAsignar && c.paciente_id) {
+                      setModalAsignar({
+                        pacienteId: c.paciente_id,
+                        nombre: c.nombre_paciente || '',
+                        numeroCama: c.numero_cama,
+                      });
+                    }
+                  }}
+                  title={puedeAsignar ? 'Click para asignar/cambiar enfermero' : ''}
+                >
+                  {asig
+                    ? `👤 ${asig.nombre} (${asig.codigo})`
+                    : '👤 Sin asignar'}
+                </div>
+              );
+            })()}
+          </>
+        ) : (
+          <>
+            <div style={camaLibreLabel}>DISPONIBLE</div>
+            <div style={camaSubservicio}>{c.subservicio}</div>
+          </>
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div style={contenedor}>
+      <div style={header}>
+        <button onClick={() => navigate('/')} style={botonVolver}>← Tablero</button>
+        <div>
+          <h1 style={titulo}>{servicio.nombre}</h1>
+          <div style={subtitulo}>
+            <span style={{ fontWeight: 600, color: '#0E6755' }}>
+              {ocupadasCensables} de {totalCensables} censables
+            </span>
+            {totalCamillas > 0 && (
+              <>
+                <span style={{ margin: '0 8px', color: '#C39C59' }}>·</span>
+                <span style={{ fontWeight: 600, color: '#7d5b2f' }}>
+                  {ocupadasCamillas} de {totalCamillas} camillas
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+        <div style={{ width: 100 }} />
+      </div>
+
+      <MenuPestanas
+        pestanaActiva={pestana}
+        onCambio={setPestana}
+        servicioCodigo={servicio.codigo}
+      />
+
+      {pestana === 'censo' && (
+        <>
+          {/* Sección 1: camas censables */}
+          <div style={camasGrid}>
+            {camasCensables.map(renderCama)}
+          </div>
+
+          {/* Sección 2: camillas NO CENSABLES (colapsable) */}
+          {totalCamillas > 0 && (
+            <div style={camillasWrap}>
+              <button
+                onClick={() => setCamillasAbiertas(!camillasAbiertas)}
+                style={camillasToggle}
+              >
+                <span>{camillasAbiertas ? '▼' : '▶'} 📋 CAMILLAS NO CENSABLES</span>
+                <span style={camillasInfo}>
+                  {ocupadasCamillas} de {totalCamillas} ocupadas
+                </span>
+              </button>
+              {camillasAbiertas && (
+                <div style={camillasBody}>
+                  <div style={camillasAviso}>
+                    Estas camas <strong>NO cuentan</strong> en el % de ocupación oficial,
+                    pero sí registran ingresos, egresos, dispositivos y productividad de enfermería.
+                  </div>
+                  <div style={camasGrid}>
+                    {camasNoCensables.map(renderCama)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* PARCHE v4.3 — Sección colapsable de egresados (sólo en pestaña Censo) */}
+      {pestana === 'censo' && (
+        <div style={egresadosWrap}>
+          <button
+            onClick={() => setEgresadosAbiertos(!egresadosAbiertos)}
+            style={egresadosToggle}
+          >
+            <span>{egresadosAbiertos ? '▼' : '▶'} 🚪 EGRESADOS RECIENTES</span>
+            <span style={egresadosCount}>{egresados.length}</span>
+          </button>
+          {egresadosAbiertos && (
+            <div style={egresadosBody}>
+              {egresados.length === 0 ? (
+                <div style={egresadosVacio}>Sin egresos registrados en este servicio.</div>
+              ) : (
+                <table style={egresadosTabla}>
+                  <thead>
+                    <tr style={egresadosThRow}>
+                      <th style={egresadosTh}>CAMA</th>
+                      <th style={egresadosTh}>NOMBRE</th>
+                      <th style={egresadosTh}>EDAD</th>
+                      <th style={egresadosTh}>DIAGNÓSTICO</th>
+                      <th style={egresadosTh}>INGRESO</th>
+                      <th style={egresadosTh}>EGRESO</th>
+                      <th style={egresadosTh}>MOTIVO</th>
+                      <th style={egresadosTh}>DESTINO</th>
+                      <th style={egresadosTh}>DÍAS</th>
+                      <th style={egresadosTh}>EGRESADO POR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {egresados.map((e, idx) => (
+                      <tr key={e.paciente_id} style={idx % 2 === 0 ? egresadosTdRowPar : egresadosTdRowImpar}>
+                        <td style={egresadosTd}>{e.numero_cama}</td>
+                        <td style={{ ...egresadosTd, fontWeight: 600 }}>{e.nombre_paciente}</td>
+                        <td style={egresadosTd}>{e.edad}</td>
+                        <td style={{ ...egresadosTd, fontStyle: 'italic', color: '#7d5b2f' }}>{e.diagnostico_ingreso ?? '—'}</td>
+                        <td style={egresadosTd}>{e.fecha_ingreso}</td>
+                        <td style={egresadosTd}>{e.fecha_egreso} {e.hora_egreso?.substring(0, 5)}</td>
+                        <td style={egresadosTd}>{e.motivo_nombre}</td>
+                        <td style={egresadosTd}>{e.destino_egreso || '--'}</td>
+                        <td style={egresadosTd}>{e.dias_estancia ?? '--'}</td>
+                        <td style={{ ...egresadosTd, fontSize: 10, color: '#888' }}>{e.egresado_por_nombre || '--'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {pestana === 'dietas'    && <VistaDietas    servicioId={servicio.id} />}
+      {pestana === 'recetario' && <VistaRecetario servicioId={servicio.id} />}
+      {pestana === 'control'   && <VistaFormatoControl servicioId={servicio.id} />}
+      {pestana === 'productividad' && (
+        <VistaProductividad
+          servicioId={servicio.id}
+          servicioNombre={servicio.nombre}
+        />
+      )}
+
+      {modalIngreso && perfil && (
+        <ModalIngreso
+          camaId={modalIngreso.camaId}
+          subservicioId={modalIngreso.subservicioId}
+          servicioId={servicio.id}
+          numeroCama={modalIngreso.numeroCama}
+          capturadoPor={perfil.id}
+          onClose={() => setModalIngreso(null)}
+          onGuardado={() => { setModalIngreso(null); cargar(true); }}
+        />
+      )}
+
+      {modalAsignar && perfil && (
+        <ModalAsignarEnfermero
+          pacienteId={modalAsignar.pacienteId}
+          pacienteNombre={modalAsignar.nombre}
+          numeroCama={modalAsignar.numeroCama}
+          servicioId={servicio.id}
+          capturadoPor={perfil.id}
+          onClose={() => setModalAsignar(null)}
+          onGuardado={() => { setModalAsignar(null); cargar(true); }}
+        />
+      )}
+
+      {modalEgreso && perfil && (
+        <ModalEgreso
+          pacienteId={modalEgreso.pacienteId}
+          numeroCama={modalEgreso.numeroCama}
+          nombrePaciente={modalEgreso.nombre}
+          fechaIngreso={modalEgreso.fechaIngreso}
+          capturadoPor={perfil.id}
+          onClose={() => setModalEgreso(null)}
+          onGuardado={() => { setModalEgreso(null); cargar(true); }}
+        />
+      )}
+    </div>
+  );
+}
+
+const contenedor: React.CSSProperties = { padding: 20, maxWidth: 1400, margin: '0 auto' };
+const header: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 };
+const titulo: React.CSSProperties = { fontSize: 24, color: '#0E6755', margin: 0, textAlign: 'center' };
+const subtitulo: React.CSSProperties = { fontSize: 13, color: '#888', textAlign: 'center', marginTop: 4 };
+const botonVolver: React.CSSProperties = { background: 'transparent', border: '1px solid #0E6755', color: '#0E6755', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 13 };
+const camasGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 };
+const camaNoCensable: React.CSSProperties = { border: '2px dashed #C39C59', background: 'repeating-linear-gradient(45deg, #FFF, #FFF 6px, #FAF5EA 6px, #FAF5EA 12px)' };
+const badgeNoCensable: React.CSSProperties = { position: 'absolute', top: 4, right: 4, background: '#C39C59', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 8, letterSpacing: 0.3 };
+const camaCard: React.CSSProperties = { padding: 14, border: '2px solid #C39C59', borderRadius: 8, background: '#fff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', minHeight: 110, transition: 'all 0.15s', position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 };
+const camaLibre: React.CSSProperties = { background: '#F5F1E8' };
+const camaOcupada: React.CSSProperties = { background: '#fff', borderColor: '#0E6755', borderWidth: 2, boxShadow: '0 2px 6px rgba(14, 103, 85, 0.15)' };
+const camaNumero: React.CSSProperties = { fontSize: 22, fontWeight: 700, color: '#0E6755' };
+const camaNombre: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#265C4E', lineHeight: 1.2 };
+const camaDx: React.CSSProperties = { fontSize: 11, color: '#7d5b2f', fontStyle: 'italic' };
+const camaSubservicio: React.CSSProperties = { fontSize: 10, color: '#888', textTransform: 'uppercase', marginTop: 'auto' };
+const camaLibreLabel: React.CSSProperties = { fontSize: 12, color: '#C39C59', fontWeight: 700 };
+const proximamente: React.CSSProperties = { textAlign: 'center', padding: 60, background: '#F5F1E8', borderRadius: 8, border: '2px dashed #C39C59', color: '#265C4E' };
+
+// PARCHE v4.5 — Estilos sección Camillas NO CENSABLES
+const camillasWrap: React.CSSProperties = { marginTop: 24, border: '2px dashed #C39C59', borderRadius: 8, background: '#FAF5EA', overflow: 'hidden' };
+const camillasToggle: React.CSSProperties = { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#C39C59', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 700, color: '#fff', fontFamily: 'inherit', letterSpacing: 0.3 };
+const camillasInfo: React.CSSProperties = { background: 'rgba(255,255,255,0.25)', color: '#fff', borderRadius: 12, padding: '3px 10px', fontSize: 11, fontWeight: 600 };
+const camillasBody: React.CSSProperties = { padding: 12 };
+const camillasAviso: React.CSSProperties = { fontSize: 11, color: '#7d5b2f', fontStyle: 'italic', marginBottom: 12, padding: '8px 12px', background: '#fff', border: '1px solid #C39C59', borderRadius: 4, lineHeight: 1.4 };
+
+// PARCHE v4.3 — Estilos sección Egresados
+const egresadosWrap: React.CSSProperties = { marginTop: 24, border: '1px solid #C39C59', borderRadius: 6, background: '#fff', overflow: 'hidden' };
+const egresadosToggle: React.CSSProperties = { width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: '#F5F1E8', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, color: '#A32D2D', fontFamily: 'inherit' };
+const egresadosCount: React.CSSProperties = { background: '#A32D2D', color: '#fff', borderRadius: 12, padding: '2px 10px', fontSize: 11, fontWeight: 700 };
+const egresadosBody: React.CSSProperties = { padding: 8, overflowX: 'auto' };
+const egresadosVacio: React.CSSProperties = { padding: 24, textAlign: 'center', color: '#888', fontStyle: 'italic' };
+const egresadosTabla: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 12 };
+const egresadosThRow: React.CSSProperties = { background: '#A32D2D' };
+const egresadosTh: React.CSSProperties = { padding: '8px 6px', color: '#fff', textAlign: 'left', fontWeight: 700, fontSize: 11, letterSpacing: 0.3, borderBottom: '1px solid #7d1f1f' };
+const egresadosTd: React.CSSProperties = { padding: '6px', borderBottom: '1px solid #e8dfc6', color: '#265C4E' };
+const egresadosTdRowPar: React.CSSProperties = { background: '#fff' };
+const egresadosTdRowImpar: React.CSSProperties = { background: '#fdfaf2' };
+
+// BLOQUE 8 - Estilos badge enfermero
+const badgeEnfermero: React.CSSProperties = {
+  fontSize: 10,
+  background: '#0E6755',
+  color: '#fff',
+  padding: '3px 6px',
+  borderRadius: 4,
+  marginTop: 4,
+  fontWeight: 600,
+  letterSpacing: 0.2,
+  textAlign: 'center',
+  border: '1px solid #0E6755'
+};
+const badgeSinAsignar: React.CSSProperties = {
+  fontSize: 10,
+  background: '#FAF5EA',
+  color: '#A32D2D',
+  padding: '3px 6px',
+  borderRadius: 4,
+  marginTop: 4,
+  fontWeight: 600,
+  letterSpacing: 0.2,
+  textAlign: 'center',
+  border: '1px dashed #A32D2D',
+  fontStyle: 'italic'
+};
+
+// Trazabilidad — chips de completitud del día
+const chipsRow: React.CSSProperties = {
+  display: 'flex',
+  gap: 4,
+  marginTop: 4,
+  flexWrap: 'wrap',
+};
+const chip = (activo: boolean): React.CSSProperties => ({
+  fontSize: 11,
+  lineHeight: 1,
+  padding: '3px 6px',
+  borderRadius: 10,
+  background: activo ? '#0E6755' : '#E8DFC6',
+  color: activo ? '#fff' : '#888',
+  border: `1px solid ${activo ? '#0E6755' : '#C39C59'}`,
+  cursor: 'pointer',
+  userSelect: 'none',
+  filter: activo ? 'none' : 'grayscale(0.6)',
+});
