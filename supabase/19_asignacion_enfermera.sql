@@ -31,6 +31,54 @@
 -- Idempotente.
 -- ============================================================
 
+-- 0) HELPERS BASE (idempotentes, normalmente vienen de 17_helpers_rls.sql
+--    pero se incluyen aqui por si no se aplico ese archivo antes)
+-- ============================================================
+
+-- Es admin global (jefe / subjefe / supervisor)
+CREATE OR REPLACE FUNCTION fn_es_admin_global()
+RETURNS BOOLEAN AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM perfiles
+    WHERE id = auth.uid()
+      AND rol IN ('jefe', 'subjefe', 'supervisor')
+  );
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- Servicio_id del paciente (via cama -> subservicio -> servicio)
+CREATE OR REPLACE FUNCTION fn_servicio_de_paciente(_paciente_id UUID)
+RETURNS INTEGER AS $$
+  SELECT sub.servicio_id
+  FROM pacientes p
+  JOIN camas c          ON c.id   = p.cama_id
+  JOIN subservicios sub ON sub.id = c.subservicio_id
+  WHERE p.id = _paciente_id
+  LIMIT 1;
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- Servicio_id de una cama (para INSERT de pacientes)
+CREATE OR REPLACE FUNCTION fn_servicio_de_cama(_cama_id INTEGER)
+RETURNS INTEGER AS $$
+  SELECT sub.servicio_id
+  FROM camas c
+  JOIN subservicios sub ON sub.id = c.subservicio_id
+  WHERE c.id = _cama_id
+  LIMIT 1;
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- Usuario puede escribir en servicio (jefe/subjefe/supervisor o gestor de ese servicio)
+CREATE OR REPLACE FUNCTION fn_user_can_write_servicio(_servicio_id INTEGER)
+RETURNS BOOLEAN AS $$
+  SELECT
+    fn_es_admin_global()
+    OR EXISTS (
+      SELECT 1 FROM perfiles p
+      WHERE p.id = auth.uid()
+        AND p.servicio_id = _servicio_id
+    );
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- ============================================================
 -- 1) Indices recomendados sobre la tabla existente
 CREATE INDEX IF NOT EXISTS idx_asignaciones_enfermero_perfil_fecha_turno
   ON asignaciones_enfermero_turno (perfil_id, fecha, turno);
