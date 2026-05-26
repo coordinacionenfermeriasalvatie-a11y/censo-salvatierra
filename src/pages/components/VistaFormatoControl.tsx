@@ -75,7 +75,12 @@ const GLUCEMIA_OPCIONES: CatalogoItem[] = [
   { codigo: 'GLUCEMIA', nombre: 'Glucemia capilar' },
 ];
 const AISLAMIENTO_OPCIONES: CatalogoItem[] = [
-  { codigo: 'K03', nombre: 'Aislamiento activo (anota tipo en observaciones)' },
+  { codigo: 'ESTANDAR',      nombre: '🔴 Estándar' },
+  { codigo: 'POR_GOTA',      nombre: '🟢 Por gota' },
+  { codigo: 'POR_VIA_AEREA', nombre: '🔵 Por vía aérea' },
+  { codigo: 'CONTACTO',      nombre: '🟡 Por contacto' },
+  { codigo: 'PROTECTOR',     nombre: '⬜ Protector' },
+  { codigo: 'CONTACTO_PLUS', nombre: '🟫 Por contacto plus' },
 ];
 
 export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {

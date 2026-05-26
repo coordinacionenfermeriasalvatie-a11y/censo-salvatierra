@@ -17,6 +17,7 @@ const VistaImpresionDietas       = lazy(() => import('./pages/VistaImpresionDiet
 const VistaImpresionProductividad = lazy(() => import('./pages/VistaImpresionProductividad').then(m => ({ default: m.VistaImpresionProductividad })))
 const TableroMaestro             = lazy(() => import('./pages/TableroMaestro').then(m => ({ default: m.TableroMaestro })))
 const Instructivo                = lazy(() => import('./pages/Instructivo').then(m => ({ default: m.Instructivo })))
+const VistaImpresionFicha        = lazy(() => import('./pages/VistaImpresionFicha').then(m => ({ default: m.VistaImpresionFicha })))
 
 /**
  * Layout para rutas autenticadas. Monta el PresenceProvider para que toda
@@ -91,6 +92,7 @@ export function App() {
               <Route path="/imprimir/productividad/:anio/:mes" element={<VistaImpresionProductividad />} />
               <Route path="/imprimir/recetario/:servicioId" element={<VistaImpresionRecetario />} />
               <Route path="/imprimir/control/:servicioId" element={<VistaImpresionControl />} />
+              <Route path="/imprimir/ficha/:pacienteId" element={<VistaImpresionFicha />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Route>
           )}
