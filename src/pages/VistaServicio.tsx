@@ -358,6 +358,16 @@ export function VistaServicio() {
                     onClick={goTo('control')}
                     title={comp?.tiene_control ? 'Formato de control capturado' : 'Sin control — click para capturar'}
                   >📋</span>
+                  <span
+                    style={chip(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (c.paciente_id) {
+                        window.open(`/imprimir/ficha/${c.paciente_id}`, '_blank', 'noopener,noreferrer');
+                      }
+                    }}
+                    title="Imprimir Tarjeta de Identificación"
+                  >🪪</span>
                 </div>
               );
             })()}
