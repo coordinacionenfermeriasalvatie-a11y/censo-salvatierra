@@ -55,13 +55,19 @@ export function CambiarPassword() {
 
     // 2) Actualizar a la nueva
     const { error: errUpd } = await supabase.auth.updateUser({ password: nueva })
-    setCargando(false)
 
     if (errUpd) {
       setError('No se pudo actualizar la contrasena: ' + errUpd.message)
+      setCargando(false)
       return
     }
 
+    // ÉXITO: mostramos pantalla de confirmación PRIMERO, luego firmamos al
+    // usuario para que tenga que iniciar sesión con la nueva contraseña.
+    // Supabase invalida sesiones de todos modos al cambiar password, así
+    // que hacemos el signOut explícito para evitar el "salto silencioso"
+    // que confundía a los usuarios.
+    setCargando(false)
     setHecho(true)
   }
 
@@ -72,10 +78,23 @@ export function CambiarPassword() {
           <div style={styles.tarjeta}>
             <h1 style={styles.titulo}>✅ Contrasena cambiada</h1>
             <p style={styles.descripcion}>
-              Tu contrasena se actualizo correctamente. La proxima vez que inicies sesion usa la nueva.
+              Tu contrasena se actualizó correctamente.
             </p>
-            <button onClick={() => navigate('/')} style={styles.boton}>
-              Volver al tablero
+            <p style={{ ...styles.descripcion, fontWeight: 600, marginTop: 16 }}>
+              ⚠ Por seguridad, tu sesión actual se cerrará.
+            </p>
+            <p style={styles.descripcion}>
+              Toca el botón para volver al inicio e inicia sesión con tu <strong>NUEVA</strong> contraseña.
+            </p>
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut()
+                // Forzamos un reload limpio para que la app arranque desde cero
+                window.location.replace('/')
+              }}
+              style={styles.boton}
+            >
+              Ir al inicio de sesión
             </button>
           </div>
         </main>
