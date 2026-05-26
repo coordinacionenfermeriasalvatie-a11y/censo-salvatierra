@@ -14,7 +14,9 @@ export const ROLES_SCOPE_SERVICIO: Rol[] = ['gestor', 'enfermera']
 export const ROLES_VEN_TABLERO: Rol[] = ['jefe', 'subjefe', 'supervisor', 'gestor']
 
 // Roles que pueden ver todos los tabs (Dia/Semana/Mes). Otros solo Dia.
-export const ROLES_TABLERO_COMPLETO: Rol[] = ['jefe', 'subjefe']
+// Solo el Jefe de Enfermeria ve el Tablero Maestro completo;
+// subjefe/supervisor/gestor quedan en vista del dia (tablero general).
+export const ROLES_TABLERO_COMPLETO: Rol[] = ['jefe']
 
 // Helpers
 export function esAdminGlobal(rol: Rol | undefined | null): boolean {
