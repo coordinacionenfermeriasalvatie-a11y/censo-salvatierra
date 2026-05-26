@@ -42,6 +42,10 @@ interface CamaEstado {
   // muestra un chip ⚠️ ALERGIA (seguridad al primer vistazo).
   grupo_sanguineo?: string | null;
   alergias?: string | null;
+  // Riesgos: evaluación inicial se hace en el modal de Ingreso, se reevalúa
+  // en la pestaña Control. La cama muestra chips de Caídas y UPP.
+  riesgo_caidas?: string | null;
+  riesgo_upp?: string | null;
 }
 
 // Trazabilidad — completitud por paciente desde v_paciente_completitud_dia
@@ -347,6 +351,25 @@ export function VistaServicio() {
                 ⚠️ ALERGIA: {c.alergias}
               </div>
             )}
+            {/* Chips de trazabilidad de riesgos. La evaluación inicial se
+                hace en el ingreso (modal Censo) y se reevalúa en la pestaña
+                Control. Solo se pintan si están capturados. */}
+            {(c.riesgo_caidas || c.riesgo_upp) && (
+              <div style={riesgosRow}>
+                {c.riesgo_caidas && (
+                  <span
+                    style={chipRiesgo(c.riesgo_caidas)}
+                    title={`Riesgo de caídas: ${c.riesgo_caidas}`}
+                  >🚶 {c.riesgo_caidas}</span>
+                )}
+                {c.riesgo_upp && (
+                  <span
+                    style={chipRiesgo(c.riesgo_upp)}
+                    title={`Riesgo úlcera por presión: ${c.riesgo_upp}`}
+                  >🛏️ {c.riesgo_upp}</span>
+                )}
+              </div>
+            )}
             <div style={camaDx}>{c.diagnostico_ingreso}</div>
             {/* Trazabilidad — chips de completitud del día (dieta/receta/control) */}
             {(() => {
@@ -623,6 +646,31 @@ const alergiaChip: React.CSSProperties = {
   whiteSpace: 'nowrap',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
+};
+// Fila de chips de riesgos (Caídas / UPP). Colores institucionales según
+// el catálogo: ALTO rojo, MEDIANO dorado, BAJO verde.
+const riesgosRow: React.CSSProperties = {
+  display: 'flex',
+  gap: 4,
+  marginTop: 2,
+  flexWrap: 'wrap',
+};
+const chipRiesgo = (nivel: string): React.CSSProperties => {
+  const n = nivel.toUpperCase();
+  const bg = n === 'ALTO' ? '#A32D2D'
+           : n === 'MEDIANO' || n === 'MEDIO' ? '#C39C59'
+           : n === 'BAJO' ? '#0E6755'
+           : '#888';
+  return {
+    fontSize: 9,
+    background: bg,
+    color: '#fff',
+    padding: '2px 6px',
+    borderRadius: 10,
+    fontWeight: 700,
+    letterSpacing: 0.2,
+    lineHeight: 1.3,
+  };
 };
 const camaSubservicio: React.CSSProperties = { fontSize: 10, color: '#888', textTransform: 'uppercase', marginTop: 'auto' };
 const camaLibreLabel: React.CSSProperties = { fontSize: 12, color: '#C39C59', fontWeight: 700 };
