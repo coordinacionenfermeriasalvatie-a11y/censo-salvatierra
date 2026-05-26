@@ -7,6 +7,25 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      // skipWaiting + clientsClaim: el nuevo Service Worker toma control
+      // inmediatamente cuando hay deploy, sin esperar a que el usuario cierre
+      // todas las pestañas. Critical para que los fixes se vean rápido.
+      workbox: {
+        skipWaiting: true,
+        clientsClaim: true,
+        runtimeCaching: [
+          {
+            // Bundles JS/CSS: red primero, caché como fallback (no servir
+            // versiones viejas si hay deploy nuevo)
+            urlPattern: /\.(?:js|css)$/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'app-assets',
+              expiration: { maxAgeSeconds: 60 * 5 }, // 5 min de caché máx
+            },
+          },
+        ],
+      },
       includeAssets: ['logos/imss_bienestar.png', 'logos/LOGO_HOSPITAL.jpg'],
       manifest: {
         name: 'Censo Hospitalario Salvatierra',

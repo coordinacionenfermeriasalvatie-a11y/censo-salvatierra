@@ -140,25 +140,30 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           )}
         </div>
 
-        {perfil.rol === 'jefe' && usuariosOnline.length > 0 && (
-          <div style={styles.online}>
-            <div style={styles.onlineTitulo}>
-              🟢 En línea ahora ({usuariosOnline.length})
-            </div>
-            <div style={styles.onlineLista}>
-              {usuariosOnline
-                .slice()
-                .sort((a, b) => a.nombre.localeCompare(b.nombre))
-                .map(u => (
+        {perfil.rol === 'jefe' && (() => {
+          // Defense in depth: dedup adicional en el Dashboard por id, por si el
+          // contexto regresa duplicados (varias pestañas del mismo usuario).
+          const unicos = Array.from(
+            new Map(usuariosOnline.map(u => [u.id, u])).values()
+          ).sort((a, b) => a.nombre.localeCompare(b.nombre));
+          if (unicos.length === 0) return null;
+          return (
+            <div style={styles.online}>
+              <div style={styles.onlineTitulo}>
+                🟢 En línea ahora ({unicos.length})
+              </div>
+              <div style={styles.onlineLista}>
+                {unicos.map(u => (
                   <span key={u.id} style={styles.onlineChip}>
                     <span style={styles.onlineDot} />
                     {u.nombre}
                     <span style={styles.onlineRol}>· {u.rol}</span>
                   </span>
                 ))}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         <h3 style={styles.tituloSeccion}>
           {esAdmin ? 'Servicios del hospital' : 'Mi servicio'}
