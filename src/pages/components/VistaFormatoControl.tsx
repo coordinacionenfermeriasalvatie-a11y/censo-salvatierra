@@ -60,10 +60,20 @@ const SONDA_OPCIONES: CatalogoItem[] = [
   { codigo: 'SPL', nombre: 'Sonda pleurostomía' },
   { codigo: 'CU',  nombre: 'Catéter urinario' },
 ];
+// Curaciones que SE AUTOLLENAN a productividad (via trigger
+// fn_evento_productividad → fn_codigo_prod_por_evento_paciente). El
+// código mapea según edad del paciente:
+//   CUR_CVP + neonato → V08, CUR_CVP + adulto → V12
+//   REF_CVP + neonato → V07, REF_CVP + adulto → V11
+//   CUR_CVC → V03, REF_CVC → V04 (sin distinción)
+//   CUR_LM  → V15, REF_LM  → V16 (línea media, sin distinción)
 const CURACION_OPCIONES: CatalogoItem[] = [
   { codigo: 'CUR_CVP', nombre: 'Curación sitio CVP' },
+  { codigo: 'REF_CVP', nombre: 'Refijación CVP' },
   { codigo: 'CUR_CVC', nombre: 'Curación sitio CVC' },
   { codigo: 'REF_CVC', nombre: 'Refijación CVC' },
+  { codigo: 'CUR_LM',  nombre: 'Curación sitio Línea Media' },
+  { codigo: 'REF_LM',  nombre: 'Refijación Línea Media' },
   { codigo: 'HERIDA',  nombre: 'Curación de herida' },
 ];
 const PROCEDIMIENTO_OPCIONES: CatalogoItem[] = [
