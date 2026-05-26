@@ -36,7 +36,14 @@ export const ModalIngreso: React.FC<Props> = ({
   const [nombre, setNombre] = useState('');
   const [edad, setEdad] = useState('');
   const [genero, setGenero] = useState<'MASCULINO' | 'FEMENINO'>('MASCULINO');
-  const [nssCurp, setNssCurp] = useState('');
+  // Identidad del paciente: SOLO se pide UNA cosa, fecha de nacimiento
+  // o CURP. Ambos formatos se guardan en pacientes.nss_curp:
+  //   - Fecha → "DD/MM/AAAA" (formato que la Tarjeta de Identificación 🪪
+  //     reconoce y descompone automáticamente al imprimir)
+  //   - CURP  → 18 caracteres alfanuméricos en mayúsculas
+  const [tipoIdent, setTipoIdent] = useState<'fnac' | 'curp'>('fnac');
+  const [fnac, setFnac] = useState(''); // yyyy-mm-dd del input type=date
+  const [curp, setCurp] = useState('');
   const [dx, setDx] = useState('');
   const [especialidadId, setEspecialidadId] = useState<number | null>(null);
   const [fecha, setFecha] = useState(hoyISO);
@@ -63,6 +70,20 @@ export const ModalIngreso: React.FC<Props> = ({
     })();
   }, []);
 
+  // Normaliza la identidad capturada al formato que vive en pacientes.nss_curp.
+  // Fecha → "DD/MM/AAAA" (la ficha de identificación lo descompone solo).
+  // CURP  → 18 chars en mayúsculas validados (4 letras + 6 dígitos + 8 chars).
+  const construirIdent = (): string | null => {
+    if (tipoIdent === 'fnac') {
+      if (!fnac) return null;
+      const [y, m, d] = fnac.split('-');
+      if (!y || !m || !d) return null;
+      return `${d}/${m}/${y}`;
+    }
+    const c = curp.trim().toUpperCase();
+    return c.length === 0 ? null : c;
+  };
+
   const guardar = async () => {
     if (!nombre.trim() || !edad || !dx.trim()) {
       setError('Nombre, edad y diagnóstico son obligatorios');
@@ -72,6 +93,11 @@ export const ModalIngreso: React.FC<Props> = ({
       setError('Selecciona una especialidad');
       return;
     }
+    if (tipoIdent === 'curp' && curp.trim().length > 0 && curp.trim().length !== 18) {
+      setError('La CURP debe tener 18 caracteres (o déjala vacía si no la conoces)');
+      return;
+    }
+    const identGuardar = construirIdent();
 
     setGuardando(true);
     setError(null);
@@ -87,7 +113,7 @@ export const ModalIngreso: React.FC<Props> = ({
           nombre_paciente: nombre.trim().toUpperCase(),
           edad: parseInt(edad, 10),
           genero,
-          nss_curp: nssCurp.trim() || null,
+          nss_curp: identGuardar,
           diagnostico_ingreso: dx.trim().toUpperCase(),
           especialidad_id: especialidadId,
           fecha_ingreso: fecha,
@@ -159,9 +185,40 @@ export const ModalIngreso: React.FC<Props> = ({
             </select>
           </div>
 
+          {/* Identidad: pedimos UNA sola cosa, fecha de nacimiento o CURP.
+              El toggle cambia el input que se muestra. Ambos se persisten
+              en pacientes.nss_curp (formato distinguible para la ficha). */}
           <div style={{ ...campo, gridColumn: 'span 2' }}>
-            <label style={label}>NSS / CURP / EXPEDIENTE</label>
-            <input value={nssCurp} onChange={e => setNssCurp(e.target.value)} style={input} placeholder="141741" />
+            <label style={label}>IDENTIFICACIÓN DEL PACIENTE</label>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+              <button
+                type="button"
+                onClick={() => setTipoIdent('fnac')}
+                style={tipoIdent === 'fnac' ? togglePillActivo : togglePill}
+              >📅 Fecha de nacimiento</button>
+              <button
+                type="button"
+                onClick={() => setTipoIdent('curp')}
+                style={tipoIdent === 'curp' ? togglePillActivo : togglePill}
+              >🪪 CURP</button>
+            </div>
+            {tipoIdent === 'fnac' ? (
+              <input
+                type="date"
+                value={fnac}
+                onChange={e => setFnac(e.target.value)}
+                style={input}
+                max={new Date().toISOString().substring(0, 10)}
+              />
+            ) : (
+              <input
+                value={curp}
+                onChange={e => setCurp(e.target.value.toUpperCase().slice(0, 18))}
+                style={input}
+                placeholder="GAHF800523HBSXXX01"
+                maxLength={18}
+              />
+            )}
           </div>
 
           <div style={{ ...campo, gridColumn: 'span 2' }}>
@@ -281,3 +338,5 @@ const botones: React.CSSProperties = { display: 'flex', justifyContent: 'flex-en
 const botonCancelar: React.CSSProperties = { padding: '10px 18px', background: '#fff', border: '1px solid #888', color: '#888', borderRadius: 6, cursor: 'pointer', fontSize: 13 };
 const botonGuardar: React.CSSProperties = { padding: '10px 18px', background: '#0E6755', border: 'none', color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 700 };
 const errorBox: React.CSSProperties = { background: '#fdecea', color: '#A32D2D', padding: '10px 12px', borderRadius: 4, marginBottom: 12, fontSize: 13 };
+const togglePill: React.CSSProperties = { flex: 1, padding: '6px 10px', background: '#fff', border: '1px solid #C39C59', color: '#7d5b2f', borderRadius: 14, cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' };
+const togglePillActivo: React.CSSProperties = { ...togglePill, background: '#0E6755', borderColor: '#0E6755', color: '#fff', fontWeight: 700 };

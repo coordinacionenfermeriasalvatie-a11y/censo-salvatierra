@@ -305,10 +305,14 @@ export function VistaImpresionFicha() {
       </div>
 
       <style>{`
-        @page { size: letter landscape; margin: 8mm; }
+        /* Carta horizontal con márgenes mínimos. La tarjeta ocupa toda la
+           hoja para que nombre y fecha de nacimiento sean los más grandes
+           posibles sobre papel. */
+        @page { size: letter landscape; margin: 6mm; }
         @media print {
           .no-print { display: none !important; }
-          body { background: white !important; }
+          html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .ficha-page { padding: 0 !important; background: #fff !important; }
         }
         @media screen {
           .ficha-page {
@@ -385,9 +389,9 @@ const btnImprimir: React.CSSProperties = { ...btnVolver, background: '#C39C59', 
 
 const tarjeta: React.CSSProperties = {
   background: '#fff',
-  maxWidth: 1024,
+  maxWidth: 1100,
   margin: '0 auto',
-  padding: 18,
+  padding: 16,
   border: '2px solid #333',
   borderRadius: 6,
   fontFamily: 'Arial, sans-serif',
@@ -401,19 +405,22 @@ const logoIzq: React.CSSProperties = { height: 42, objectFit: 'contain' };
 const logoDer: React.CSSProperties = { height: 42, objectFit: 'contain' };
 const titulo: React.CSSProperties = { fontSize: 22, fontWeight: 800, color: '#222', letterSpacing: 1 };
 
-const filaNombre: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 };
-const labelNombre: React.CSSProperties = { fontWeight: 800, fontSize: 16 };
+const filaNombre: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 };
+const labelNombre: React.CSSProperties = { fontWeight: 800, fontSize: 20 };
 const cajaNombre: React.CSSProperties = {
-  flex: 1, border: '1.5px solid #333', borderRadius: 14,
-  padding: '12px 16px', fontSize: 16, fontWeight: 600,
-  minHeight: 42, display: 'flex', alignItems: 'center',
+  flex: 1, border: '2px solid #333', borderRadius: 16,
+  padding: '14px 20px', fontSize: 26, fontWeight: 800,
+  letterSpacing: 0.5,
+  minHeight: 54, display: 'flex', alignItems: 'center',
+  textTransform: 'uppercase',
 };
 
-const filaFnac: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10, marginBottom: 8 };
-const labelFnac: React.CSSProperties = { fontWeight: 800, fontSize: 16 };
+const filaFnac: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 10 };
+const labelFnac: React.CSSProperties = { fontWeight: 800, fontSize: 18 };
 const cajaFnac: React.CSSProperties = {
-  display: 'flex', border: '1.5px solid #333', borderRadius: 14,
-  padding: '6px 8px', minWidth: 280, fontSize: 14, fontWeight: 600,
+  display: 'flex', border: '2px solid #333', borderRadius: 16,
+  padding: '10px 14px', minWidth: 360, fontSize: 20, fontWeight: 800,
+  letterSpacing: 0.3, alignItems: 'center', gap: 4,
 };
 
 const filaIngreso: React.CSSProperties = { fontSize: 13, marginBottom: 8 };
