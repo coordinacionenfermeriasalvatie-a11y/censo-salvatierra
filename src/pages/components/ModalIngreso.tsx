@@ -42,6 +42,11 @@ export const ModalIngreso: React.FC<Props> = ({
   const [fecha, setFecha] = useState(hoyISO);
   const [hora, setHora] = useState(horaISO);
   const [observaciones, setObservaciones] = useState('');
+  // Datos clínicos persistentes para la Tarjeta de Identificación 🪪
+  // Se guardan en pacientes.grupo_sanguineo / pacientes.alergias y se leen
+  // automáticamente en /imprimir/ficha/:pacienteId.
+  const [grupoSanguineo, setGrupoSanguineo] = useState('');
+  const [alergias, setAlergias] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -79,6 +84,8 @@ export const ModalIngreso: React.FC<Props> = ({
           fecha_ingreso: fecha,
           hora_ingreso: hora,
           observaciones: observaciones.trim() || null,
+          grupo_sanguineo: grupoSanguineo || null,
+          alergias: alergias.trim() || null,
           estado: 'ACTIVO',
           capturado_por: capturadoPor,
         });
@@ -148,6 +155,41 @@ export const ModalIngreso: React.FC<Props> = ({
           <div style={campo}>
             <label style={label}>HORA INGRESO</label>
             <input type="time" value={hora} onChange={e => setHora(e.target.value)} style={input} />
+          </div>
+
+          {/* Datos clínicos para la Tarjeta de Identificación 🪪 — opcionales,
+              se pueden editar después en la pestaña Control si no se conocen
+              al momento del ingreso. */}
+          <div style={{ ...campo, gridColumn: 'span 2', borderTop: '1px dashed #C39C59', paddingTop: 10, marginTop: 4 }}>
+            <div style={{ fontSize: 10, color: '#7d5b2f', fontWeight: 700, letterSpacing: 0.3, marginBottom: 2 }}>
+              🪪 DATOS PARA LA TARJETA DE IDENTIFICACIÓN
+            </div>
+          </div>
+
+          <div style={campo}>
+            <label style={label}>GRUPO Y RH</label>
+            <select value={grupoSanguineo} onChange={e => setGrupoSanguineo(e.target.value)} style={input}>
+              <option value="">-- Selecciona --</option>
+              <option value="O+">O Rh+</option>
+              <option value="O-">O Rh−</option>
+              <option value="A+">A Rh+</option>
+              <option value="A-">A Rh−</option>
+              <option value="B+">B Rh+</option>
+              <option value="B-">B Rh−</option>
+              <option value="AB+">AB Rh+</option>
+              <option value="AB-">AB Rh−</option>
+              <option value="DESCONOCIDO">Desconocido</option>
+            </select>
+          </div>
+
+          <div style={campo}>
+            <label style={label}>ALERGIAS</label>
+            <input
+              value={alergias}
+              onChange={e => setAlergias(e.target.value.toUpperCase())}
+              style={input}
+              placeholder="Vacío = NO. Ej. PENICILINA"
+            />
           </div>
 
           <div style={{ ...campo, gridColumn: 'span 2' }}>

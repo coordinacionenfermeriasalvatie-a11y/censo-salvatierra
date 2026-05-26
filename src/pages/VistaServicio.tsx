@@ -37,6 +37,11 @@ interface CamaEstado {
   genero: string | null;
   diagnostico_ingreso: string | null;
   fecha_ingreso: string | null;
+  // Datos clínicos para la Tarjeta de Identificación 🪪 — capturados al
+  // ingreso o luego en la pestaña Control. Si están presentes, la card
+  // muestra un chip ⚠️ ALERGIA (seguridad al primer vistazo).
+  grupo_sanguineo?: string | null;
+  alergias?: string | null;
 }
 
 // Trazabilidad — completitud por paciente desde v_paciente_completitud_dia
@@ -333,6 +338,15 @@ export function VistaServicio() {
         {ocupada ? (
           <>
             <div style={camaNombre}>{c.nombre_paciente}</div>
+            {/* Aviso de seguridad clínica: si tiene alergias capturadas, las
+                pintamos en rojo arriba del diagnóstico para que cualquier
+                enfermera o médico que abra el censo las vea al instante.
+                Se sincroniza con la Tarjeta de Identificación 🪪. */}
+            {c.alergias && c.alergias.trim() && (
+              <div style={alergiaChip} title={`Alergias: ${c.alergias}`}>
+                ⚠️ ALERGIA: {c.alergias}
+              </div>
+            )}
             <div style={camaDx}>{c.diagnostico_ingreso}</div>
             {/* Trazabilidad — chips de completitud del día (dieta/receta/control) */}
             {(() => {
@@ -594,6 +608,22 @@ const camaOcupada: React.CSSProperties = { background: '#fff', borderColor: '#0E
 const camaNumero: React.CSSProperties = { fontSize: 22, fontWeight: 700, color: '#0E6755' };
 const camaNombre: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#265C4E', lineHeight: 1.2 };
 const camaDx: React.CSSProperties = { fontSize: 11, color: '#7d5b2f', fontStyle: 'italic' };
+// Chip rojo de seguridad clínica para alergias capturadas. Se muestra
+// arriba del diagnóstico para que sea lo primero que se ve al ojear el censo.
+const alergiaChip: React.CSSProperties = {
+  fontSize: 10,
+  background: '#A32D2D',
+  color: '#fff',
+  padding: '3px 6px',
+  borderRadius: 4,
+  fontWeight: 700,
+  letterSpacing: 0.3,
+  border: '1px solid #7d1f1f',
+  marginTop: 2,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
 const camaSubservicio: React.CSSProperties = { fontSize: 10, color: '#888', textTransform: 'uppercase', marginTop: 'auto' };
 const camaLibreLabel: React.CSSProperties = { fontSize: 12, color: '#C39C59', fontWeight: 700 };
 const proximamente: React.CSSProperties = { textAlign: 'center', padding: 60, background: '#F5F1E8', borderRadius: 8, border: '2px dashed #C39C59', color: '#265C4E' };
