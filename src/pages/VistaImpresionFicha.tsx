@@ -8,12 +8,13 @@
 //   - Nombre, edad, sexo, fecha nacimiento (derivada de NSS DD/MM/AAAA o calculada
 //     de la edad), número expediente, fecha y hora de ingreso
 //   - Riesgo UPP y Riesgo Caídas desde formato_control_paciente
+//   - Grupo sanguíneo y alergias desde pacientes
+//   - Escala del dolor + fecha/hora evaluación desde formato_control_paciente
 //
-// Campos manuales (para llenar a mano sobre el papel impreso):
-//   - Grupo y RH (la BD no lo guarda)
-//   - Alergias (la BD no lo guarda)
-//   - Escala del dolor (no se almacena por fecha en BD)
-//   - Fecha de evaluación
+// Campos manuales (siguen en blanco si nadie los captura):
+//   - Solo los datos del paciente capturados en VistaFormatoControl > sección
+//     "Tarjeta de Identificación" se llenan automáticamente. Si esos campos están
+//     vacíos en BD, se imprime con líneas en blanco listas para llenar a mano.
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -28,8 +29,12 @@ interface FichaPaciente {
   diagnostico_ingreso: string | null;
   fecha_ingreso: string;
   hora_ingreso: string | null;
+  grupo_sanguineo: string | null;
+  alergias: string | null;
   riesgo_upp: string | null;
   riesgo_caidas: string | null;
+  dolor_escala: number | null;
+  dolor_evaluado_en: string | null;
 }
 
 export function VistaImpresionFicha() {
@@ -45,8 +50,8 @@ export function VistaImpresionFicha() {
         .from('pacientes')
         .select(`
           id, nombre_paciente, edad, genero, nss_curp, diagnostico_ingreso,
-          fecha_ingreso, hora_ingreso,
-          formato_control_paciente ( riesgo_upp, riesgo_caidas )
+          fecha_ingreso, hora_ingreso, grupo_sanguineo, alergias,
+          formato_control_paciente ( riesgo_upp, riesgo_caidas, dolor_escala, dolor_evaluado_en )
         `)
         .eq('id', pacienteId)
         .single();
@@ -66,8 +71,12 @@ export function VistaImpresionFicha() {
         diagnostico_ingreso: data.diagnostico_ingreso,
         fecha_ingreso: data.fecha_ingreso,
         hora_ingreso: data.hora_ingreso,
+        grupo_sanguineo: data.grupo_sanguineo || null,
+        alergias: data.alergias || null,
         riesgo_upp: fc?.riesgo_upp || null,
         riesgo_caidas: fc?.riesgo_caidas || null,
+        dolor_escala: fc?.dolor_escala ?? null,
+        dolor_evaluado_en: fc?.dolor_evaluado_en || null,
       });
     })();
   }, [pacienteId]);
@@ -131,13 +140,24 @@ export function VistaImpresionFicha() {
   const upp = (paciente.riesgo_upp || '').toUpperCase();
   const caidas = (paciente.riesgo_caidas || '').toUpperCase();
 
-  // Hoy para "evaluación" (manual)
-  const hoy = new Date();
-  const evalDD = String(hoy.getDate()).padStart(2, '0');
-  const evalMM = MESES_LARGOS[hoy.getMonth()];
-  const evalAAAA = hoy.getFullYear();
+  // Fecha y hora de evaluación del dolor: si está capturada, usamos esa;
+  // si no, dejamos el día de hoy como guía (queda en blanco si tampoco
+  // hay dolor_escala).
+  const evalRef = paciente.dolor_evaluado_en ? new Date(paciente.dolor_evaluado_en) : new Date();
+  const evalDD = String(evalRef.getDate()).padStart(2, '0');
+  const evalMM = MESES_LARGOS[evalRef.getMonth()];
+  const evalAAAA = evalRef.getFullYear();
+  const evalHH = String(evalRef.getHours()).padStart(2, '0');
+  const evalMin = String(evalRef.getMinutes()).padStart(2, '0');
 
+  // Datos para imprimir
   const sexo = (paciente.genero || '').startsWith('F') ? 'F' : 'M';
+  const grupoRh = paciente.grupo_sanguineo && paciente.grupo_sanguineo !== 'DESCONOCIDO'
+    ? paciente.grupo_sanguineo
+    : '';
+  const tieneAlergias = !!(paciente.alergias && paciente.alergias.trim().length > 0);
+  const textoAlergias = (paciente.alergias || '').trim();
+  const dolorActual = paciente.dolor_escala;
 
   return (
     <div className="ficha-page">
@@ -199,17 +219,17 @@ export function VistaImpresionFicha() {
             NÚMERO EXPEDIENTE: <span style={subrayado}>{expediente}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            GRUPO Y RH: <span style={subrayadoCorto}>_________</span>
+            GRUPO Y RH: <span style={subrayadoCorto}>{grupoRh || '_________'}</span>
           </div>
         </div>
 
         {/* Alergias */}
         <div style={filaAlergias}>
           <strong>ALERGIAS:</strong>
-          <span style={cajaNoSi}>NO</span>
-          <span style={cajaNoSi}>SI</span>
+          <span style={{ ...cajaNoSi, background: !tieneAlergias ? '#FFF5C2' : 'transparent' }}>NO</span>
+          <span style={{ ...cajaNoSi, background: tieneAlergias ? '#FFF5C2' : 'transparent' }}>SI</span>
           ¿CUÁLES?
-          <span style={lineaLarga}>{' '}</span>
+          <span style={{ ...lineaLarga, fontWeight: 600 }}>{tieneAlergias ? textoAlergias : ' '}</span>
         </div>
         <div style={filaAlergiasSegunda}>
           <span style={lineaLarga}>{' '}</span>
@@ -219,9 +239,9 @@ export function VistaImpresionFicha() {
         <div style={subtitEvaluacion}>
           <strong>EVALUACIÓN DEL PACIENTE</strong>{'    '}
           FECHA Y HORA:{' '}
-          <span style={subrayado}>{evalDD}</span> / <span style={subrayado}>{evalMM}</span> / <span style={subrayado}>{evalAAAA}</span>
+          <span style={subrayado}>{paciente.dolor_evaluado_en ? evalDD : '__'}</span> / <span style={subrayado}>{paciente.dolor_evaluado_en ? evalMM : '________'}</span> / <span style={subrayado}>{paciente.dolor_evaluado_en ? evalAAAA : '____'}</span>
           {'     '}
-          <span style={subrayadoCorto}>__</span> : <span style={subrayadoCorto}>__</span>
+          <span style={subrayadoCorto}>{paciente.dolor_evaluado_en ? evalHH : '__'}</span> : <span style={subrayadoCorto}>{paciente.dolor_evaluado_en ? evalMin : '__'}</span>
         </div>
 
         {/* Tres escalas visuales */}
@@ -248,14 +268,29 @@ export function VistaImpresionFicha() {
 
           {/* ESCALA DEL DOLOR */}
           <div style={escalaCol}>
-            <div style={escalaTitulo}>ESCALA DEL DOLOR</div>
+            <div style={escalaTitulo}>
+              ESCALA DEL DOLOR
+              {dolorActual != null && (
+                <span style={{ marginLeft: 6, fontSize: 11, color: '#A32D2D' }}>
+                  · marcado: {dolorActual}
+                </span>
+              )}
+            </div>
             <div style={escalaDolor}>
               {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
                 const color = n <= 2 ? '#5CAB34' : n <= 4 ? '#A6CE39' : n <= 6 ? '#F5C829' : n <= 8 ? '#E89829' : '#E84545';
+                const seleccionado = dolorActual === n;
                 return (
                   <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700 }}>{n}</div>
-                    <div style={{ width: 14, height: 14, background: color, borderRadius: 2, border: '0.5px solid #555' }} />
+                    <div style={{ fontSize: 9, fontWeight: 700, color: seleccionado ? '#A32D2D' : '#111' }}>{n}</div>
+                    <div style={{
+                      width: seleccionado ? 18 : 14,
+                      height: seleccionado ? 18 : 14,
+                      background: color,
+                      borderRadius: 2,
+                      border: seleccionado ? '2px solid #000' : '0.5px solid #555',
+                      boxShadow: seleccionado ? '0 0 0 2px rgba(0,0,0,0.15)' : 'none',
+                    }} />
                   </div>
                 );
               })}
