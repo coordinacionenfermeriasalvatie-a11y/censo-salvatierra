@@ -6,7 +6,7 @@
 // PARCHE v4.5 — secciones separadas: censables arriba, camillas no censables abajo
 //               + contador dual "X de N censables · Y de M camillas"
 // PARCHE v4.6 — columna DIAGNÓSTICO en tabla de egresados recientes
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
@@ -159,8 +159,11 @@ export function VistaServicio() {
     setCargando(true);
     setError(null);
     try {
-      // PERF — 5 consultas en paralelo (antes en serie)
-      const [servRes, camasRes, egrRes, asigRes, complRes] = await Promise.all([
+      // PERF — 4 consultas en paralelo + completitud en segundo turno.
+      // La 5a (completitud) NECESITA los paciente_ids del servicio para
+      // no traerse TODO el hospital cada vez. Se ejecuta justo después
+      // de tener las camas, antes de cualquier set de estado.
+      const [servRes, camasRes, egrRes, asigRes] = await Promise.all([
         supabase
           .from('servicios')
           .select('id, codigo, nombre')
@@ -184,9 +187,6 @@ export function VistaServicio() {
           .select('paciente_id, enfermero_nombre, categoria_codigo')
           .eq('servicio_id', servicioIdNum)
           .not('enfermero_nombre', 'is', null),
-        supabase
-          .from('v_paciente_completitud_dia')
-          .select('paciente_id, tiene_dieta, tiene_receta, tiene_control'),
       ]);
 
       // Críticas: servicio y camas
@@ -194,6 +194,17 @@ export function VistaServicio() {
       if (camasRes.error) throw camasRes.error;
       setServicio(servRes.data);
       setCamas(camasRes.data || []);
+
+      // Completitud filtrada por los pacientes de este servicio.
+      const pacienteIdsServicio = (camasRes.data || [])
+        .map((c: any) => c.paciente_id)
+        .filter(Boolean) as string[];
+      const complRes = pacienteIdsServicio.length === 0
+        ? { data: [] as any[], error: null as any }
+        : await supabase
+            .from('v_paciente_completitud_dia')
+            .select('paciente_id, tiene_dieta, tiene_receta, tiene_control')
+            .in('paciente_id', pacienteIdsServicio);
 
       // PARCHE v4.3 — Egresados (degradación elegante si falla)
       if (egrRes.error) {
@@ -262,14 +273,20 @@ export function VistaServicio() {
   useEffect(() => { cargar(); }, [cargar]);
 
   // Refrescar completitud al regresar al censo — captura hecha en otra pestaña
-  // (Dietas/Recetario/Control) se refleja en los chips sin recargar todo
+  // (Dietas/Recetario/Control) se refleja en los chips sin recargar todo.
+  // Filtramos por pacientes del servicio actual (antes traía TODO el hospital).
   useEffect(() => {
     if (pestana !== 'censo' || !servicioIdNum) return;
     let cancelado = false;
+    const pacienteIdsServicio = camas
+      .map(c => c.paciente_id)
+      .filter(Boolean) as string[];
+    if (pacienteIdsServicio.length === 0) return;
     (async () => {
       const { data, error } = await supabase
         .from('v_paciente_completitud_dia')
-        .select('paciente_id, tiene_dieta, tiene_receta, tiene_control');
+        .select('paciente_id, tiene_dieta, tiene_receta, tiene_control')
+        .in('paciente_id', pacienteIdsServicio);
       if (cancelado || error) {
         if (error) console.warn('Refresco de completitud falló:', error.message);
         return;
@@ -290,7 +307,7 @@ export function VistaServicio() {
       }
     })();
     return () => { cancelado = true; };
-  }, [pestana, servicioIdNum]);
+  }, [pestana, servicioIdNum, camas]);
 
   const onCamaClick = (cama: CamaEstado) => {
     // Enfermeria: lectura. Click no abre modales de ingreso/egreso.
@@ -323,13 +340,31 @@ export function VistaServicio() {
   }
 
   // PARCHE v4.5 — Separar camas en dos grupos: censables y no censables (camillas)
-  const camasCensables   = camas.filter(c =>  c.es_censable);
-  const camasNoCensables = camas.filter(c => !c.es_censable);
-
-  const ocupadasCensables   = camasCensables.filter(c => c.paciente_id).length;
-  const totalCensables      = camasCensables.length;
-  const ocupadasCamillas    = camasNoCensables.filter(c => c.paciente_id).length;
-  const totalCamillas       = camasNoCensables.length;
+  // PERF — memoizar particiones para no rebuscar 4 veces sobre camas en
+  // cada render del componente.
+  const { camasCensables, camasNoCensables, ocupadasCensables, totalCensables, ocupadasCamillas, totalCamillas } = useMemo(() => {
+    const cens: CamaEstado[] = [];
+    const ncens: CamaEstado[] = [];
+    let ocup = 0;
+    let ocupC = 0;
+    for (const c of camas) {
+      if (c.es_censable) {
+        cens.push(c);
+        if (c.paciente_id) ocup++;
+      } else {
+        ncens.push(c);
+        if (c.paciente_id) ocupC++;
+      }
+    }
+    return {
+      camasCensables: cens,
+      camasNoCensables: ncens,
+      ocupadasCensables: ocup,
+      totalCensables: cens.length,
+      ocupadasCamillas: ocupC,
+      totalCamillas: ncens.length,
+    };
+  }, [camas]);
 
   // Función auxiliar para renderizar una tarjeta de cama
   const renderCama = (c: CamaEstado) => {

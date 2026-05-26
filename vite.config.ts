@@ -53,5 +53,19 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true
-  }
+  },
+  build: {
+    // PERF — separar vendors estables (React, Supabase) en chunks propios.
+    // Estos cambian poco entre deploys, así que el navegador los reutiliza
+    // de caché y solo redescarga el código de la app en cada release.
+    // Beneficio: ~150KB que dejan de redescargarse en visitas recurrentes.
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+        },
+      },
+    },
+  },
 })
