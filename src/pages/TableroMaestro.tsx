@@ -34,6 +34,8 @@ interface Ocupacion {
   ocupadas_censables: number;
   total_camillas: number;
   ocupadas_camillas: number;
+  total_sillas: number;
+  ocupadas_sillas: number;
   porcentaje_ocupacion: number;
 }
 
@@ -458,6 +460,8 @@ export function TableroMaestro() {
   const totalOcupadasCensables  = ocupacion.reduce((a, s) => a + s.ocupadas_censables, 0);
   const totalCamillas           = ocupacion.reduce((a, s) => a + s.total_camillas, 0);
   const totalOcupadasCamillas   = ocupacion.reduce((a, s) => a + s.ocupadas_camillas, 0);
+  const totalSillas             = ocupacion.reduce((a, s) => a + (s.total_sillas || 0), 0);
+  const totalOcupadasSillas     = ocupacion.reduce((a, s) => a + (s.ocupadas_sillas || 0), 0);
   const porcentajeGlobal        = totalCensables > 0
     ? Math.round((totalOcupadasCensables / totalCensables) * 1000) / 10
     : 0;
@@ -542,6 +546,7 @@ export function TableroMaestro() {
             <KPI label="% Ocupación censable"  valor={`${porcentajeGlobal}%`}     color="#0E6755" />
             <KPI label="Camas ocupadas"        valor={`${totalOcupadasCensables}/${totalCensables}`} color="#0E6755" />
             <KPI label="Camillas ocupadas"     valor={`${totalOcupadasCamillas}/${totalCamillas}`}   color="#C39C59" subrayado="NO CENSABLES" />
+            <KPI label="Sillas ocupadas"       valor={`${totalOcupadasSillas}/${totalSillas}`}       color="#7d5b2f" subrayado="NO CENSABLES" />
             <KPI label={`Egresos ${periodo === 'dia' ? 'del día' : periodo === 'semana' ? 'semanales' : 'del mes'}`}
                  valor={`${totalEgresos}`}        color="#1F4E79" />
             <KPI label="Altas / mejoría"       valor={`${totalAltas}`}          color="#0E6755" />
@@ -562,6 +567,8 @@ export function TableroMaestro() {
                   <th style={thCentrado}>% OCUP.</th>
                   <th style={{ ...thCentrado, background: '#C39C59' }}>CAMILLAS</th>
                   <th style={{ ...thCentrado, background: '#C39C59' }}>OCUP. CAM.</th>
+                  <th style={{ ...thCentrado, background: '#7d5b2f', color: '#fff' }}>SILLAS</th>
+                  <th style={{ ...thCentrado, background: '#7d5b2f', color: '#fff' }}>OCUP. SIL.</th>
                   <th style={thBarra}>BARRA</th>
                 </tr>
               </thead>
@@ -576,6 +583,8 @@ export function TableroMaestro() {
                     </td>
                     <td style={{ ...tdCentrado, background: '#FAF5EA' }}>{s.total_camillas || '—'}</td>
                     <td style={{ ...tdCentrado, background: '#FAF5EA', fontWeight: 600 }}>{s.total_camillas > 0 ? s.ocupadas_camillas : '—'}</td>
+                    <td style={{ ...tdCentrado, background: '#F5EFE0' }}>{s.total_sillas || '—'}</td>
+                    <td style={{ ...tdCentrado, background: '#F5EFE0', fontWeight: 600 }}>{s.total_sillas > 0 ? s.ocupadas_sillas : '—'}</td>
                     <td style={tdBarra}>
                       <div style={barraOut}>
                         <div style={{
@@ -594,6 +603,8 @@ export function TableroMaestro() {
                   <td style={{ ...tdCentrado, fontWeight: 700, color: '#0E6755' }}>{porcentajeGlobal}%</td>
                   <td style={{ ...tdCentrado, fontWeight: 700, background: '#FAF5EA' }}>{totalCamillas}</td>
                   <td style={{ ...tdCentrado, fontWeight: 700, background: '#FAF5EA' }}>{totalOcupadasCamillas}</td>
+                  <td style={{ ...tdCentrado, fontWeight: 700, background: '#F5EFE0' }}>{totalSillas}</td>
+                  <td style={{ ...tdCentrado, fontWeight: 700, background: '#F5EFE0' }}>{totalOcupadasSillas}</td>
                   <td style={tdBarra}>
                     <div style={barraOut}>
                       <div style={{ ...barraIn, width: `${porcentajeGlobal}%`, background: '#0E6755' }} />

@@ -86,6 +86,9 @@ export interface OcupacionServicio {
   camas_ocupadas: number
   camas_disponibles: number
   porcentaje_ocupacion: number
+  // Extras = camillas + sillas (no censables). v_ocupacion_servicios los expone.
+  extras_ocupados?: number
+  extras_totales?: number
   orden: number
 }
 
