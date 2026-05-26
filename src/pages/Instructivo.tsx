@@ -1,21 +1,12 @@
 // src/pages/Instructivo.tsx
-// Instructivo de uso del sistema Censo Salvatierra, organizado por
-// NIVELES DE PRIVILEGIO DE ACCESO. Cada nivel anuncia explicitamente
-// que puede y que no puede hacer, y los pasos operativos correspondientes.
+// Instructivo de uso del sistema Censo Salvatierra.
+// Paso por paso, organizado por HOJA (censo, dietas, recetario, control,
+// productividad). Mismo contenido para todos los usuarios — sin etiquetas
+// de rol ni alcance.
 //
 // Accesible desde Dashboard. Imprimible. Mobile-friendly.
 
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import type { Rol } from '../types';
-
-type NivelKey = 'matriz' | 'comun' | 'n1_total' | 'n2_hospital' | 'n3_servicio' | 'n4_captura';
-
-interface Permiso {
-  texto: string;
-  permitido: boolean;
-}
 
 interface Bloque {
   titulo: string;
@@ -23,358 +14,475 @@ interface Bloque {
 }
 
 interface Seccion {
-  key: NivelKey;
-  nivel?: string;             // "Nivel 1", "Nivel 2"...
+  key: string;
+  numero: string;
   titulo: string;
-  roles?: string;             // ej. "jefe / subjefe"
+  icono: string;
   subtitulo: string;
   color: string;
-  permisos?: Permiso[];        // bullets de "Sí puede / No puede"
   contenido: Bloque[];
 }
 
 const SECCIONES: Seccion[] = [
   // ============================================================
-  // MATRIZ COMPARATIVA (siempre visible)
+  // 1. ARRANQUE
   // ============================================================
   {
-    key: 'matriz',
-    titulo: 'Niveles de privilegio del sistema',
-    subtitulo: 'Resumen comparativo: qué puede hacer cada nivel',
-    color: '#265C4E',
-    contenido: [
-      {
-        titulo: '',
-        pasos: [
-          'El sistema tiene 4 niveles de privilegio jerárquicos. Cada usuario pertenece a UN nivel según su rol asignado.',
-          'NIVEL 1 — Acceso Total (jefe / subjefe): hospital completo, Tablero Día/Semana/Mes, reportes mensuales oficiales, gestión de usuarios.',
-          'NIVEL 2 — Acceso Hospital (supervisor): ve y edita todos los servicios, Tablero solo Día, sin reportes mensuales ni alta de usuarios.',
-          'NIVEL 3 — Acceso Servicio (jefe de servicio / gestor): edita un solo servicio asignado, Tablero solo Día de su servicio.',
-          'NIVEL 4 — Captura (Enfermería de piso): captura solo en los pacientes asignados por el gestor para su turno; solo lectura en dietas y recetario.',
-        ],
-      },
-    ],
-  },
-
-  // ============================================================
-  // COMÚN A TODOS
-  // ============================================================
-  {
-    key: 'comun',
-    titulo: 'Operaciones comunes a todos los niveles',
-    subtitulo: 'Login, instalación y cierre de sesión',
+    key: 'arranque',
+    numero: '1',
+    titulo: 'Cómo entrar y abrir un servicio',
+    icono: '🚪',
+    subtitulo: 'Login, navegación al servicio, instalación como app',
     color: '#0E6755',
     contenido: [
       {
-        titulo: '1. Iniciar sesión',
+        titulo: '1.1. Iniciar sesión',
         pasos: [
-          'Abre la URL: censo-salvatierra.vercel.app',
-          'Captura tu correo institucional y la contraseña que recibiste al darte de alta.',
-          'Si olvidaste tu contraseña, contacta al subjefe de enfermería para que la restablezca.',
+          'Abre la liga: censo-salvatierra.pages.dev',
+          'Captura tu correo (con el que te dieron de alta) y tu contraseña.',
+          'Toca "Iniciar sesión".',
+          'Si olvidaste tu contraseña, toca "Olvidé mi contraseña" y sigue las instrucciones del correo que te llegará.',
         ],
       },
       {
-        titulo: '2. Instalar como app en tu dispositivo',
+        titulo: '1.2. Instalar como app en tu dispositivo',
         pasos: [
-          'iPhone/iPad (Safari): ícono compartir → "Agregar a pantalla de inicio".',
-          'Android (Chrome): menú 3 puntos → "Instalar app" o "Agregar a pantalla principal".',
-          'La app abre en pantalla completa sin barra del navegador, con el ícono del hospital.',
+          'iPhone/iPad (Safari): ícono compartir 📤 → "Agregar a pantalla de inicio".',
+          'Android (Chrome): menú 3 puntos ⋮ → "Instalar aplicación".',
+          'Después aparece como ícono en tu pantalla, igual que cualquier app.',
         ],
       },
       {
-        titulo: '3. Cerrar sesión',
+        titulo: '1.3. Entrar a un servicio',
         pasos: [
-          'Click el botón "Cerrar sesión" arriba a la derecha de cualquier pantalla.',
-          'Importante: al terminar tu turno, cierra sesión si compartes la tablet con otro miembro del personal.',
+          'En la pantalla principal verás tarjetas con los servicios del hospital y su porcentaje de ocupación.',
+          'Toca la tarjeta del servicio que quieras revisar (ej. URGENCIAS, PEDIATRIA, etc.).',
+          'Dentro del servicio aparecen las camas por subservicio (OBSERVACIÓN, ANEXOS, CAMILLAS, etc.).',
+          'Arriba ves 5 pestañas: 🏥 Censo · 🍽️ Dietas · 💊 Recetario · 📋 Control · 📊 Productividad.',
+          'La pestaña activa por default es Censo.',
         ],
       },
     ],
   },
 
   // ============================================================
-  // NIVEL 1 — ACCESO TOTAL
+  // 2. HOJA CENSO
   // ============================================================
   {
-    key: 'n1_total',
-    nivel: 'Nivel 1',
-    titulo: 'Acceso Total',
-    roles: 'Jefe de enfermería · Subjefe de enfermería',
-    subtitulo: 'Control absoluto del sistema. Reportes oficiales. Gestión de usuarios.',
-    color: '#A32D2D',
-    permisos: [
-      { texto: 'Ver y editar TODOS los servicios del hospital', permitido: true },
-      { texto: 'Tablero Maestro: vistas Día · Semana · Mes', permitido: true },
-      { texto: 'Exportar reporte mensual Excel + PDF (BCS oficial)', permitido: true },
-      { texto: 'Crear, editar y resetear contraseñas de usuarios', permitido: true },
-      { texto: 'Modificar configuración base de datos (catálogos, indicadores)', permitido: true },
-      { texto: 'Auditar quién hizo qué y cuándo en cada paciente', permitido: true },
-    ],
-    contenido: [
-      {
-        titulo: '1. Tablero Maestro completo',
-        pasos: [
-          'Botón "📊 Tablero Maestro" arriba a la derecha del Dashboard.',
-          'Verás 3 tabs: Día / Semana / Mes (los 3 visibles solo para tu nivel).',
-          'Día: análisis fino de un día específico con desglose por turno M/V/N.',
-          'Semana: lunes a domingo de la fecha seleccionada.',
-          'Mes: vista mensual completa con botón "📊 Exportar Excel + PDF".',
-        ],
-      },
-      {
-        titulo: '2. Exportar reporte mensual oficial',
-        pasos: [
-          'En Tablero Maestro, selecciona pestaña "Mes" → mes y año.',
-          'Toca "📊 Exportar Excel + PDF".',
-          'Descarga archivo .xlsx con: hoja CONSOLIDADO (indicadores × servicios), una hoja por servicio, y hoja METADATA con auditoría por origen de captura.',
-          'El PDF se abre auto-imprimible con el formato institucional BCS.',
-        ],
-      },
-      {
-        titulo: '3. Alta de nuevos colaboradores',
-        pasos: [
-          'Comparte el link del formulario de alta por WhatsApp al staff entrante: forms.gle/HrHZYuFYwuPuvb3t7',
-          'Cuando llegan respuestas, en Supabase → Authentication → Users → "Add user" con email y password + ✅ Auto Confirm.',
-          'Luego en SQL Editor inserta la fila en perfiles con su matrícula, rol y servicio_id (si aplica).',
-        ],
-      },
-      {
-        titulo: '4. Reseteo de contraseña a un colaborador',
-        pasos: [
-          'Supabase → Authentication → Users → buscar al usuario.',
-          'Click 3 puntos "..." → "Send password recovery" (le llega correo) o "Reset password" (la defines tú directamente).',
-        ],
-      },
-      {
-        titulo: '5. Mantenimiento periódico',
-        pasos: [
-          'Verifica que pg_cron esté activo (recompute continuidad cada turno automáticamente).',
-          'Revisa logs de Supabase si hay errores frecuentes.',
-          'Los pacientes egresados se archivan automáticamente en historicos_egresos.',
-        ],
-      },
-    ],
-  },
-
-  // ============================================================
-  // NIVEL 2 — ACCESO HOSPITAL COMPLETO
-  // ============================================================
-  {
-    key: 'n2_hospital',
-    nivel: 'Nivel 2',
-    titulo: 'Acceso Hospital Completo',
-    roles: 'Supervisor de enfermería',
-    subtitulo: 'Vista panorámica del hospital. Coordina entre servicios. Sin reportes mensuales ni gestión de usuarios.',
+    key: 'censo',
+    numero: '2',
+    titulo: 'Hoja Censo',
+    icono: '🏥',
+    subtitulo: 'Ingresos, egresos, traslados y datos del paciente',
     color: '#1F4E79',
-    permisos: [
-      { texto: 'Ver y editar TODOS los servicios del hospital', permitido: true },
-      { texto: 'Tablero Maestro: vista DÍA con desglose por turno M/V/N', permitido: true },
-      { texto: 'Editar capturas de cualquier paciente para corregir omisiones', permitido: true },
-      { texto: 'Imprimir hojas de censo, dietas, recetario, control', permitido: true },
-      { texto: 'Tablero Maestro Semana / Mes', permitido: false },
-      { texto: 'Exportar reporte mensual oficial', permitido: false },
-      { texto: 'Crear o eliminar usuarios', permitido: false },
-    ],
     contenido: [
       {
-        titulo: '1. Vista global del hospital',
+        titulo: '2.1. Ingresar un paciente nuevo',
         pasos: [
-          'En el Dashboard verás los 10 servicios con sus porcentajes de ocupación en tiempo real.',
-          'Puedes entrar a cualquier servicio (toca su tarjeta) y operar capturas o correcciones.',
+          'Localiza la cama disponible donde se asignará el paciente.',
+          'Toca la cama vacía. Se abre el modal "INGRESO DE PACIENTE".',
+          'Llena los campos: Nombre completo (en MAYÚSCULAS), Edad, Sexo, NSS/CURP/Expediente, Diagnóstico de ingreso, Especialidad.',
+          'La Fecha y Hora de ingreso se llenan solas con el momento actual (puedes ajustarlas si el paciente ingresó antes).',
+          'Si tiene observaciones especiales (aislamiento, vigilar, etc.) escríbelas en el campo Observaciones.',
+          'Toca "✓ Registrar ingreso" para confirmar.',
         ],
       },
       {
-        titulo: '2. Tablero Maestro — vista Día',
+        titulo: '2.2. Ver y editar datos del paciente',
         pasos: [
-          'Botón "📊 Tablero Maestro" arriba a la derecha.',
-          'Tienes acceso a la vista DÍA del hospital completo con desglose por turno M/V/N.',
-          'Útil para detectar a tiempo: servicios con sobrecarga, ausencia de capturas, indicadores en cero que deberían estar arriba.',
+          'Toca la cama ocupada del paciente que quieres revisar.',
+          'Se expande la tarjeta del paciente con todos sus datos.',
+          'Si necesitas corregir algún dato (nombre, edad, diagnóstico), toca el ícono ✎ junto al campo.',
+          'Modifica y guarda con ✓.',
         ],
       },
       {
-        titulo: '3. Recorrido virtual cada turno',
+        titulo: '2.3. Egresar un paciente (alta / defunción / traslado / fuga)',
         pasos: [
-          'Tu rutina típica: cada inicio de turno entras al Tablero Día, identificas servicios con alertas o capturas faltantes.',
-          'Bajas al servicio específico → corriges desde Control o Productividad.',
-          'Asegúrate de que cada servicio tenga al menos su Control y Productividad al día.',
+          'Toca la cama del paciente a egresar.',
+          'En la tarjeta del paciente, toca "Egresar".',
+          'Selecciona el motivo de egreso: Alta por curación, Alta por máximo beneficio, Traslado, Defunción, Fuga, Otro.',
+          'La fecha y hora de egreso se llenan solas con el momento actual (ajustables si corresponde).',
+          'Toca "Confirmar egreso".',
+          'El paciente pasa al historial y la cama queda disponible.',
         ],
       },
       {
-        titulo: '4. Cierre de turno',
+        titulo: '2.4. Camas no censables (CAMILLAS y SILLAS en URGENCIAS)',
         pasos: [
-          'Antes de entregar el turno, valida que todos los servicios tengan capturas completas.',
-          'Si encuentras errores, edita directamente desde la pestaña correspondiente.',
-          'Las modificaciones quedan registradas en auditoría con tu matrícula y hora.',
+          'Las camillas (PASILLO 01–10) y sillas (SILLA 1–8) funcionan igual que cualquier cama: se ingresa, se egresa, se llenan las otras hojas.',
+          'Diferencia: NO cuentan para el porcentaje de ocupación censable del servicio.',
+          'Se ven con franjas diagonales y la etiqueta "NO CENSABLE".',
         ],
       },
     ],
   },
 
   // ============================================================
-  // NIVEL 3 — ACCESO SERVICIO COMPLETO
+  // 3. HOJA DIETAS
   // ============================================================
   {
-    key: 'n3_servicio',
-    nivel: 'Nivel 3',
-    titulo: 'Acceso Servicio Completo',
-    roles: 'Jefe de servicio · Gestor del cuidado · Encargado de servicio',
-    subtitulo: 'Coordina su servicio. Edita censo, dietas, recetario, control, productividad. Sin acceso a otros servicios.',
+    key: 'dietas',
+    numero: '3',
+    titulo: 'Hoja Dietas',
+    icono: '🍽️',
+    subtitulo: 'Indicaciones nutricionales por paciente',
+    color: '#5CAB34',
+    contenido: [
+      {
+        titulo: '3.1. Capturar la dieta del paciente',
+        pasos: [
+          'En el servicio, toca la pestaña "🍽️ Dietas".',
+          'Verás la lista de pacientes activos con su renglón para dieta.',
+          'Selecciona el tipo de dieta del catálogo (Líquidos claros, Blanda, Hiposódica, etc.).',
+          'Selecciona la consistencia (Normal, Picada, Pure, Líquida, etc.).',
+          'Si la dieta es especial o requiere observación, anótalo en Notas.',
+        ],
+      },
+      {
+        titulo: '3.2. Modificar la dieta',
+        pasos: [
+          'Toca el campo que vas a cambiar (tipo, consistencia o notas).',
+          'Modifica y guarda.',
+          'El cambio queda registrado con tu nombre y la hora exacta.',
+        ],
+      },
+      {
+        titulo: '3.3. Imprimir la hoja de dietas del servicio',
+        pasos: [
+          'En la pestaña Dietas, busca el botón "🖨️ Imprimir".',
+          'Se abre una vista lista para imprimir con todos los pacientes activos y su dieta indicada.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 4. HOJA RECETARIO
+  // ============================================================
+  {
+    key: 'recetario',
+    numero: '4',
+    titulo: 'Hoja Recetario',
+    icono: '💊',
+    subtitulo: 'Medicamentos indicados por paciente',
     color: '#7d5b2f',
-    permisos: [
-      { texto: 'Ver y editar TODO en su servicio asignado', permitido: true },
-      { texto: 'Tablero Maestro: vista DÍA con datos SOLO de su servicio', permitido: true },
-      { texto: 'Imprimir hojas oficiales del servicio', permitido: true },
-      { texto: 'Validar productividad y corregir capturas del personal', permitido: true },
-      { texto: 'Ver otros servicios del hospital', permitido: false },
-      { texto: 'Tablero Semana / Mes', permitido: false },
-      { texto: 'Reportes mensuales y alta de usuarios', permitido: false },
-    ],
     contenido: [
       {
-        titulo: '1. Acceso completo a tu servicio',
+        titulo: '4.1. Agregar un medicamento al paciente',
         pasos: [
-          'En el Dashboard verás SOLO tu servicio asignado (no los otros 9).',
-          'Toca la tarjeta para entrar. Encontrarás 5 pestañas: Censo · Dietas · Recetario · Control · Productividad.',
-          'Puedes capturar, editar y validar cualquier paciente del servicio en cualquier turno.',
+          'Pestaña "💊 Recetario" → toca al paciente.',
+          'Toca "+ Agregar medicamento".',
+          'Empieza a escribir el nombre y aparecerán sugerencias del catálogo (594 medicamentos disponibles).',
+          'Selecciona el medicamento de la lista.',
+          'Captura: dosis, vía (oral, IV, IM, SC, etc.), frecuencia y duración.',
+          'Toca "Guardar".',
         ],
       },
       {
-        titulo: '2. Tablero Maestro de tu servicio',
+        titulo: '4.2. Modificar o eliminar un medicamento',
         pasos: [
-          'Toca "📊 Tablero Maestro".',
-          'Verás solo la vista DÍA y solo de tu servicio (no del hospital completo).',
-          'Selecciona la fecha con el date picker para revisar días anteriores.',
+          'En la lista de medicamentos del paciente, toca el ✎ para editar o el ✕ para eliminar.',
+          'Si modificas, confirma con ✓.',
+          'Si eliminas, te pide confirmación antes de quitarlo.',
         ],
       },
       {
-        titulo: '3. Imprimir hojas del turno',
+        titulo: '4.3. Imprimir el recetario del servicio',
         pasos: [
-          'Pestaña "Control" → botón "🖨️ Imprimir Censo" abre vista oficio horizontal con todos los pacientes activos.',
-          'Pestañas Dietas y Recetario también tienen botones de impresión propios.',
-          'Usa la impresión para pase de visita médica o entrega de turno.',
-        ],
-      },
-      {
-        titulo: '4. Validar productividad antes del cierre',
-        pasos: [
-          'Al final del turno, revisa la pestaña Productividad del servicio.',
-          'Verifica que las celdas automáticas (verde/azul/lavanda/durazno) cuadren con los eventos realizados.',
-          'Si la enfermera/o de piso olvidó marcar un evento como Realizada, edita el evento desde Control y se reflejará automáticamente.',
+          'En la pestaña Recetario, toca "🖨️ Imprimir".',
+          'Se genera la vista con todos los pacientes y sus medicamentos.',
         ],
       },
     ],
   },
 
   // ============================================================
-  // NIVEL 4 — CAPTURA DEL SERVICIO
+  // 5. HOJA CONTROL
   // ============================================================
   {
-    key: 'n4_captura',
-    nivel: 'Nivel 4',
-    titulo: 'Enfermería de piso',
-    roles: 'Personal operativo (enfermera/enfermero) — solo pacientes asignados',
-    subtitulo: 'Captura datos solo en pacientes asignados por el gestor durante tu turno. Solo lectura en dietas y recetario. Sin acceso a otros servicios ni al Tablero.',
-    color: '#5a4a8a',
-    permisos: [
-      { texto: 'Ver SOLO los pacientes asignados por el gestor para tu turno', permitido: true },
-      { texto: 'Editar Control (hoja + eventos clínicos) de tus pacientes asignados', permitido: true },
-      { texto: 'Leer dietas y recetario de tus pacientes asignados', permitido: true },
-      { texto: 'Acceso activo durante tu turno + 30 min de gracia al final', permitido: true },
-      { texto: 'Editar dietas o recetario', permitido: false },
-      { texto: 'Ingresar nuevos pacientes o egresarlos', permitido: false },
-      { texto: 'Ver pacientes no asignados a ti', permitido: false },
-      { texto: 'Acceder a otros servicios del hospital', permitido: false },
-      { texto: 'Acceder al Tablero Maestro', permitido: false },
-    ],
+    key: 'control',
+    numero: '5',
+    titulo: 'Hoja Control',
+    icono: '📋',
+    subtitulo: 'Eventos clínicos: sondas, accesos vasculares, curaciones, procedimientos',
+    color: '#A32D2D',
     contenido: [
       {
-        titulo: '1. Cómo funciona tu acceso',
+        titulo: '5.1. Agregar un evento clínico al paciente',
         pasos: [
-          'El gestor (jefe de servicio) te asigna pacientes para tu turno antes o durante tu jornada.',
-          'Al iniciar sesión solo ves a los pacientes que tienes asignados ESE turno (no todos los del servicio).',
-          'Tu acceso se mantiene durante tu turno completo + 30 minutos después (gracia para cerrar capturas).',
-          'Al pasar al siguiente turno, dejas de ver esos pacientes automáticamente.',
+          'Pestaña "📋 Control" → toca al paciente.',
+          'Toca "+ Nuevo evento".',
+          'Selecciona el tipo de evento:',
+          '   • Sondas (urinaria, gástrica, pleurostomía)',
+          '   • Accesos vasculares (CVC, CVP, catéter umbilical)',
+          '   • Oxigenoterapia (puntas, mascarilla, etc.)',
+          '   • Dispositivos (ventilación mecánica, etc.)',
+          '   • Curaciones (UPP, herida quirúrgica, etc.)',
+          '   • Procedimientos invasivos',
+          '   • Precauciones de aislamiento',
+          'Captura los detalles del evento y toca "Guardar".',
         ],
       },
       {
-        titulo: '2. Entrar a tu servicio',
+        titulo: '5.2. Marcar un evento como REALIZADO',
         pasos: [
-          'En el Dashboard ves solo tu servicio. Toca la tarjeta.',
-          'Verás 5 pestañas: Censo · Dietas · Recetario · Control · Productividad.',
-          'En Censo aparece la lista solo de TUS pacientes asignados en este turno.',
+          'Toca el evento en la tarjeta del paciente.',
+          'Toca "⏱️ Ahora" para marcar la hora actual.',
+          '(O cambia el estado a "Realizada" si fue en otro momento.)',
         ],
       },
       {
-        titulo: '3. Consultar Dietas (solo lectura)',
+        titulo: '5.3. Editar fecha/hora de un evento ya registrado',
         pasos: [
-          'Pestaña "Dietas" → revisas tipo, consistencia, restricciones y observaciones.',
-          'NO puedes editar — los selectores están deshabilitados.',
-          'Si necesitas un cambio, avisa al gestor para que lo capture.',
+          'Toca el ícono ✎ junto a la fecha del evento.',
+          'Selecciona la fecha y hora correctas.',
+          'Confirma con ✓.',
         ],
       },
       {
-        titulo: '4. Consultar Recetario (solo lectura)',
+        titulo: '5.4. Retirar una sonda o acceso vascular',
         pasos: [
-          'Pestaña "Recetario" → revisas los medicamentos prescritos por paciente.',
-          'NO puedes agregar, editar ni borrar medicamentos.',
-          'Si encuentras una discrepancia, repórtala al gestor o jefe de servicio.',
+          'Cuando se retira el dispositivo, cambia el estado del evento a "Retirada".',
+          'Esto registra automáticamente la fecha/hora de retiro.',
         ],
       },
       {
-        titulo: '5. Llenar Control (única pestaña con escritura)',
+        titulo: '5.5. Cancelar un evento creado por error',
         pasos: [
-          'Pestaña "Control" → toca al paciente para expandir su tarjeta.',
-          'Aquí SÍ puedes editar: eventos clínicos (sondas, accesos vasculares, curaciones, procedimientos).',
-          'AGREGAR: "+ Nuevo evento" → selecciona código → confirma.',
-          'MARCAR REALIZADO: "⏱️ Ahora" o cambia estado a "Realizada".',
-          'EDITAR FECHA: ícono ✎ junto a la fecha.',
-          'RETIRAR sonda/acceso: cambia estado a "Retirada".',
-          'CANCELAR evento creado por error: ✕ y confirma.',
-          'IMPORTANTE: solo puedes editar durante tu turno + 30 min de gracia.',
+          'Toca el ✕ del evento.',
+          'Confirma la cancelación.',
+          'Nota: el evento NO se borra del historial; solo queda marcado como "Cancelado".',
         ],
       },
       {
-        titulo: '6. Productividad del turno',
+        titulo: '5.6. Riesgos (UPP / caídas)',
         pasos: [
-          'La productividad se calcula sola al marcar eventos como Realizada.',
-          'No tienes que capturar productividad manualmente para tus eventos.',
-          'Las celdas se llenan automáticamente: ingresos, eventos realizados, continuidad de sondas/accesos por turno.',
+          'En la tarjeta del paciente, hay campos para "Riesgo UPP" y "Riesgo Caídas".',
+          'Selecciona el nivel del catálogo (Bajo / Mediano / Alto / Muy alto).',
+          'Estos datos viajan al concentrado del servicio.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 6. HOJA PRODUCTIVIDAD
+  // ============================================================
+  {
+    key: 'productividad',
+    numero: '6',
+    titulo: 'Hoja Productividad',
+    icono: '📊',
+    subtitulo: 'Bitácora de 73 indicadores oficiales IMSS-Bienestar por día y turno',
+    color: '#5978BB',
+    contenido: [
+      {
+        titulo: '6.1. Para qué sirve esta hoja',
+        pasos: [
+          'Es la bitácora oficial de productividad de enfermería del servicio.',
+          'Cada celda representa la productividad de un indicador en un día específico y un turno específico (Matutino / Vespertino / Nocturno).',
+          'Estos datos alimentan los reportes mensuales que se entregan a la institución (IMSS-Bienestar).',
+          'Llenado incompleto = reporte mensual incompleto = se pierde el registro institucional del trabajo realizado en el servicio.',
+        ],
+      },
+      {
+        titulo: '6.2. Las 5 categorías de captura (leyenda de colores)',
+        pasos: [
+          'Cada celda se llena por uno de 5 mecanismos. El color te dice cuál:',
+          '🟢 AUTO-INGRESO (verde) — se llena sola al ingresar un paciente. Ej: "Ingresos" (C02), instalación de CVC al admitir, etc.',
+          '🔵 AUTO-TURNO (azul) — se llena sola al iniciar el turno con datos heredados del turno anterior. Ej: pacientes que se reciben (C01), pacientes con sondas, accesos vasculares activos.',
+          '🟣 AUTO-EVENTO (morado) — se llena sola al marcar un evento clínico como "Realizada" en la Hoja Control. Ej: curaciones, procedimientos invasivos, retiro de sondas.',
+          '🟠 AUTO-CONTINUIDAD (durazno/naranja claro) — se llena sola al cambiar de turno: si el paciente sigue con su sonda, su línea, etc., el sistema cuenta esa continuidad sin que tengas que recapturar.',
+          '🟡 MANUAL (amarillo) — TÚ LAS LLENAS. Son las que NO puede deducir el sistema solo. Son aproximadamente 48 de los 81 indicadores.',
+          '🟤 TOTAL (crema) — subtotales y totales del mes. Se calculan solos.',
+        ],
+      },
+      {
+        titulo: '6.3. Qué se llena solo (no hagas nada)',
+        pasos: [
+          'CENSO HOSPITALARIO: C01 (recibidos), C02 (ingresos), C03–C06 (egresos), C07 (entregados al siguiente turno), C08, % de ocupación.',
+          'TERAPIA DE INFUSIÓN: V01 (CVC instalados), V05 (CVP neonatos instalados), V09 (CVP adultos instalados), V13 (línea media instalada), V17 (PICC USG), V21 (PICC percutánea) — todos al momento de instalación.',
+          'SONDAS Y DISPOSITIVOS: instalaciones al momento de hacerlas (S01–S04).',
+          'VENTILACIÓN: ventilación mecánica al momento de iniciar.',
+          'Continuidad de sondas y accesos: se hereda al siguiente turno automáticamente.',
+        ],
+      },
+      {
+        titulo: '6.4. Qué SIEMPRE tienes que llenar manualmente',
+        pasos: [
+          'TERAPIA DE INFUSIÓN: V02/V06/V10/V14/V18/V22 (pacientes con más de 2 punciones), V03/V07/V11/V15/V19/V23 (curaciones de sitio), V04/V08/V12/V16/V20/V24 (refijaciones).',
+          'SONDAS Y DISPOSITIVOS: SD1 (sondas cualquier tipo), DP1 (dispositivos cualquier tipo).',
+          'OXIGENOTERAPIA: OX1 (oxigenoterapia cualquier modalidad).',
+          'VENTILACIÓN: P05 (diálisis), P06 (hemodiálisis), P07 (PRISMA / terapia de reemplazo).',
+          'CIRUGÍA Y OBSTETRICIA: Q01 (quirúrgicos), Q02 (cesáreas), Q03 (partos), Q04 (IVE), Q05 (ILE), Q06.',
+          'HERIDAS Y CURACIONES: las que no se generen por evento clínico (UPP fuera de evento, ostomías, etc.).',
+          'EVENTOS CRÍTICOS: caídas, eventos adversos, código azul, RCP exitoso/no exitoso.',
+          'INDICADORES DE CALIDAD: orientaciones a familiares, identificación de pacientes, lavado de manos auditado, etc.',
+          'PROCEDIMIENTOS INVASIVOS extra (los que no quedaron registrados como evento en Hoja Control).',
+        ],
+      },
+      {
+        titulo: '6.5. Cómo capturar manualmente una celda',
+        pasos: [
+          'Pestaña "📊 Productividad" → selecciona el Mes y Año arriba a la derecha.',
+          'Identifica la fila del indicador (ej. SD1 - Sondas cualquier tipo).',
+          'Identifica la columna del día y turno (ej. D5 / M = día 5, turno matutino).',
+          'Toca la celda amarilla.',
+          'Captura el número (puede ser entero o decimal según el indicador).',
+          'Toca fuera para guardar (se guarda solo).',
+          'Si quieres corregir, vuelve a tocar y modifica.',
+        ],
+      },
+      {
+        titulo: '6.6. Cuándo llenarla (frecuencia recomendada)',
+        pasos: [
+          'IDEAL: al final de cada turno, antes de entregar al siguiente turno.',
+          'MÍNIMO: al final del día (capturar los 3 turnos M/V/N de ese día).',
+          'NO RECOMENDADO: dejar la captura para fin de mes — se acumula y se olvidan datos.',
+          'La hoja queda abierta para todo el mes en curso; puedes regresar a corregir días anteriores.',
+        ],
+      },
+      {
+        titulo: '6.7. Importancia institucional',
+        pasos: [
+          'Estos 81 indicadores son los OFICIALES de IMSS-Bienestar para enfermería.',
+          'Son la base del reporte mensual de productividad del servicio.',
+          'Sin estos números: el servicio NO aparece con productividad ante coordinación → afecta plantillas, recursos, evaluación.',
+          'Captura cuidadosa y oportuna = mejor representación del trabajo real del servicio.',
+        ],
+      },
+      {
+        titulo: '6.8. Resumen mensual e impresión',
+        pasos: [
+          'En la parte inferior de la Hoja Productividad hay un "Resumen mensual" con totales por indicador.',
+          'Botón "🖨️ Imprimir" → genera el reporte oficial listo para entrega/archivo.',
+          'Botón "📥 Exportar Excel" → archivo .xlsx con todas las celdas (útil para revisión).',
+          'Botón "📄 PDF" → versión imprimible/compartible.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 7. ASIGNACIÓN DE PACIENTES POR TURNO
+  // ============================================================
+  {
+    key: 'asignacion',
+    numero: '7',
+    titulo: 'Asignación de pacientes por turno',
+    icono: '👥',
+    subtitulo: 'Cómo asignar pacientes al personal de enfermería',
+    color: '#C39C59',
+    contenido: [
+      {
+        titulo: '7.1. Asignar paciente a una enfermera del turno',
+        pasos: [
+          'En la Hoja Censo, toca el badge "Sin asignar" que aparece junto a la cama del paciente.',
+          'Se abre el modal de asignación.',
+          'Selecciona el turno (M / V / N) y la enfermera del catálogo.',
+          'Confirma. La enfermera asignada podrá editar la Hoja Control de ese paciente durante su turno.',
+        ],
+      },
+      {
+        titulo: '7.2. Reasignar o quitar asignación',
+        pasos: [
+          'Toca el badge de la enfermera ya asignada.',
+          'Selecciona otra enfermera o usa "Quitar asignación".',
+          'El cambio se registra con tu nombre y hora.',
+        ],
+      },
+      {
+        titulo: '7.3. Continuidad entre turnos',
+        pasos: [
+          'Las sondas, accesos vasculares y precauciones de aislamiento se "heredan" automáticamente al siguiente turno.',
+          'No necesitas re-capturarlos cada vez que cambia el turno.',
+          'Solo tienes que actualizarlos si hubo un cambio real (retiro, cambio de sitio, etc.).',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 8. TABLERO GENERAL
+  // ============================================================
+  {
+    key: 'tablero',
+    numero: '8',
+    titulo: 'Tablero general',
+    icono: '📈',
+    subtitulo: 'Vista consolidada del hospital o de un servicio',
+    color: '#265C4E',
+    contenido: [
+      {
+        titulo: '8.1. Acceder al Tablero',
+        pasos: [
+          'Desde la pantalla principal, toca el botón "📊 Tablero Maestro" en la barra superior.',
+          'Verás los KPIs del día: Camas totales, Ocupadas, Disponibles, % de ocupación.',
+          'En URGENCIAS también aparece el KPI "Camillas/Sillas" con los espacios extra.',
+        ],
+      },
+      {
+        titulo: '8.2. Cambiar el periodo (Día / Semana / Mes)',
+        pasos: [
+          'En la parte superior del Tablero, hay tabs para Día, Semana, Mes.',
+          'Selecciona el periodo deseado.',
+          'Los datos del resumen y la productividad se actualizan al instante.',
+        ],
+      },
+      {
+        titulo: '8.3. Exportar el reporte',
+        pasos: [
+          'En el Tablero, toca "📥 Exportar Excel" para el reporte tabular.',
+          'O "📄 Exportar PDF" para una versión imprimible.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 9. CIERRE
+  // ============================================================
+  {
+    key: 'cierre',
+    numero: '9',
+    titulo: 'Cerrar sesión y cambiar contraseña',
+    icono: '🔐',
+    subtitulo: 'Seguridad de tu cuenta',
+    color: '#888780',
+    contenido: [
+      {
+        titulo: '9.1. Cambiar tu contraseña',
+        pasos: [
+          'En la barra superior del Dashboard, toca "🔑 Contrasena".',
+          'Captura tu contraseña actual.',
+          'Define la nueva contraseña (mínimo 6 caracteres) y confírmala.',
+          'Toca "Guardar nueva contraseña".',
+          'La próxima vez que inicies sesión usa la nueva.',
+        ],
+      },
+      {
+        titulo: '9.2. Cerrar sesión',
+        pasos: [
+          'En la barra superior toca "Cerrar sesión".',
+          'Si compartes el dispositivo con otro compañero, SIEMPRE cierra sesión antes de pasárselo.',
+        ],
+      },
+      {
+        titulo: '9.3. Recomendaciones de seguridad',
+        pasos: [
+          'Tu acceso es personal e intransferible.',
+          'No compartas tu contraseña con nadie, ni siquiera con tu compañero de turno.',
+          'Cambia tu contraseña inicial cuanto antes después de tu primer ingreso.',
+          'Cada acción que realices en el sistema queda registrada con tu identidad y la hora exacta.',
         ],
       },
     ],
   },
 ];
 
-function rolANivelKey(rol: Rol | null | undefined): NivelKey | null {
-  if (rol === 'jefe' || rol === 'subjefe') return 'n1_total';
-  if (rol === 'supervisor') return 'n2_hospital';
-  if (rol === 'gestor') return 'n3_servicio';
-  if (rol === 'enfermera') return 'n4_captura';
-  return null;
-}
-
-function nivelLabel(rol: Rol | null | undefined): string {
-  const k = rolANivelKey(rol);
-  if (k === 'n1_total') return 'Nivel 1 · Acceso Total';
-  if (k === 'n2_hospital') return 'Nivel 2 · Acceso Hospital';
-  if (k === 'n3_servicio') return 'Nivel 3 · Acceso Servicio';
-  if (k === 'n4_captura') return 'Nivel 4 · Enfermería de piso (pacientes asignados)';
-  return 'Sin nivel asignado';
-}
-
 export function Instructivo() {
   const navigate = useNavigate();
-  const { perfil } = useAuth();
-  const nivelUsuario = rolANivelKey(perfil?.rol);
-
-  // Por default: jefe/subjefe ven todos los niveles (para capacitar). Otros ven
-  // solo matriz + común + su propio nivel.
-  const [verTodos, setVerTodos] = useState(nivelUsuario === 'n1_total');
-
-  const seccionesVisibles = verTodos
-    ? SECCIONES
-    : SECCIONES.filter(s =>
-        s.key === 'matriz' || s.key === 'comun' || s.key === nivelUsuario
-      );
 
   return (
     <div style={contenedor} className="instructivo-page">
@@ -388,70 +496,34 @@ export function Instructivo() {
         <button onClick={() => window.print()} style={botonImprimir}>🖨️ Imprimir</button>
       </header>
 
-      {/* SELECTOR DE VISTA */}
-      <div style={selectorContenedor} className="no-print">
-        <label style={selectorLabel}>
-          <input
-            type="checkbox"
-            checked={verTodos}
-            onChange={e => setVerTodos(e.target.checked)}
-            style={{ marginRight: 8 }}
-          />
-          Ver instructivo de todos los niveles
-          {perfil?.rol && (
-            <span style={{ marginLeft: 12, fontSize: 12, color: '#888' }}>
-              (Tu nivel: <strong>{nivelLabel(perfil.rol)}</strong>)
-            </span>
-          )}
-        </label>
+      {/* INTRO */}
+      <div style={introContenedor} className="no-print">
+        <p style={introTexto}>
+          Guía paso a paso para llenar el sistema desde un servicio. Las instrucciones aplican
+          igual para todos los usuarios; los permisos los maneja el sistema automáticamente.
+        </p>
       </div>
 
       {/* SECCIONES */}
       <main style={main}>
-        {seccionesVisibles.map(seccion => (
+        {SECCIONES.map(seccion => (
           <section key={seccion.key} style={seccionContenedor}>
             <div style={{ ...seccionHeader, background: seccion.color }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
-                {seccion.nivel && (
-                  <span style={nivelBadge}>{seccion.nivel}</span>
-                )}
-                <h2 style={seccionTitulo}>{seccion.titulo}</h2>
+                <span style={numeroBadge}>{seccion.numero}</span>
+                <h2 style={seccionTitulo}>
+                  <span style={{ marginRight: 8 }}>{seccion.icono}</span>
+                  {seccion.titulo}
+                </h2>
               </div>
-              {seccion.roles && <div style={seccionRoles}>{seccion.roles}</div>}
-              <div style={seccionSubtitulo}>{seccion.subtitulo}</div>
+              <p style={seccionSubtitulo}>{seccion.subtitulo}</p>
             </div>
 
-            {/* CARD DE PERMISOS — sí/no */}
-            {seccion.permisos && seccion.permisos.length > 0 && (
-              <div style={permisosContenedor}>
-                <div style={permisosTitulo}>Lo que este nivel SÍ puede / NO puede hacer:</div>
-                <ul style={permisosLista}>
-                  {seccion.permisos.map((p, i) => (
-                    <li key={i} style={{
-                      ...permisosItem,
-                      color: p.permitido ? '#0E6755' : '#A32D2D',
-                    }}>
-                      <span style={{
-                        display: 'inline-block',
-                        width: 18,
-                        fontWeight: 700,
-                        textAlign: 'center',
-                      }}>{p.permitido ? '✓' : '✕'}</span>
-                      {p.texto}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* PASOS OPERATIVOS */}
-            <div style={seccionBody}>
-              {seccion.contenido.map(bloque => (
-                <div key={bloque.titulo} style={bloqueContenedor}>
-                  {bloque.titulo && (
-                    <h3 style={{ ...bloqueTitulo, color: seccion.color }}>{bloque.titulo}</h3>
-                  )}
-                  <ol style={listaPasos}>
+            <div style={seccionCuerpo}>
+              {seccion.contenido.map((bloque, idx) => (
+                <div key={idx} style={bloqueContenedor}>
+                  {bloque.titulo && <h3 style={bloqueTitulo}>{bloque.titulo}</h3>}
+                  <ol style={listaOl}>
                     {bloque.pasos.map((paso, i) => (
                       <li key={i} style={pasoItem}>{paso}</li>
                     ))}
@@ -461,181 +533,170 @@ export function Instructivo() {
             </div>
           </section>
         ))}
-
-        <footer style={pieFooter}>
-          <p style={{ margin: 0 }}>
-            Hospital General con Especialidades IMSS-Bienestar
-            <br/>"Juan María de Salvatierra" · CLUES BSIMB000672 · La Paz, BCS
-          </p>
-          <p style={{ margin: '8px 0 0', fontSize: 10, color: '#aaa' }}>
-            Documento generado por el sistema. Para correcciones o sugerencias, contacta al subjefe de enfermería.
-          </p>
-        </footer>
       </main>
+
+      <footer style={footer}>
+        <p>Hospital General "Juan María de Salvatierra" · IMSS-Bienestar Baja California Sur</p>
+        <p style={{ fontSize: 11, marginTop: 4 }}>
+          Dudas, sugerencias o problemas técnicos → contacta al subjefe de enfermería.
+        </p>
+      </footer>
 
       <style>{`
         @media print {
-          @page { size: letter; margin: 12mm; }
-          body { background: white !important; }
           .no-print { display: none !important; }
-          .instructivo-page {
-            background: white !important;
-            padding: 0 !important;
-          }
-        }
-        @media (max-width: 640px) {
-          .instructivo-page h1 { font-size: 18px !important; }
-          .instructivo-page h2 { font-size: 14px !important; }
+          .instructivo-page { background: white !important; }
+          section { page-break-inside: avoid; break-inside: avoid; }
         }
       `}</style>
     </div>
   );
 }
 
-// ============ ESTILOS ============
+// ============================================================
+// ESTILOS
+// ============================================================
+const COLOR_FONDO = '#F5F1E8';
+const COLOR_DORADO = '#C39C59';
+const COLOR_VERDE_IMSS = '#0E6755';
+const COLOR_TEXTO = '#2C2A26';
+
 const contenedor: React.CSSProperties = {
-  padding: 'clamp(8px, 2vw, 20px)',
-  maxWidth: 900,
-  margin: '0 auto',
-  background: '#F5F1E8',
   minHeight: '100vh',
+  background: COLOR_FONDO,
+  paddingBottom: 40,
 };
+
 const header: React.CSSProperties = {
+  background: '#FFFFFF',
+  borderBottom: `3px solid ${COLOR_DORADO}`,
+  padding: '14px 20px',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'space-between',
-  marginBottom: 16,
-  background: '#fff',
-  padding: 12,
-  borderRadius: 8,
-  border: '1px solid #C39C59',
+  gap: 16,
   flexWrap: 'wrap',
-  gap: 8,
+  position: 'sticky',
+  top: 0,
+  zIndex: 10,
 };
-const titulo: React.CSSProperties = { fontSize: 22, color: '#0E6755', margin: 0 };
-const subtitulo: React.CSSProperties = { fontSize: 11, color: '#888', marginTop: 4 };
+
 const botonVolver: React.CSSProperties = {
-  background: 'transparent',
-  border: '1px solid #0E6755',
-  color: '#0E6755',
   padding: '8px 14px',
-  borderRadius: 6,
-  cursor: 'pointer',
-  fontSize: 12,
-  whiteSpace: 'nowrap',
-};
-const botonImprimir: React.CSSProperties = {
-  background: '#0E6755',
+  background: COLOR_VERDE_IMSS,
+  color: COLOR_DORADO,
   border: 'none',
-  color: '#fff',
-  padding: '8px 14px',
   borderRadius: 6,
   cursor: 'pointer',
+  fontFamily: 'inherit',
+  fontSize: 13,
+  fontWeight: 500,
+};
+
+const botonImprimir: React.CSSProperties = {
+  ...botonVolver,
+  background: COLOR_DORADO,
+  color: '#FFFFFF',
+};
+
+const titulo: React.CSSProperties = {
+  margin: 0,
+  fontSize: 19,
+  color: COLOR_VERDE_IMSS,
+  fontWeight: 600,
+};
+
+const subtitulo: React.CSSProperties = {
+  fontSize: 11,
+  color: '#665e51',
+  marginTop: 2,
+};
+
+const introContenedor: React.CSSProperties = {
+  maxWidth: 900,
+  margin: '20px auto 0',
+  padding: '0 20px',
+};
+
+const introTexto: React.CSSProperties = {
+  fontSize: 13,
+  color: COLOR_TEXTO,
+  background: '#FFFFFF',
+  border: `1px solid ${COLOR_DORADO}`,
+  borderRadius: 6,
+  padding: '12px 16px',
+  lineHeight: 1.5,
+  margin: 0,
+};
+
+const main: React.CSSProperties = {
+  maxWidth: 900,
+  margin: '0 auto',
+  padding: '20px',
+};
+
+const seccionContenedor: React.CSSProperties = {
+  background: '#FFFFFF',
+  border: `1px solid ${COLOR_DORADO}`,
+  borderRadius: 8,
+  marginBottom: 20,
+  overflow: 'hidden',
+};
+
+const seccionHeader: React.CSSProperties = {
+  padding: '14px 20px',
+  color: '#FFFFFF',
+};
+
+const numeroBadge: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.25)',
+  padding: '4px 10px',
+  borderRadius: 6,
   fontSize: 13,
   fontWeight: 600,
 };
-const selectorContenedor: React.CSSProperties = {
-  background: '#fff',
-  padding: 12,
-  borderRadius: 8,
-  border: '1px solid #C39C59',
-  marginBottom: 16,
-};
-const selectorLabel: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  fontSize: 13,
-  color: '#265C4E',
-  cursor: 'pointer',
-  flexWrap: 'wrap',
-};
-const main: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 20 };
-const seccionContenedor: React.CSSProperties = {
-  background: '#fff',
-  borderRadius: 8,
-  border: '1px solid #C39C59',
-  overflow: 'hidden',
-  boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
-};
-const seccionHeader: React.CSSProperties = {
-  color: '#fff',
-  padding: '14px 18px',
-};
+
 const seccionTitulo: React.CSSProperties = {
   margin: 0,
   fontSize: 18,
-  fontWeight: 700,
-};
-const nivelBadge: React.CSSProperties = {
-  background: 'rgba(255,255,255,0.25)',
-  border: '1px solid rgba(255,255,255,0.5)',
-  borderRadius: 4,
-  padding: '2px 8px',
-  fontSize: 11,
-  fontWeight: 700,
-  letterSpacing: 0.5,
-  textTransform: 'uppercase',
-};
-const seccionRoles: React.CSSProperties = {
-  marginTop: 6,
-  fontSize: 12,
   fontWeight: 600,
-  opacity: 0.95,
-  fontStyle: 'italic',
 };
+
 const seccionSubtitulo: React.CSSProperties = {
-  margin: '6px 0 0',
+  margin: '4px 0 0',
   fontSize: 12,
   opacity: 0.9,
-  fontWeight: 400,
 };
-const permisosContenedor: React.CSSProperties = {
-  background: '#fdfaf2',
-  padding: '12px 18px',
-  borderBottom: '1px solid #e8dfc6',
+
+const seccionCuerpo: React.CSSProperties = {
+  padding: '18px 24px',
 };
-const permisosTitulo: React.CSSProperties = {
-  fontSize: 11,
-  fontWeight: 700,
-  color: '#7d5b2f',
-  textTransform: 'uppercase',
-  letterSpacing: 0.5,
-  marginBottom: 8,
+
+const bloqueContenedor: React.CSSProperties = {
+  marginBottom: 16,
 };
-const permisosLista: React.CSSProperties = {
-  margin: 0,
-  paddingLeft: 0,
-  listStyle: 'none',
-};
-const permisosItem: React.CSSProperties = {
-  fontSize: 13,
-  lineHeight: 1.6,
-  display: 'flex',
-  alignItems: 'flex-start',
-  gap: 6,
-};
-const seccionBody: React.CSSProperties = { padding: 18 };
-const bloqueContenedor: React.CSSProperties = { marginBottom: 18 };
+
 const bloqueTitulo: React.CSSProperties = {
   margin: '0 0 8px',
-  fontSize: 15,
-  fontWeight: 700,
+  fontSize: 14,
+  color: COLOR_VERDE_IMSS,
+  fontWeight: 600,
 };
-const listaPasos: React.CSSProperties = {
+
+const listaOl: React.CSSProperties = {
   margin: 0,
   paddingLeft: 22,
-  color: '#265C4E',
 };
+
 const pasoItem: React.CSSProperties = {
   fontSize: 13,
+  color: COLOR_TEXTO,
   lineHeight: 1.55,
-  marginBottom: 6,
+  marginBottom: 4,
 };
-const pieFooter: React.CSSProperties = {
-  marginTop: 24,
-  padding: 18,
+
+const footer: React.CSSProperties = {
   textAlign: 'center',
-  fontSize: 11,
-  color: '#888',
-  borderTop: '1px solid #e8dfc6',
+  padding: '20px',
+  color: '#665e51',
+  fontSize: 12,
 };
