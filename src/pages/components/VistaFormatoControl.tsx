@@ -47,9 +47,14 @@ const FALLBACK_RIESGO: CatalogoItem[] = [
 const CAUSAS_NO_OCUPACION = ['SIN CAMA', 'DESCOMPUESTA', 'SIN COLCHÓN', 'EN REPARACIÓN'];
 
 // Catalogos hardcoded para tipos sin tabla en DB
+// Accesos vasculares que SE AUTOLLENAN en productividad:
+//   CVP + neonato → AV1 + V05      CVP + adulto → AV1 + V09
+//   CVC          → AV1 + V01      UMBILICAL    → AV1 + V25
+//   LM           → AV1 + V13 (línea media)
 const ACCESO_VASCULAR_OPCIONES: CatalogoItem[] = [
   { codigo: 'CVP',       nombre: 'Catéter venoso periférico' },
   { codigo: 'CVC',       nombre: 'Catéter venoso central' },
+  { codigo: 'LM',        nombre: 'Línea media' },
   { codigo: 'UMBILICAL', nombre: 'Catéter umbilical' },
 ];
 const DISPOSITIVO_OPCIONES: CatalogoItem[] = [
