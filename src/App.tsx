@@ -4,12 +4,14 @@ import { useAuth } from './hooks/useAuth'
 import { PresenceProvider } from './contexts/PresenceContext'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
-import { ResetPassword } from './pages/ResetPassword'
-import { CambiarPassword } from './pages/CambiarPassword'
 import type { Perfil } from './types'
 
 // Code-splitting: estas paginas pesadas se cargan solo cuando se visitan.
 // Reduce el bundle inicial de ~424KB gzip a ~150KB gzip aproximadamente.
+// ResetPassword y CambiarPassword también van lazy porque solo se visitan
+// cuando el usuario sigue el magic link o entra al menú "Cambiar contraseña".
+const ResetPassword              = lazy(() => import('./pages/ResetPassword').then(m => ({ default: m.ResetPassword })))
+const CambiarPassword            = lazy(() => import('./pages/CambiarPassword').then(m => ({ default: m.CambiarPassword })))
 const VistaServicio              = lazy(() => import('./pages/VistaServicio').then(m => ({ default: m.VistaServicio })))
 const VistaImpresionControl      = lazy(() => import('./pages/VistaImpresionControl').then(m => ({ default: m.VistaImpresionControl })))
 const VistaImpresionRecetario    = lazy(() => import('./pages/VistaImpresionRecetario').then(m => ({ default: m.VistaImpresionRecetario })))
