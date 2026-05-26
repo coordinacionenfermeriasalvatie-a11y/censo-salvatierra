@@ -64,11 +64,19 @@ export function PresenceProvider({
     channel
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState<PresenceState>()
-        const todos: PresenceState[] = []
+        // Dedup: si un usuario tiene varias pestañas/dispositivos abiertos
+        // (= varias conexiones), queremos mostrar UNA sola entrada por id.
+        // Quedarse con la entrada más reciente (la de "desde" más nuevo).
+        const porId = new Map<string, PresenceState>()
         Object.values(state).forEach((arr) => {
-          arr.forEach((entry) => todos.push(entry))
+          arr.forEach((entry) => {
+            const prev = porId.get(entry.id)
+            if (!prev || entry.desde > prev.desde) {
+              porId.set(entry.id, entry)
+            }
+          })
         })
-        setUsers(todos)
+        setUsers(Array.from(porId.values()))
       })
       .subscribe(async (status) => {
         if (status === 'SUBSCRIBED') {
