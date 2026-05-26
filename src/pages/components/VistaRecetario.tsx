@@ -63,7 +63,7 @@ interface Props {
 }
 
 const VIAS_COMUNES = ['IV', 'IM', 'SC', 'VO', 'SL', 'INH', 'TOP', 'OFT', 'OTICO', 'RECTAL'];
-const CANTIDADES_RECETARIO = [0, 1, 2, 3, 4, 5];
+const CANTIDADES_RECETARIO = [0, 1, 2, 3, 4, 5, 6];
 const FRECUENCIAS_COMUNES = [
   'CADA 1 HR',
   'CADA 2 HRS',
