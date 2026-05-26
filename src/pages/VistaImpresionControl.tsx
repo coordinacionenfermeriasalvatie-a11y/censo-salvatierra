@@ -348,49 +348,49 @@ export const VistaImpresionControl: React.FC = () => {
             <th colSpan={1} className="g-obs">OBS. GENERAL</th>
           </tr>
           <tr className="col-row">
-            {/* IDENTIFICACIÓN (10) */}
-            <th>CAMA</th>
-            <th>NOMBRE COMPLETO</th>
-            <th>EDAD</th>
-            <th>SEXO</th>
-            <th>NSS / CURP /<br/>EXPEDIENTE</th>
-            <th>DIAGNÓSTICO<br/>DE INGRESO</th>
-            <th>ESPECIALIDAD</th>
-            <th>FECHA<br/>INGRESO</th>
-            <th>HORA<br/>INGRESO</th>
-            {/* VASCULARES (8) */}
-            <th>VENTILACIÓN<br/>MECÁNICA</th>
-            <th>INSTALACIÓN CVP<br/>(VENOCLISIS)</th>
-            <th>INSTALACIÓN<br/>CVC</th>
-            <th>CATÉTER<br/>UMBILICAL</th>
-            <th>LISIS / LAVADO<br/>CATÉTER</th>
-            <th>CURACIÓN<br/>SITIO CVP</th>
-            <th>CURACIÓN<br/>SITIO CVC</th>
-            <th>REFIJACIÓN<br/>CVC</th>
+            {/* IDENTIFICACIÓN (9) — CAMA/EDAD/SEXO horizontal corto, resto vertical */}
+            <th className="col-h">CAMA</th>
+            <th className="col-v">NOMBRE COMPLETO</th>
+            <th className="col-h">EDAD</th>
+            <th className="col-h">SEXO</th>
+            <th className="col-v">NSS / CURP / EXPEDIENTE</th>
+            <th className="col-v">DIAGNÓSTICO DE INGRESO</th>
+            <th className="col-v">ESPECIALIDAD</th>
+            <th className="col-v">FECHA INGRESO</th>
+            <th className="col-v">HORA INGRESO</th>
+            {/* VASCULARES (8) — todos verticales */}
+            <th className="col-v">VENTILACIÓN MECÁNICA</th>
+            <th className="col-v">INSTALACIÓN CVP (VENOCLISIS)</th>
+            <th className="col-v">INSTALACIÓN CVC</th>
+            <th className="col-v">CATÉTER UMBILICAL</th>
+            <th className="col-v">LISIS / LAVADO CATÉTER</th>
+            <th className="col-v">CURACIÓN SITIO CVP</th>
+            <th className="col-v">CURACIÓN SITIO CVC</th>
+            <th className="col-v">REFIJACIÓN CVC</th>
             {/* SONDAS (3) */}
-            <th>SONDA GÁSTRICA<br/>(NSG/OSG)</th>
-            <th>SONDA<br/>PLEUROSTOMÍA</th>
-            <th>CATÉTER<br/>URINARIO</th>
+            <th className="col-v">SONDA GÁSTRICA (NSG/OSG)</th>
+            <th className="col-v">SONDA PLEUROSTOMÍA</th>
+            <th className="col-v">CATÉTER URINARIO</th>
             {/* PROCEDIMIENTOS (3) */}
-            <th>ESTOMAS</th>
-            <th>HERIDAS</th>
-            <th>SUTURAS<br/>REALIZADAS</th>
+            <th className="col-v">ESTOMAS</th>
+            <th className="col-v">HERIDAS</th>
+            <th className="col-v">SUTURAS REALIZADAS</th>
             {/* RIESGOS (4) */}
-            <th>RIESGO<br/>UPP</th>
-            <th>RIESGO<br/>CAÍDAS</th>
-            <th>CAUSA NO<br/>OCUPACIÓN</th>
-            <th>PRECAUCIONES<br/>AISLAMIENTO</th>
+            <th className="col-v">RIESGO UPP</th>
+            <th className="col-v">RIESGO CAÍDAS</th>
+            <th className="col-v">CAUSA NO OCUPACIÓN</th>
+            <th className="col-v">PRECAUCIONES AISLAMIENTO</th>
             {/* APOYOS (8) */}
-            <th>OXÍGENO</th>
-            <th>INTER-<br/>CONSULTA</th>
-            <th>GLUCEMIA<br/>CAPILAR</th>
-            <th>HEMO-<br/>DERIVADOS</th>
-            <th>LABORA-<br/>TORIOS</th>
-            <th>ESTUDIOS<br/>GABINETE</th>
-            <th>TRASLADO</th>
-            <th>HIGIENE<br/>PACIENTE</th>
+            <th className="col-v">OXÍGENO</th>
+            <th className="col-v">INTERCONSULTA</th>
+            <th className="col-v">GLUCEMIA CAPILAR</th>
+            <th className="col-v">HEMODERIVADOS</th>
+            <th className="col-v">LABORATORIOS</th>
+            <th className="col-v">ESTUDIOS GABINETE</th>
+            <th className="col-v">TRASLADO</th>
+            <th className="col-v">HIGIENE PACIENTE</th>
             {/* OBS GENERAL (1) */}
-            <th>OBSERVACIONES<br/>GENERALES</th>
+            <th className="col-v">OBSERVACIONES GENERALES</th>
           </tr>
         </thead>
         <tbody>
@@ -520,6 +520,27 @@ export const VistaImpresionControl: React.FC = () => {
           text-align: center;
           font-size: 5.5pt;
           line-height: 1.05;
+        }
+        /* Encabezados de columna ROTADOS (vertical, lectura de abajo hacia arriba).
+           Permite que etiquetas largas como "PRECAUCIONES AISLAMIENTO" quepan
+           en columnas estrechas sin partirse en múltiples líneas. */
+        .tabla-control thead th.col-v {
+          writing-mode: vertical-rl;
+          transform: rotate(180deg);
+          vertical-align: middle;
+          height: 105px;
+          padding: 6px 2px;
+          font-size: 7pt;
+          line-height: 1.1;
+          white-space: nowrap;
+        }
+        /* Encabezados HORIZONTALES para columnas con texto corto */
+        .tabla-control thead th.col-h {
+          vertical-align: middle;
+          height: 105px;
+          padding: 2px;
+          font-size: 7pt;
+          line-height: 1.1;
         }
         .tabla-control .grupo-row th {
           color: white;
