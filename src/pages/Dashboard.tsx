@@ -7,32 +7,24 @@ import {
   esAdminGlobal,
   tieneScopeDeServicio,
 } from '../types'
+import { usePresence, pantallaLabel } from '../contexts/PresenceContext'
 
 interface Props {
   perfil: Perfil
   onCerrarSesion: () => void
 }
 
-interface UsuarioOnline {
-  id: string
-  nombre_completo: string
-  rol: string
-  hace_segundos: number
-}
-
 export function Dashboard({ perfil, onCerrarSesion }: Props) {
   const navigate = useNavigate()
   const [servicios, setServicios] = useState<OcupacionServicio[]>([])
   const [cargando, setCargando] = useState(true)
-  const [usuariosOnline, setUsuariosOnline] = useState<UsuarioOnline[]>([])
+
+  // Presencia en tiempo real (vía Supabase Realtime, sin polling)
+  const usuariosOnline = usePresence()
 
   useEffect(() => {
     cargarOcupacion()
-    cargarOnline()
-    const interval = setInterval(() => {
-      cargarOcupacion()
-      cargarOnline()
-    }, 30000)
+    const interval = setInterval(cargarOcupacion, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -46,17 +38,6 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
       setServicios(data as OcupacionServicio[])
     }
     setCargando(false)
-  }
-
-  async function cargarOnline() {
-    const { data, error } = await supabase
-      .from('v_usuarios_online')
-      .select('id, nombre_completo, rol, hace_segundos')
-      .order('hace_segundos', { ascending: true })
-
-    if (!error && data) {
-      setUsuariosOnline(data as UsuarioOnline[])
-    }
   }
 
   // Filtrar servicios por scope del rol.
@@ -159,18 +140,23 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           )}
         </div>
 
-        {esAdmin && usuariosOnline.length > 0 && (
+        {perfil.rol === 'jefe' && usuariosOnline.length > 0 && (
           <div style={styles.online}>
             <div style={styles.onlineTitulo}>
               🟢 En línea ahora ({usuariosOnline.length})
             </div>
             <div style={styles.onlineLista}>
-              {usuariosOnline.map(u => (
-                <span key={u.id} style={styles.onlineChip}>
-                  {u.nombre_completo}
-                  <span style={styles.onlineRol}>· {u.rol}</span>
-                </span>
-              ))}
+              {usuariosOnline
+                .slice()
+                .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                .map(u => (
+                  <span key={u.id} style={styles.onlineChip}>
+                    <span style={styles.onlineDot} />
+                    {u.nombre}
+                    <span style={styles.onlineRol}>· {u.rol}</span>
+                    <span style={styles.onlinePantalla}>📍 {pantallaLabel(u.pantalla)}</span>
+                  </span>
+                ))}
             </div>
           </div>
         )}
@@ -394,15 +380,33 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: 11,
     background: '#E8F4EA',
     color: '#265C4E',
-    padding: '3px 8px',
+    padding: '4px 10px',
     borderRadius: 12,
     border: '1px solid #5CAB34',
+    display: 'inline-flex' as const,
+    alignItems: 'center' as const,
+    gap: 6,
+  },
+  onlineDot: {
+    width: 6,
+    height: 6,
+    borderRadius: '50%',
+    background: '#5CAB34',
+    boxShadow: '0 0 0 2px rgba(92,171,52,0.25)',
+    display: 'inline-block' as const,
   },
   onlineRol: {
     fontSize: 10,
     color: '#888780',
-    marginLeft: 4,
     textTransform: 'lowercase' as const,
+  },
+  onlinePantalla: {
+    fontSize: 10,
+    color: '#0E6755',
+    background: '#FFFFFF',
+    border: '1px solid #D5C49C',
+    padding: '1px 6px',
+    borderRadius: 8,
   },
   serviciosGrid: {
     display: 'grid',
