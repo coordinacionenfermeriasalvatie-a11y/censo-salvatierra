@@ -244,15 +244,17 @@ export function VistaImpresionFicha() {
           <span style={subrayadoCorto}>{paciente.dolor_evaluado_en ? evalHH : '__'}</span> : <span style={subrayadoCorto}>{paciente.dolor_evaluado_en ? evalMin : '__'}</span>
         </div>
 
-        {/* Tres escalas visuales */}
+        {/* Tres escalas visuales — SIN COLOR para ahorrar tóner.
+            Sólo la opción capturada se ve "rellena" (fondo negro/borde grueso),
+            el resto queda en blanco con contorno fino. */}
         <div style={gridEscalas}>
           {/* RIESGO DE CAÍDA */}
           <div style={escalaCol}>
             <div style={escalaTitulo}>RIESGO DE CAÍDA</div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8 }}>
-              <Circulo color="#E84545" texto="ALTO" marcado={caidas === 'ALTO'} />
-              <Circulo color="#F5C829" texto="MEDIANO" marcado={caidas === 'MEDIANO' || caidas === 'MEDIO'} />
-              <Circulo color="#5CAB34" texto="BAJO" marcado={caidas === 'BAJO'} />
+              <Circulo texto="ALTO" marcado={caidas === 'ALTO'} />
+              <Circulo texto="MEDIANO" marcado={caidas === 'MEDIANO' || caidas === 'MEDIO'} />
+              <Circulo texto="BAJO" marcado={caidas === 'BAJO'} />
             </div>
           </div>
 
@@ -260,9 +262,9 @@ export function VistaImpresionFicha() {
           <div style={escalaCol}>
             <div style={escalaTitulo}>RIESGO DE ÚLCERA POR PRESIÓN</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 8, alignItems: 'center' }}>
-              <BarraRiesgo color="#E84545" texto="ALTO" marcado={upp === 'ALTO'} />
-              <BarraRiesgo color="#F5C829" texto="MEDIANO" marcado={upp === 'MEDIANO' || upp === 'MEDIO'} />
-              <BarraRiesgo color="#5CAB34" texto="BAJO" marcado={upp === 'BAJO'} />
+              <BarraRiesgo texto="ALTO" marcado={upp === 'ALTO'} />
+              <BarraRiesgo texto="MEDIANO" marcado={upp === 'MEDIANO' || upp === 'MEDIO'} />
+              <BarraRiesgo texto="BAJO" marcado={upp === 'BAJO'} />
             </div>
           </div>
 
@@ -271,25 +273,23 @@ export function VistaImpresionFicha() {
             <div style={escalaTitulo}>
               ESCALA DEL DOLOR
               {dolorActual != null && (
-                <span style={{ marginLeft: 6, fontSize: 11, color: '#A32D2D' }}>
+                <span style={{ marginLeft: 6, fontSize: 11 }}>
                   · marcado: {dolorActual}
                 </span>
               )}
             </div>
             <div style={escalaDolor}>
               {[0,1,2,3,4,5,6,7,8,9,10].map(n => {
-                const color = n <= 2 ? '#5CAB34' : n <= 4 ? '#A6CE39' : n <= 6 ? '#F5C829' : n <= 8 ? '#E89829' : '#E84545';
                 const seleccionado = dolorActual === n;
                 return (
                   <div key={n} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{ fontSize: 9, fontWeight: 700, color: seleccionado ? '#A32D2D' : '#111' }}>{n}</div>
+                    <div style={{ fontSize: 9, fontWeight: 700 }}>{n}</div>
                     <div style={{
                       width: seleccionado ? 18 : 14,
                       height: seleccionado ? 18 : 14,
-                      background: color,
+                      background: seleccionado ? '#000' : '#fff',
                       borderRadius: 2,
-                      border: seleccionado ? '2px solid #000' : '0.5px solid #555',
-                      boxShadow: seleccionado ? '0 0 0 2px rgba(0,0,0,0.15)' : 'none',
+                      border: seleccionado ? '2px solid #000' : '1px solid #333',
                     }} />
                   </div>
                 );
@@ -325,19 +325,35 @@ export function VistaImpresionFicha() {
 // ============================================================
 // SUB-COMPONENTES
 // ============================================================
-function Circulo({ color, texto, marcado }: { color: string; texto: string; marcado: boolean }) {
+// Circulo B&W: contorno fino sin relleno por defecto; la opción marcada
+// queda con borde grueso negro y un punto interno relleno para que se vea
+// claramente sobre el papel sin gastar tóner.
+function Circulo({ texto, marcado }: { texto: string; marcado: boolean }) {
   return (
     <div style={{
       width: 70, height: 70, borderRadius: '50%',
-      background: color, color: '#fff', fontWeight: 800, fontSize: 11,
+      background: '#fff', color: '#000', fontWeight: 800, fontSize: 11,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      border: marcado ? '4px solid #000' : '1px solid #555',
-      boxShadow: marcado ? '0 0 0 3px rgba(0,0,0,0.15)' : 'none',
-    }}>{texto}</div>
+      border: marcado ? '3px solid #000' : '1px solid #333',
+      position: 'relative',
+    }}>
+      {texto}
+      {marcado && (
+        <span style={{
+          position: 'absolute', top: -6, right: -6,
+          width: 18, height: 18, borderRadius: '50%',
+          background: '#000', color: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 12, fontWeight: 800, lineHeight: 1,
+        }}>✓</span>
+      )}
+    </div>
   );
 }
 
-function BarraRiesgo({ color, texto, marcado }: { color: string; texto: string; marcado: boolean }) {
+// BarraRiesgo B&W: cuadro de marcado + etiqueta en caja con borde. La
+// opción capturada queda con cuadro relleno en negro y la caja en negrita.
+function BarraRiesgo({ texto, marcado }: { texto: string; marcado: boolean }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
       <span style={{
@@ -345,8 +361,9 @@ function BarraRiesgo({ color, texto, marcado }: { color: string; texto: string; 
         background: marcado ? '#000' : '#fff',
       }} />
       <div style={{
-        width: 140, padding: '4px 12px', background: color, color: '#fff',
-        fontWeight: 700, fontSize: 11, textAlign: 'center', border: '1px solid #333',
+        width: 140, padding: '4px 12px', background: '#fff', color: '#000',
+        fontWeight: marcado ? 800 : 600, fontSize: 11, textAlign: 'center',
+        border: marcado ? '2px solid #000' : '1px solid #333',
       }}>{texto}</div>
     </div>
   );
