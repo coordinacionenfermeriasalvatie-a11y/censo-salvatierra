@@ -7,7 +7,7 @@ import {
   esAdminGlobal,
   tieneScopeDeServicio,
 } from '../types'
-import { usePresence, pantallaLabel } from '../contexts/PresenceContext'
+import { usePresence } from '../contexts/PresenceContext'
 
 interface Props {
   perfil: Perfil
@@ -154,7 +154,6 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
                     <span style={styles.onlineDot} />
                     {u.nombre}
                     <span style={styles.onlineRol}>· {u.rol}</span>
-                    <span style={styles.onlinePantalla}>📍 {pantallaLabel(u.pantalla)}</span>
                   </span>
                 ))}
             </div>
