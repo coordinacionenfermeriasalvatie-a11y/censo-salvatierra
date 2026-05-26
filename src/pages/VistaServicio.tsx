@@ -13,6 +13,7 @@ import { useAuth } from '../hooks/useAuth';
 import { ModalIngreso } from './components/ModalIngreso';
 import { ModalEgreso } from './components/ModalEgreso';
 import { ModalAsignarEnfermero } from './components/ModalAsignarEnfermero';
+import { ModalGestionCama } from './components/ModalGestionCama';
 import { MenuPestanas, Pestana } from './components/MenuPestanas';
 import { VistaDietas } from './components/VistaDietas';
 import { VistaRecetario } from './components/VistaRecetario';
@@ -46,6 +47,12 @@ interface CamaEstado {
   // en la pestaña Control. La cama muestra chips de Caídas y UPP.
   riesgo_caidas?: string | null;
   riesgo_upp?: string | null;
+  // Bloqueo de cama (no ocupable sin paciente). Si está bloqueada, la
+  // cama se muestra en gris con su causa en lugar del estado "Libre".
+  cama_bloqueada?: boolean;
+  cama_causa_no_ocupacion?: string | null;
+  cama_nota_no_ocupacion?: string | null;
+  cama_bloqueada_desde?: string | null;
 }
 
 // Trazabilidad — completitud por paciente desde v_paciente_completitud_dia
@@ -116,6 +123,10 @@ export function VistaServicio() {
 
   const [modalIngreso, setModalIngreso] = useState<{ camaId: number; subservicioId: number; numeroCama: string } | null>(null);
   const [modalEgreso, setModalEgreso] = useState<{ pacienteId: string; numeroCama: string; nombre: string; fechaIngreso: string } | null>(null);
+  // Modal selector cuando se hace clic en cama vacía: ingresar paciente o
+  // bloquear la cama como NO OCUPABLE. También sirve para ver/cambiar el
+  // bloqueo actual y liberar la cama.
+  const [modalGestionCama, setModalGestionCama] = useState<CamaEstado | null>(null);
   const [modalAsignar, setModalAsignar] = useState<{ pacienteId: string; nombre: string; numeroCama: string } | null>(null);
   const [asignaciones, setAsignaciones] = useState<Record<string, { nombre: string; codigo: string }>>({});
 
@@ -292,11 +303,9 @@ export function VistaServicio() {
         fechaIngreso: cama.fecha_ingreso || '',
       });
     } else {
-      setModalIngreso({
-        camaId: cama.cama_id,
-        subservicioId: cama.subservicio_id,
-        numeroCama: cama.numero_cama,
-      });
+      // Cama vacía o bloqueada: abrimos el selector. Desde ahí se elige
+      // ingreso o bloqueo, o se libera si ya estaba bloqueada.
+      setModalGestionCama(cama);
     }
   };
 
@@ -332,7 +341,7 @@ export function VistaServicio() {
         onClick={() => onCamaClick(c)}
         style={{
           ...camaCard,
-          ...(ocupada ? camaOcupada : camaLibre),
+          ...(ocupada ? camaOcupada : c.cama_bloqueada ? camaBloqueada : camaLibre),
           ...(noCensable ? camaNoCensable : {}),
           cursor: censoSoloLectura ? 'default' : 'pointer',
         }}
@@ -435,6 +444,17 @@ export function VistaServicio() {
                 </div>
               );
             })()}
+          </>
+        ) : c.cama_bloqueada ? (
+          // Cama bloqueada (no ocupable): mostrar causa en rojo en lugar
+          // del estado DISPONIBLE. Sigue siendo clicable para liberar o
+          // cambiar la causa.
+          <>
+            <div style={camaBloqueadaLabel}>🚫 NO OCUPABLE</div>
+            <div style={camaCausaTexto} title={c.cama_nota_no_ocupacion || c.cama_causa_no_ocupacion || ''}>
+              {c.cama_causa_no_ocupacion}
+            </div>
+            <div style={camaSubservicio}>{c.subservicio}</div>
           </>
         ) : (
           <>
@@ -578,6 +598,30 @@ export function VistaServicio() {
         />
       )}
 
+      {modalGestionCama && perfil && (
+        <ModalGestionCama
+          camaId={modalGestionCama.cama_id}
+          numeroCama={modalGestionCama.numero_cama}
+          bloqueada={!!modalGestionCama.cama_bloqueada}
+          causaActual={modalGestionCama.cama_causa_no_ocupacion || null}
+          notaActual={modalGestionCama.cama_nota_no_ocupacion || null}
+          bloqueadaDesde={modalGestionCama.cama_bloqueada_desde || null}
+          perfilId={perfil.id}
+          onIngresar={() => {
+            // Pasamos de gestión → modal de ingreso de paciente.
+            const c = modalGestionCama;
+            setModalGestionCama(null);
+            setModalIngreso({
+              camaId: c.cama_id,
+              subservicioId: c.subservicio_id,
+              numeroCama: c.numero_cama,
+            });
+          }}
+          onClose={() => setModalGestionCama(null)}
+          onGuardado={() => { setModalGestionCama(null); cargar(true); }}
+        />
+      )}
+
       {modalIngreso && perfil && (
         <ModalIngreso
           camaId={modalIngreso.camaId}
@@ -674,6 +718,28 @@ const chipRiesgo = (nivel: string): React.CSSProperties => {
 };
 const camaSubservicio: React.CSSProperties = { fontSize: 10, color: '#888', textTransform: 'uppercase', marginTop: 'auto' };
 const camaLibreLabel: React.CSSProperties = { fontSize: 12, color: '#C39C59', fontWeight: 700 };
+// Cama bloqueada (no ocupable): fondo rosado grisáceo, borde rojo punteado.
+// El contraste con DISPONIBLE permite ver al instante qué camas no cuentan
+// para ocupación aunque no haya paciente.
+const camaBloqueada: React.CSSProperties = {
+  background: 'repeating-linear-gradient(45deg, #fdecea, #fdecea 6px, #f7d5d0 6px, #f7d5d0 12px)',
+  borderColor: '#A32D2D',
+  borderStyle: 'dashed',
+};
+const camaBloqueadaLabel: React.CSSProperties = {
+  fontSize: 11,
+  color: '#A32D2D',
+  fontWeight: 800,
+  letterSpacing: 0.3,
+};
+const camaCausaTexto: React.CSSProperties = {
+  fontSize: 11,
+  color: '#7d1f1f',
+  fontWeight: 700,
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+};
 const proximamente: React.CSSProperties = { textAlign: 'center', padding: 60, background: '#F5F1E8', borderRadius: 8, border: '2px dashed #C39C59', color: '#265C4E' };
 
 // PARCHE v4.5 — Estilos sección Camillas NO CENSABLES
