@@ -3,6 +3,8 @@ import { Suspense, lazy } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
+import { ResetPassword } from './pages/ResetPassword'
+import { CambiarPassword } from './pages/CambiarPassword'
 
 // Code-splitting: estas paginas pesadas se cargan solo cuando se visitan.
 // Reduce el bundle inicial de ~424KB gzip a ~150KB gzip aproximadamente.
@@ -25,11 +27,16 @@ export function App() {
     )
   }
 
-  if (!session) {
+  // La pantalla /reset-password debe ser accesible aunque acabe de llegar el
+  // usuario del correo de recuperacion. Supabase auto-establece sesion al
+  // cargar el magic link, asi que aqui ya hay sesion para el momento del render.
+  const enRutaReset = window.location.pathname === '/reset-password'
+
+  if (!session && !enRutaReset) {
     return <Login />
   }
 
-  if (!perfil) {
+  if (session && !perfil && !enRutaReset) {
     return (
       <div style={pantallaCargando}>
         <p>Tu cuenta aun no tiene perfil asignado.</p>
@@ -53,17 +60,26 @@ export function App() {
     <BrowserRouter>
       <Suspense fallback={fallbackCarga}>
         <Routes>
-          <Route
-            path="/"
-            element={<Dashboard perfil={perfil} onCerrarSesion={cerrarSesion} />}
-          />
-          <Route path="/servicio/:servicioId" element={<VistaServicio />} />
-          <Route path="/tablero" element={<TableroMaestro />} />
-          <Route path="/instructivo" element={<Instructivo />} />
-          <Route path="/imprimir/dietas/:servicioId" element={<VistaImpresionDietas />} />
-          <Route path="/imprimir/productividad/:anio/:mes" element={<VistaImpresionProductividad />} />
-          <Route path="/imprimir/recetario/:servicioId" element={<VistaImpresionRecetario />} />
-          <Route path="/imprimir/control/:servicioId" element={<VistaImpresionControl />} />
+          {/* Publica: solo necesita sesion temporal del magic link */}
+          <Route path="/reset-password" element={<ResetPassword />} />
+
+          {perfil && (
+            <>
+              <Route
+                path="/"
+                element={<Dashboard perfil={perfil} onCerrarSesion={cerrarSesion} />}
+              />
+              <Route path="/servicio/:servicioId" element={<VistaServicio />} />
+              <Route path="/tablero" element={<TableroMaestro />} />
+              <Route path="/instructivo" element={<Instructivo />} />
+              <Route path="/cambiar-contrasena" element={<CambiarPassword />} />
+              <Route path="/imprimir/dietas/:servicioId" element={<VistaImpresionDietas />} />
+              <Route path="/imprimir/productividad/:anio/:mes" element={<VistaImpresionProductividad />} />
+              <Route path="/imprimir/recetario/:servicioId" element={<VistaImpresionRecetario />} />
+              <Route path="/imprimir/control/:servicioId" element={<VistaImpresionControl />} />
+            </>
+          )}
+
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Suspense>

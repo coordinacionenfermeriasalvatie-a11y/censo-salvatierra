@@ -92,6 +92,9 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           <button onClick={() => navigate('/instructivo')} style={styles.botonInstructivo}>
             📖 Instructivo
           </button>
+          <button onClick={() => navigate('/cambiar-contrasena')} style={styles.botonInstructivo}>
+            🔑 Contrasena
+          </button>
           <button onClick={onCerrarSesion} style={styles.botonSalir}>
             Cerrar sesion
           </button>
