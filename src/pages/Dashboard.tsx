@@ -13,14 +13,26 @@ interface Props {
   onCerrarSesion: () => void
 }
 
+interface UsuarioOnline {
+  id: string
+  nombre_completo: string
+  rol: string
+  hace_segundos: number
+}
+
 export function Dashboard({ perfil, onCerrarSesion }: Props) {
   const navigate = useNavigate()
   const [servicios, setServicios] = useState<OcupacionServicio[]>([])
   const [cargando, setCargando] = useState(true)
+  const [usuariosOnline, setUsuariosOnline] = useState<UsuarioOnline[]>([])
 
   useEffect(() => {
     cargarOcupacion()
-    const interval = setInterval(cargarOcupacion, 30000)
+    cargarOnline()
+    const interval = setInterval(() => {
+      cargarOcupacion()
+      cargarOnline()
+    }, 30000)
     return () => clearInterval(interval)
   }, [])
 
@@ -34,6 +46,17 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
       setServicios(data as OcupacionServicio[])
     }
     setCargando(false)
+  }
+
+  async function cargarOnline() {
+    const { data, error } = await supabase
+      .from('v_usuarios_online')
+      .select('id, nombre_completo, rol, hace_segundos')
+      .order('hace_segundos', { ascending: true })
+
+    if (!error && data) {
+      setUsuariosOnline(data as UsuarioOnline[])
+    }
   }
 
   // Filtrar servicios por scope del rol.
@@ -135,6 +158,22 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
             />
           )}
         </div>
+
+        {esAdmin && usuariosOnline.length > 0 && (
+          <div style={styles.online}>
+            <div style={styles.onlineTitulo}>
+              🟢 En línea ahora ({usuariosOnline.length})
+            </div>
+            <div style={styles.onlineLista}>
+              {usuariosOnline.map(u => (
+                <span key={u.id} style={styles.onlineChip}>
+                  {u.nombre_completo}
+                  <span style={styles.onlineRol}>· {u.rol}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
 
         <h3 style={styles.tituloSeccion}>
           {esAdmin ? 'Servicios del hospital' : 'Mi servicio'}
@@ -329,6 +368,41 @@ const styles: Record<string, React.CSSProperties> = {
   cargando: {
     color: COLOR_VERDE_OSCURO,
     fontSize: 14
+  },
+  online: {
+    background: '#FFFFFF',
+    border: '1px solid #5CAB34',
+    borderLeft: '4px solid #5CAB34',
+    borderRadius: 6,
+    padding: '10px 14px',
+    marginBottom: 16,
+  },
+  onlineTitulo: {
+    fontSize: 12,
+    fontWeight: 600,
+    color: '#265C4E',
+    marginBottom: 6,
+    textTransform: 'uppercase' as const,
+    letterSpacing: 0.5,
+  },
+  onlineLista: {
+    display: 'flex' as const,
+    flexWrap: 'wrap' as const,
+    gap: 6,
+  },
+  onlineChip: {
+    fontSize: 11,
+    background: '#E8F4EA',
+    color: '#265C4E',
+    padding: '3px 8px',
+    borderRadius: 12,
+    border: '1px solid #5CAB34',
+  },
+  onlineRol: {
+    fontSize: 10,
+    color: '#888780',
+    marginLeft: 4,
+    textTransform: 'lowercase' as const,
   },
   serviciosGrid: {
     display: 'grid',

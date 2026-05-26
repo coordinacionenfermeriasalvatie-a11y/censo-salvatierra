@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { useAuth } from './hooks/useAuth'
+import { useHeartbeat } from './hooks/useHeartbeat'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import { ResetPassword } from './pages/ResetPassword'
@@ -18,6 +19,10 @@ const Instructivo                = lazy(() => import('./pages/Instructivo').then
 
 export function App() {
   const { session, perfil, cargando, cerrarSesion } = useAuth()
+
+  // Heartbeat: cada 30s actualiza perfiles.ultimo_acceso. Solo cuando el
+  // usuario está autenticado y tiene perfil (i.e. la app está realmente en uso).
+  useHeartbeat(session != null && perfil != null)
 
   if (cargando) {
     return (
