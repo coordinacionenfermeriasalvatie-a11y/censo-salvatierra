@@ -47,6 +47,11 @@ export const ModalIngreso: React.FC<Props> = ({
   // automáticamente en /imprimir/ficha/:pacienteId.
   const [grupoSanguineo, setGrupoSanguineo] = useState('');
   const [alergias, setAlergias] = useState('');
+  // Riesgos: trazabilidad de Caídas y UPP se inicia en el Censo (al ingreso)
+  // y corre automáticamente a Control (formato_control_paciente). Después se
+  // puede reevaluar desde la pestaña Control.
+  const [riesgoCaidas, setRiesgoCaidas] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
+  const [riesgoUpp, setRiesgoUpp] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
 
   useEffect(() => {
     (async () => {
@@ -71,7 +76,11 @@ export const ModalIngreso: React.FC<Props> = ({
     setGuardando(true);
     setError(null);
     try {
-      const { error: err } = await supabase
+      // 1) Crear el paciente. El trigger tr_crear_hojas_paciente creará
+      //    automáticamente la fila en formato_control_paciente con riesgos
+      //    en NULL. Necesitamos el id devuelto para actualizar los riesgos
+      //    capturados en este modal.
+      const { data: nuevoPaciente, error: err } = await supabase
         .from('pacientes')
         .insert({
           cama_id: camaId,
@@ -88,9 +97,30 @@ export const ModalIngreso: React.FC<Props> = ({
           alergias: alergias.trim() || null,
           estado: 'ACTIVO',
           capturado_por: capturadoPor,
-        });
+        })
+        .select('id')
+        .single();
 
       if (err) throw err;
+
+      // 2) Si se capturó riesgo de caídas o UPP en el censo, los propagamos
+      //    al formato de control. Esto es la trazabilidad que arranca en el
+      //    censo y corre automáticamente a control.
+      if (nuevoPaciente && (riesgoCaidas || riesgoUpp)) {
+        const updateRiesgos: any = { actualizado_por: capturadoPor };
+        if (riesgoCaidas) updateRiesgos.riesgo_caidas = riesgoCaidas;
+        if (riesgoUpp)    updateRiesgos.riesgo_upp = riesgoUpp;
+        const { error: errR } = await supabase
+          .from('formato_control_paciente')
+          .update(updateRiesgos)
+          .eq('paciente_id', nuevoPaciente.id);
+        if (errR) {
+          // El paciente ya quedó admitido; solo registramos el error de
+          // riesgos para no perder el ingreso.
+          console.warn('Paciente admitido pero no se pudieron guardar riesgos:', errR.message);
+        }
+      }
+
       onGuardado();
     } catch (e: any) {
       setError(e.message || 'Error al guardar el ingreso');
@@ -190,6 +220,35 @@ export const ModalIngreso: React.FC<Props> = ({
               style={input}
               placeholder="Vacío = NO. Ej. PENICILINA"
             />
+          </div>
+
+          {/* Trazabilidad clínica: la evaluación inicial de riesgos arranca
+              aquí (Censo) y corre automáticamente a la pestaña Control. La
+              enfermería puede reevaluar luego desde ahí. */}
+          <div style={{ ...campo, gridColumn: 'span 2', borderTop: '1px dashed #A32D2D', paddingTop: 10, marginTop: 4 }}>
+            <div style={{ fontSize: 10, color: '#A32D2D', fontWeight: 700, letterSpacing: 0.3, marginBottom: 2 }}>
+              ⚠️ EVALUACIÓN INICIAL DE RIESGOS (se traza a CONTROL)
+            </div>
+          </div>
+
+          <div style={campo}>
+            <label style={label}>RIESGO DE CAÍDAS</label>
+            <select value={riesgoCaidas} onChange={e => setRiesgoCaidas(e.target.value as any)} style={input}>
+              <option value="">-- Selecciona --</option>
+              <option value="ALTO">🔴 ALTO</option>
+              <option value="MEDIANO">🟡 MEDIANO</option>
+              <option value="BAJO">🟢 BAJO</option>
+            </select>
+          </div>
+
+          <div style={campo}>
+            <label style={label}>RIESGO ÚLCERA POR PRESIÓN (UPP)</label>
+            <select value={riesgoUpp} onChange={e => setRiesgoUpp(e.target.value as any)} style={input}>
+              <option value="">-- Selecciona --</option>
+              <option value="ALTO">🔴 ALTO</option>
+              <option value="MEDIANO">🟡 MEDIANO</option>
+              <option value="BAJO">🟢 BAJO</option>
+            </select>
           </div>
 
           <div style={{ ...campo, gridColumn: 'span 2' }}>
