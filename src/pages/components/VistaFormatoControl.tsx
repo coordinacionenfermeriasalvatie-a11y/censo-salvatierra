@@ -83,6 +83,35 @@ const AISLAMIENTO_OPCIONES: CatalogoItem[] = [
   { codigo: 'CONTACTO_PLUS', nombre: '🟫 Por contacto plus' },
 ];
 
+// Grupos sanguíneos: para Tarjeta de Identificación impresa.
+// Persiste en pacientes.grupo_sanguineo (TEXT con CHECK).
+const GRUPO_SANGUINEO_OPCIONES: CatalogoItem[] = [
+  { codigo: 'O+',  nombre: 'O Rh+' },
+  { codigo: 'O-',  nombre: 'O Rh−' },
+  { codigo: 'A+',  nombre: 'A Rh+' },
+  { codigo: 'A-',  nombre: 'A Rh−' },
+  { codigo: 'B+',  nombre: 'B Rh+' },
+  { codigo: 'B-',  nombre: 'B Rh−' },
+  { codigo: 'AB+', nombre: 'AB Rh+' },
+  { codigo: 'AB-', nombre: 'AB Rh−' },
+  { codigo: 'DESCONOCIDO', nombre: 'Desconocido' },
+];
+
+// Escala numérica del dolor (0=sin dolor, 10=máximo).
+const DOLOR_ESCALA_OPCIONES: CatalogoItem[] = [
+  { codigo: '0',  nombre: '0 — Sin dolor' },
+  { codigo: '1',  nombre: '1' },
+  { codigo: '2',  nombre: '2' },
+  { codigo: '3',  nombre: '3 — Leve' },
+  { codigo: '4',  nombre: '4' },
+  { codigo: '5',  nombre: '5 — Moderado' },
+  { codigo: '6',  nombre: '6' },
+  { codigo: '7',  nombre: '7 — Intenso' },
+  { codigo: '8',  nombre: '8' },
+  { codigo: '9',  nombre: '9' },
+  { codigo: '10', nombre: '10 — Extremo' },
+];
+
 export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
   const { perfil } = useAuth();
 
@@ -156,16 +185,48 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
   useEffect(() => { cargar(); }, [cargar]);
 
   // Guardado de campos legacy que SIGUEN en formato_control_paciente
-  // (riesgos, causa_no_ocupacion, traslado, observaciones)
+  // (riesgos, causa_no_ocupacion, traslado, observaciones, dolor_escala)
   const guardarCampo = async (pacienteId: string, campo: string, valor: string | null) => {
     setGuardando(pacienteId);
     setError(null);
     try {
       const update: any = { [campo]: valor || null, actualizado_por: perfil?.id };
+
+      // Caso especial: al cambiar la escala de dolor, también marcamos
+      // cuándo se evaluó (para impresión y trazabilidad). Si se limpia,
+      // limpiamos también la fecha.
+      if (campo === 'dolor_escala') {
+        update.dolor_escala = valor === null || valor === '' ? null : parseInt(valor, 10);
+        update.dolor_evaluado_en = valor === null || valor === '' ? null : new Date().toISOString();
+      }
+
       const { error: err } = await supabase
         .from('formato_control_paciente')
         .update(update)
         .eq('paciente_id', pacienteId);
+      if (err) throw err;
+      setRenglones(rs => rs.map(r =>
+        r.paciente_id === pacienteId ? { ...r, ...update } as ControlRenglon : r
+      ));
+    } catch (e: any) {
+      setError(`No se pudo guardar: ${e.message}`);
+    } finally {
+      setGuardando(null);
+    }
+  };
+
+  // Guardado de campos que viven en la tabla pacientes (grupo_sanguineo,
+  // alergias). Mantenemos la firma simétrica a guardarCampo para que los
+  // componentes hijos no tengan que conocer el destino.
+  const guardarCampoPaciente = async (pacienteId: string, campo: string, valor: string | null) => {
+    setGuardando(pacienteId);
+    setError(null);
+    try {
+      const update: any = { [campo]: valor || null };
+      const { error: err } = await supabase
+        .from('pacientes')
+        .update(update)
+        .eq('id', pacienteId);
       if (err) throw err;
       setRenglones(rs => rs.map(r =>
         r.paciente_id === pacienteId ? { ...r, [campo]: valor || null } as ControlRenglon : r
@@ -182,19 +243,23 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
   }
 
   // ---- Componentes mini para los campos no-evento ----
-  const CampoDropdownConColor = ({ r, campo, label, opciones }:
-    { r: ControlRenglon; campo: string; label: string; opciones: CatalogoItem[] }) => {
-    const valor = r[campo] || '';
+  // `onGuardar`: permite redirigir el update a otra tabla (p.ej. pacientes
+  // en lugar de formato_control_paciente). Default = guardarCampo.
+  const CampoDropdownConColor = ({ r, campo, label, opciones, onGuardar }:
+    { r: ControlRenglon; campo: string; label: string; opciones: CatalogoItem[];
+      onGuardar?: (pid: string, campo: string, valor: string | null) => void; }) => {
+    const valor = r[campo] != null ? String(r[campo]) : '';
     const sel = opciones.find(o => o.codigo === valor);
     const styleColor: React.CSSProperties = sel?.color
       ? { backgroundColor: sel.color, color: '#fff', fontWeight: 700, borderColor: sel.color }
       : {};
+    const save = onGuardar || guardarCampo;
     return (
       <div style={campoContenedor}>
         <label style={campoLabel}>{label}</label>
         <select
           value={valor}
-          onChange={e => guardarCampo(r.paciente_id, campo, e.target.value)}
+          onChange={e => save(r.paciente_id, campo, e.target.value)}
           style={{ ...input, ...styleColor }}
           disabled={guardando === r.paciente_id}
         >
@@ -216,14 +281,20 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
     </div>
   );
 
-  const CampoTextoLibre = ({ r, campo, label }: { r: ControlRenglon; campo: string; label: string }) => (
-    <div style={campoContenedor}>
-      <label style={campoLabel}>{label}</label>
-      <input type="text" defaultValue={r[campo] || ''}
-        onBlur={e => { if (e.target.value !== (r[campo] || '')) guardarCampo(r.paciente_id, campo, e.target.value); }}
-        style={input} disabled={guardando === r.paciente_id} placeholder="--" />
-    </div>
-  );
+  const CampoTextoLibre = ({ r, campo, label, onGuardar, placeholder }:
+    { r: ControlRenglon; campo: string; label: string;
+      onGuardar?: (pid: string, campo: string, valor: string | null) => void;
+      placeholder?: string; }) => {
+    const save = onGuardar || guardarCampo;
+    return (
+      <div style={campoContenedor}>
+        <label style={campoLabel}>{label}</label>
+        <input type="text" defaultValue={r[campo] || ''}
+          onBlur={e => { if (e.target.value !== (r[campo] || '')) save(r.paciente_id, campo, e.target.value); }}
+          style={input} disabled={guardando === r.paciente_id} placeholder={placeholder || '--'} />
+      </div>
+    );
+  };
 
   const eventosDe = (pid: string, tipo: TipoEvento) => eventos.indice[pid]?.[tipo] ?? [];
 
@@ -458,6 +529,40 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                       </div>
                       <div style={camposGrid}>
                         <CampoTextoLibre r={r} campo="traslado" label="Traslado (texto libre)" />
+                      </div>
+                    </div>
+
+                    {/* TARJETA DE IDENTIFICACIÓN — datos persistentes que alimentan
+                        /imprimir/ficha/:pacienteId. Grupo y alergias viven en pacientes;
+                        dolor_escala vive en formato_control_paciente con timestamp automático. */}
+                    <div style={seccion}>
+                      <div style={{ ...seccionTitulo, background: '#5b3a8a' }}>
+                        TARJETA DE IDENTIFICACIÓN <span style={infoChip}>alimenta la ficha impresa 🪪</span>
+                      </div>
+                      <div style={camposGrid}>
+                        <CampoDropdownConColor
+                          r={r}
+                          campo="grupo_sanguineo"
+                          label="Grupo y RH"
+                          opciones={GRUPO_SANGUINEO_OPCIONES}
+                          onGuardar={guardarCampoPaciente}
+                        />
+                        <CampoTextoLibre
+                          r={r}
+                          campo="alergias"
+                          label="Alergias (NO = vacío)"
+                          onGuardar={guardarCampoPaciente}
+                          placeholder="Ej. Penicilina, AINEs"
+                        />
+                        <CampoDropdownConColor
+                          r={r}
+                          campo="dolor_escala"
+                          label="Escala del dolor (0–10)"
+                          opciones={DOLOR_ESCALA_OPCIONES}
+                        />
+                      </div>
+                      <div style={{ padding: '0 8px 8px', fontSize: 10, color: '#888' }}>
+                        💡 Estos datos se imprimen automáticamente en la Tarjeta de Identificación (🪪).
                       </div>
                     </div>
 
