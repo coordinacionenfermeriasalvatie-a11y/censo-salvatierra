@@ -31,6 +31,7 @@ interface FichaPaciente {
   hora_ingreso: string | null;
   grupo_sanguineo: string | null;
   alergias: string | null;
+  numero_cama: string | null;
   riesgo_upp: string | null;
   riesgo_caidas: string | null;
   dolor_escala: number | null;
@@ -51,6 +52,7 @@ export function VistaImpresionFicha() {
         .select(`
           id, nombre_paciente, edad, genero, nss_curp, diagnostico_ingreso,
           fecha_ingreso, hora_ingreso, grupo_sanguineo, alergias,
+          camas ( numero_cama ),
           formato_control_paciente ( riesgo_upp, riesgo_caidas, dolor_escala, dolor_evaluado_en )
         `)
         .eq('id', pacienteId)
@@ -62,6 +64,7 @@ export function VistaImpresionFicha() {
       const fc = Array.isArray(data.formato_control_paciente)
         ? data.formato_control_paciente[0]
         : data.formato_control_paciente;
+      const cama = Array.isArray(data.camas) ? data.camas[0] : data.camas;
       setPaciente({
         id: data.id,
         nombre_paciente: data.nombre_paciente,
@@ -73,6 +76,7 @@ export function VistaImpresionFicha() {
         hora_ingreso: data.hora_ingreso,
         grupo_sanguineo: data.grupo_sanguineo || null,
         alergias: data.alergias || null,
+        numero_cama: cama?.numero_cama || null,
         riesgo_upp: fc?.riesgo_upp || null,
         riesgo_caidas: fc?.riesgo_caidas || null,
         dolor_escala: fc?.dolor_escala ?? null,
@@ -171,7 +175,7 @@ export function VistaImpresionFicha() {
       </div>
 
       {/* TARJETA */}
-      <div style={tarjeta}>
+      <div className="ficha-card" style={tarjeta}>
         {/* Encabezado: logos + título */}
         <div style={cabeza}>
           <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" style={logoIzq} />
@@ -179,10 +183,16 @@ export function VistaImpresionFicha() {
           <img src="/logos/LOGO_HOSPITAL.jpg" alt="Hospital Salvatierra" style={logoDer} />
         </div>
 
-        {/* Nombre */}
+        {/* Nombre + Cama */}
         <div style={filaNombre}>
           <span style={labelNombre}>NOMBRE:</span>
           <div style={cajaNombre}>{paciente.nombre_paciente}</div>
+          {paciente.numero_cama && (
+            <div style={camaBadge} title="Número de cama">
+              <span style={camaBadgeLabel}>CAMA</span>
+              <span style={camaBadgeNum}>{paciente.numero_cama}</span>
+            </div>
+          )}
         </div>
 
         {/* Fecha de nacimiento */}
@@ -306,19 +316,28 @@ export function VistaImpresionFicha() {
 
       <style>{`
         /* Carta horizontal con márgenes mínimos. La tarjeta ocupa toda la
-           hoja para que nombre y fecha de nacimiento sean los más grandes
-           posibles sobre papel. */
+           hoja (ancho y alto) para que nombre y fecha de nacimiento sean
+           lo más grandes posibles sobre papel. */
         @page { size: letter landscape; margin: 6mm; }
         @media print {
           .no-print { display: none !important; }
           html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
           .ficha-page { padding: 0 !important; background: #fff !important; }
+          /* En impresión, el tarjeta crece hasta llenar la carta horizontal */
+          .ficha-card {
+            max-width: none !important;
+            width: 100% !important;
+            min-height: calc(100vh - 12mm) !important;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+          }
         }
         @media screen {
           .ficha-page {
             background: #F5F1E8;
             min-height: 100vh;
-            padding: 40px 20px;
+            padding: 32px 16px;
           }
         }
       `}</style>
@@ -387,89 +406,115 @@ const btnVolver: React.CSSProperties = {
 };
 const btnImprimir: React.CSSProperties = { ...btnVolver, background: '#C39C59', color: '#fff' };
 
+// Ocupa toda la hoja carta horizontal — usamos vw para que el card crezca
+// hasta los márgenes del @page. Solo se aplica al imprimir; en pantalla
+// queda en un contenedor de ancho fijo legible.
 const tarjeta: React.CSSProperties = {
   background: '#fff',
-  maxWidth: 1100,
+  width: '100%',
+  maxWidth: 1280,
   margin: '0 auto',
-  padding: 16,
-  border: '2px solid #333',
+  padding: 14,
+  border: '2.5px solid #333',
   borderRadius: 6,
   fontFamily: 'Arial, sans-serif',
   color: '#111',
 };
 const cabeza: React.CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  borderBottom: '1.5px solid #333', paddingBottom: 6, marginBottom: 10,
+  borderBottom: '2px solid #333', paddingBottom: 6, marginBottom: 14,
+  gap: 12,
 };
-const logoIzq: React.CSSProperties = { height: 42, objectFit: 'contain' };
-const logoDer: React.CSSProperties = { height: 42, objectFit: 'contain' };
-const titulo: React.CSSProperties = { fontSize: 22, fontWeight: 800, color: '#222', letterSpacing: 1 };
+// Logo IMSS-Bienestar: más pequeño (32px vs 42px antes) — el usuario lo
+// quiere "un poco más pequeño" sin alterar la imagen. Aspect ratio se
+// mantiene con objectFit:contain.
+const logoIzq: React.CSSProperties = { height: 32, objectFit: 'contain' };
+const logoDer: React.CSSProperties = { height: 48, objectFit: 'contain' };
+const titulo: React.CSSProperties = { fontSize: 28, fontWeight: 800, color: '#222', letterSpacing: 1.5 };
 
-const filaNombre: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 };
-const labelNombre: React.CSSProperties = { fontWeight: 800, fontSize: 20 };
+const filaNombre: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 };
+const labelNombre: React.CSSProperties = { fontWeight: 800, fontSize: 22 };
 const cajaNombre: React.CSSProperties = {
-  flex: 1, border: '2px solid #333', borderRadius: 16,
-  padding: '14px 20px', fontSize: 26, fontWeight: 800,
-  letterSpacing: 0.5,
-  minHeight: 54, display: 'flex', alignItems: 'center',
+  flex: 1, border: '3px solid #333', borderRadius: 18,
+  padding: '16px 22px', fontSize: 32, fontWeight: 900,
+  letterSpacing: 0.7,
+  minHeight: 62, display: 'flex', alignItems: 'center',
   textTransform: 'uppercase',
+  background: '#fff',
+};
+// Badge de CAMA junto al nombre — número grande para identificar al instante.
+const camaBadge: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', alignItems: 'center',
+  border: '3px solid #0E6755', borderRadius: 14,
+  padding: '6px 18px', background: '#fff',
+  minWidth: 90, minHeight: 62, justifyContent: 'center',
+};
+const camaBadgeLabel: React.CSSProperties = {
+  fontSize: 11, fontWeight: 700, color: '#0E6755', letterSpacing: 1,
+};
+const camaBadgeNum: React.CSSProperties = {
+  fontSize: 30, fontWeight: 900, color: '#0E6755', lineHeight: 1, marginTop: 2,
 };
 
-const filaFnac: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 12, marginBottom: 10 };
-const labelFnac: React.CSSProperties = { fontWeight: 800, fontSize: 18 };
+const filaFnac: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 14, marginBottom: 12 };
+const labelFnac: React.CSSProperties = { fontWeight: 800, fontSize: 22 };
 const cajaFnac: React.CSSProperties = {
-  display: 'flex', border: '2px solid #333', borderRadius: 16,
-  padding: '10px 14px', minWidth: 360, fontSize: 20, fontWeight: 800,
-  letterSpacing: 0.3, alignItems: 'center', gap: 4,
+  display: 'flex', border: '3px solid #333', borderRadius: 18,
+  padding: '12px 18px', minWidth: 420, fontSize: 24, fontWeight: 900,
+  letterSpacing: 0.5, alignItems: 'center', gap: 6,
 };
 
-const filaIngreso: React.CSSProperties = { fontSize: 13, marginBottom: 8 };
+const filaIngreso: React.CSSProperties = { fontSize: 15, marginBottom: 10, fontWeight: 600 };
 const subrayado: React.CSSProperties = {
-  borderBottom: '1px solid #333', display: 'inline-block',
-  minWidth: 80, padding: '0 4px', textAlign: 'center',
+  borderBottom: '1.5px solid #333', display: 'inline-block',
+  minWidth: 90, padding: '0 6px', textAlign: 'center', fontWeight: 700,
 };
 const subrayadoCorto: React.CSSProperties = {
-  borderBottom: '1px solid #333', display: 'inline-block',
-  minWidth: 40, padding: '0 4px', textAlign: 'center',
+  borderBottom: '1.5px solid #333', display: 'inline-block',
+  minWidth: 50, padding: '0 6px', textAlign: 'center', fontWeight: 700,
 };
 
 const filaDatos: React.CSSProperties = {
-  display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 10,
-  fontSize: 13, alignItems: 'center',
+  display: 'flex', flexWrap: 'wrap', gap: 20, marginBottom: 12,
+  fontSize: 15, alignItems: 'center', fontWeight: 600,
 };
 const cajaSexo: React.CSSProperties = {
-  display: 'inline-block', width: 28, height: 28, border: '1.5px solid #333',
-  borderRadius: 4, textAlign: 'center', lineHeight: '26px', fontWeight: 700,
+  display: 'inline-block', width: 32, height: 32, border: '2px solid #333',
+  borderRadius: 4, textAlign: 'center', lineHeight: '28px', fontWeight: 800,
+  fontSize: 16,
 };
 
 const filaAlergias: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 4,
+  display: 'flex', alignItems: 'center', gap: 10, fontSize: 15, marginBottom: 4, fontWeight: 600,
 };
 const filaAlergiasSegunda: React.CSSProperties = {
-  display: 'flex', alignItems: 'center', marginBottom: 10,
+  display: 'flex', alignItems: 'center', marginBottom: 12,
 };
 const cajaNoSi: React.CSSProperties = {
-  display: 'inline-block', padding: '4px 14px', border: '1.5px solid #333',
-  borderRadius: 4, fontWeight: 700, fontSize: 13,
+  display: 'inline-block', padding: '5px 18px', border: '2px solid #333',
+  borderRadius: 4, fontWeight: 800, fontSize: 15,
 };
 const lineaLarga: React.CSSProperties = {
-  flex: 1, borderBottom: '1px solid #333', marginLeft: 8, marginRight: 4, minHeight: 14,
+  flex: 1, borderBottom: '1.5px solid #333', marginLeft: 10, marginRight: 4, minHeight: 18,
 };
 
 const subtitEvaluacion: React.CSSProperties = {
-  background: '#E5E5E5', padding: '6px 10px', fontSize: 13,
-  marginBottom: 12, borderRadius: 4,
+  background: '#E5E5E5', padding: '8px 12px', fontSize: 15,
+  marginBottom: 14, borderRadius: 4, fontWeight: 600,
 };
+// Las escalas crecen para llenar el resto de la hoja (la card es flex column,
+// las escalas son el último elemento con flex:1).
 const gridEscalas: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 18,
+  display: 'grid', gridTemplateColumns: '1fr 1fr 1.4fr', gap: 22,
   alignItems: 'flex-start',
+  flex: 1, marginTop: 4,
 };
 const escalaCol: React.CSSProperties = { textAlign: 'center' };
-const escalaTitulo: React.CSSProperties = { fontWeight: 700, fontSize: 13, marginBottom: 6 };
+const escalaTitulo: React.CSSProperties = { fontWeight: 800, fontSize: 15, marginBottom: 10 };
 const escalaDolor: React.CSSProperties = {
-  display: 'flex', gap: 2, marginTop: 8,
+  display: 'flex', gap: 3, marginTop: 10,
 };
 const escalaDolorEtiquetas: React.CSSProperties = {
-  display: 'flex', justifyContent: 'space-between', fontSize: 9, color: '#555',
-  marginTop: 4, padding: '0 4px',
+  display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#333',
+  marginTop: 6, padding: '0 4px', fontWeight: 600,
 };
