@@ -337,6 +337,37 @@ export const VistaImpresionControl: React.FC = () => {
 
       {/* Tabla principal — 37 columnas */}
       <table className="tabla-control">
+        {/* Anchos explícitos: con table-layout:fixed, estas columnas mandan.
+            NOMBRE recibe el bloque más grande (10%) para que quepa en una
+            sola fila sin partirse. CAMA/EDAD/SEXO chicos. Eventos verticales
+            uniformes para ahorrar espacio. */}
+        <colgroup>
+          {/* IDENTIFICACIÓN (9) */}
+          <col style={{ width: '2.0%' }} />   {/* CAMA */}
+          <col style={{ width: '10.0%' }} />  {/* NOMBRE */}
+          <col style={{ width: '1.6%' }} />   {/* EDAD */}
+          <col style={{ width: '1.6%' }} />   {/* SEXO */}
+          <col style={{ width: '4.0%' }} />   {/* NSS / CURP */}
+          <col style={{ width: '6.0%' }} />   {/* DX */}
+          <col style={{ width: '3.5%' }} />   {/* ESPECIALIDAD */}
+          <col style={{ width: '2.4%' }} />   {/* FECHA INGRESO */}
+          <col style={{ width: '2.4%' }} />   {/* HORA INGRESO */}
+          {/* VASCULARES (8) */}
+          <col span={8} style={{ width: '2.05%' }} />
+          {/* SONDAS (3) */}
+          <col span={3} style={{ width: '2.05%' }} />
+          {/* PROCEDIMIENTOS (3) */}
+          <col span={3} style={{ width: '2.05%' }} />
+          {/* RIESGOS (4) */}
+          <col style={{ width: '2.2%' }} />   {/* UPP */}
+          <col style={{ width: '2.2%' }} />   {/* CAÍDAS */}
+          <col style={{ width: '2.6%' }} />   {/* CAUSA NO OCUP */}
+          <col style={{ width: '2.6%' }} />   {/* AISLAMIENTO */}
+          {/* APOYOS (8) */}
+          <col span={8} style={{ width: '2.6%' }} />
+          {/* OBS GENERAL (1) */}
+          <col style={{ width: '4.3%' }} />
+        </colgroup>
         <thead>
           <tr className="grupo-row">
             <th colSpan={9} className="g-id">IDENTIFICACIÓN E INGRESO</th>
@@ -476,20 +507,27 @@ export const VistaImpresionControl: React.FC = () => {
       <style>{`
         @page {
           size: legal landscape;
-          margin: 7mm 5mm;
+          margin: 5mm 4mm;
         }
 
         @media print {
           .no-print { display: none !important; }
-          body { background: white !important; }
+          html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          /* Conservar colores de los headers de grupo en la impresión */
+          .tabla-control .grupo-row th,
+          .tabla-control .c-cama { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          /* No partir filas entre páginas; el ajuste de columnas hace que
+             todo quepa en una sola hoja legal horizontal. */
+          .tabla-control tr { page-break-inside: avoid; }
+          .hoja-impresion { padding: 0 !important; }
         }
 
         @media screen {
           .hoja-impresion {
             background: white;
-            max-width: 1600px;
+            max-width: 1700px;
             margin: 60px auto 20px;
-            padding: 12px;
+            padding: 10px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
           }
         }
@@ -502,14 +540,14 @@ export const VistaImpresionControl: React.FC = () => {
         .tabla-control {
           width: 100%;
           border-collapse: collapse;
-          font-size: 6pt;
+          font-size: 5.5pt;
           table-layout: fixed;
-          margin-top: 4px;
+          margin-top: 3px;
         }
         .tabla-control th,
         .tabla-control td {
           border: 0.4px solid #555;
-          padding: 1.5px 2px;
+          padding: 1px 1.5px;
           vertical-align: top;
           word-wrap: break-word;
           overflow: hidden;
@@ -518,7 +556,7 @@ export const VistaImpresionControl: React.FC = () => {
           background: #f0f0f0;
           font-weight: 700;
           text-align: center;
-          font-size: 5.5pt;
+          font-size: 5pt;
           line-height: 1.05;
         }
         /* Encabezados de columna ROTADOS (vertical, lectura de abajo hacia arriba).
@@ -528,24 +566,24 @@ export const VistaImpresionControl: React.FC = () => {
           writing-mode: vertical-rl;
           transform: rotate(180deg);
           vertical-align: middle;
-          height: 105px;
-          padding: 6px 2px;
-          font-size: 7pt;
-          line-height: 1.1;
+          height: 92px;
+          padding: 4px 1px;
+          font-size: 6pt;
+          line-height: 1.05;
           white-space: nowrap;
         }
         /* Encabezados HORIZONTALES para columnas con texto corto */
         .tabla-control thead th.col-h {
           vertical-align: middle;
-          height: 105px;
+          height: 92px;
           padding: 2px;
-          font-size: 7pt;
-          line-height: 1.1;
+          font-size: 6pt;
+          line-height: 1.05;
         }
         .tabla-control .grupo-row th {
           color: white;
-          font-size: 6.8pt;
-          padding: 3px 2px;
+          font-size: 6pt;
+          padding: 2.5px 2px;
           letter-spacing: 0.2px;
         }
         .tabla-control .g-id     { background: #6b7d8a; }
@@ -558,42 +596,47 @@ export const VistaImpresionControl: React.FC = () => {
 
         .tabla-control tbody td {
           text-align: center;
-          height: 26px;
+          height: 22px;
         }
         .tabla-control .c-cama {
           font-weight: 700;
           background: #f5f1e8;
-          font-size: 8pt;
+          font-size: 7pt;
         }
+        /* NOMBRE en una sola fila: nowrap + overflow ellipsis para que la
+           columna se ajuste al texto disponible sin partirlo en 2 líneas. */
         .tabla-control .c-nombre {
           text-align: left;
           font-weight: 700;
-          font-size: 6.5pt;
-          line-height: 1.15;
+          font-size: 6pt;
+          line-height: 1.05;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .tabla-control .c-dx,
         .tabla-control .c-esp {
           text-align: left;
-          font-size: 6pt;
-          line-height: 1.15;
+          font-size: 5.5pt;
+          line-height: 1.1;
         }
         .tabla-control .c-id {
-          font-size: 5.8pt;
+          font-size: 5.3pt;
           font-family: 'Courier New', monospace;
         }
         .tabla-control .c-num {
-          font-size: 6pt;
+          font-size: 5.5pt;
         }
         .tabla-control .c-corto,
         .tabla-control .c-tags {
-          font-size: 5.5pt;
+          font-size: 5pt;
           text-align: left;
-          line-height: 1.15;
+          line-height: 1.1;
         }
         .tabla-control .c-obs {
           text-align: left;
-          font-size: 5.5pt;
-          line-height: 1.15;
+          font-size: 5pt;
+          line-height: 1.1;
         }
         .tabla-control .badge-dias {
           background: #265C4E;
@@ -642,38 +685,38 @@ const btnCerrar: React.CSSProperties = {
   padding: '6px 14px', borderRadius: 4, fontSize: 13, cursor: 'pointer',
 };
 const headerBox: React.CSSProperties = {
-  textAlign: 'center', marginBottom: 6,
-  borderBottom: '2px solid #0E6755', paddingBottom: 4,
+  textAlign: 'center', marginBottom: 3,
+  borderBottom: '1.5px solid #0E6755', paddingBottom: 2,
 };
 const headerLinea1: React.CSSProperties = {
   background: '#C39C59', color: '#000', fontWeight: 700,
-  fontSize: 9, padding: '3px 0', letterSpacing: 0.3,
+  fontSize: 8, padding: '2px 0', letterSpacing: 0.3,
 };
 const headerLinea2: React.CSSProperties = {
   background: '#0E6755', color: '#fff', fontWeight: 700,
-  fontSize: 9, padding: '3px 0',
+  fontSize: 8, padding: '2px 0',
 };
 const headerLinea3: React.CSSProperties = {
   background: '#fff', color: '#0E6755', fontWeight: 700,
-  fontSize: 8.5, padding: '3px 0',
+  fontSize: 7.5, padding: '2px 0',
 };
 const subHeaderBox: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between',
-  fontSize: 8, padding: '3px 4px', marginBottom: 2,
+  fontSize: 7.5, padding: '2px 4px', marginBottom: 1,
   borderTop: '1px solid #555', borderBottom: '1px solid #555',
   background: '#fafafa',
 };
 const pieBox: React.CSSProperties = {
   display: 'flex', justifyContent: 'space-between',
-  marginTop: 12, paddingTop: 6,
+  marginTop: 6, paddingTop: 3,
   borderTop: '1px solid #555',
 };
 const firma: React.CSSProperties = {
   width: '32%', textAlign: 'center',
 };
 const firmaLinea: React.CSSProperties = {
-  borderBottom: '1px solid #000', height: 18, marginBottom: 2,
+  borderBottom: '1px solid #000', height: 12, marginBottom: 1,
 };
 const firmaLabel: React.CSSProperties = {
-  fontSize: 7, color: '#444',
+  fontSize: 6.5, color: '#444',
 };
