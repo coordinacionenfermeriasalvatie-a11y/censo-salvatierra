@@ -48,6 +48,8 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
 
   const totalCamas = serviciosVisibles.reduce((s, srv) => s + srv.total_camas, 0)
   const totalOcupadas = serviciosVisibles.reduce((s, srv) => s + Number(srv.camas_ocupadas), 0)
+  const totalExtrasTotales = serviciosVisibles.reduce((s, srv) => s + Number(srv.extras_totales || 0), 0)
+  const totalExtrasOcupados = serviciosVisibles.reduce((s, srv) => s + Number(srv.extras_ocupados || 0), 0)
   const porcentajeGlobal =
     totalCamas > 0 ? Math.round((totalOcupadas / totalCamas) * 100) : 0
   const esAdmin = esAdminGlobal(perfil.rol)
@@ -122,6 +124,13 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
             valor={`${porcentajeGlobal}%`}
             color="#C39C59"
           />
+          {totalExtrasTotales > 0 && (
+            <KpiCard
+              etiqueta="Camillas/Sillas"
+              valor={`${totalExtrasOcupados}/${totalExtrasTotales}`}
+              color="#7d5b2f"
+            />
+          )}
         </div>
 
         <h3 style={styles.tituloSeccion}>
