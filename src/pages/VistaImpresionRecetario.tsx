@@ -278,8 +278,12 @@ export const VistaImpresionRecetario: React.FC = () => {
                 <td className="c-med">{limpiar(m.medicamento)}</td>
                 <td className="c-via">{limpiar(m.via)}</td>
                 <td className="c-frec">{limpiar(m.frecuencia)}</td>
-                <td className="c-check">☐</td>
-                <td className="c-check">☐</td>
+                {/* Solicitada/Dispensada: si hay cantidad capturada, se imprime
+                    el número (en negritas) para que la farmacia vea exactamente
+                    cuántas piezas se piden y cuántas dispensó. Si está vacío
+                    se deja la casilla ☐ por si el captura ocurre a mano. */}
+                <td className="c-check">{m.solicitada != null && m.solicitada > 0 ? <b>{m.solicitada}</b> : '☐'}</td>
+                <td className="c-check">{m.dispensada != null && m.dispensada > 0 ? <b>{m.dispensada}</b> : '☐'}</td>
                 <td className="c-obs"></td>
               </tr>
             ));
@@ -297,7 +301,7 @@ export const VistaImpresionRecetario: React.FC = () => {
 
       {/* Leyenda y pie con 3 firmas clásicas de receta IMSS */}
       <div style={leyendaBox}>
-        <span><b>SOL</b> = Solicitada a farmacia &nbsp; · &nbsp; <b>DIS</b> = Dispensada por farmacia &nbsp; · &nbsp; Marcar con ✓ al verificar</span>
+        <span><b>SOL</b> = Cantidad solicitada a farmacia &nbsp; · &nbsp; <b>DIS</b> = Cantidad dispensada por farmacia &nbsp; · &nbsp; ☐ = sin cantidad capturada (escribir a mano)</span>
       </div>
 
       <footer style={pieBox}>

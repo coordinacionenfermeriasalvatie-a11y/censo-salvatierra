@@ -24,8 +24,17 @@ interface ControlRenglon {
   edad: number;
   genero: string;
   nss_curp: string | null;
+  fecha_nacimiento: string | null;
   diagnostico_ingreso: string;
   [key: string]: any;
+}
+
+// Formatea una fecha YYYY-MM-DD como DD/MM/AAAA (formato institucional).
+function formatearFechaNac(f: string | null | undefined): string {
+  if (!f) return '';
+  const [y, m, d] = f.split('-');
+  if (!y || !m || !d) return f;
+  return `${d}/${m}/${y}`;
 }
 
 interface CatalogoItem {
@@ -394,6 +403,9 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                       <div style={pacienteNombre}>{r.nombre_paciente}</div>
                       <div style={pacienteSub}>
                         {r.subservicio} · {r.edad} años · {r.genero?.substring(0, 4)} · Exp {r.nss_curp || '--'}
+                        {r.fecha_nacimiento && (
+                          <> · <strong>F. Nac:</strong> {formatearFechaNac(r.fecha_nacimiento)}</>
+                        )}
                         <br />
                         <span style={{ color: '#7d5b2f' }}>Dx: {r.diagnostico_ingreso}</span>
                       </div>
