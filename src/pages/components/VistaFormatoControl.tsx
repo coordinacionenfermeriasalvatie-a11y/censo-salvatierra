@@ -371,9 +371,9 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
         </span>
         <button
           onClick={() => window.open(`/imprimir/control/${servicioId}?auto=0`, '_blank', 'noopener,noreferrer')}
-          title="Abrir vista de impresión del censo completo"
+          title="Abrir vista de impresión del Formato de Control"
           style={{ background: '#fff', color: '#0E6755', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-        >🖨️ Imprimir Censo</button>
+        >🖨️ Imprimir Control</button>
       </div>
 
       {error && <div style={errorBanner}>⚠️ {error}</div>}
