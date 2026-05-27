@@ -54,9 +54,39 @@
         }
       }
 
-      // 3) Limpiar localStorage (mantiene la sesión de Supabase si quieres
-      //    re-loguearte, NO la borramos para no obligar a re-loguear).
-      log('OK — listo. Toca "Abrir la app".');
+      // 3) Limpiar localStorage y sessionStorage. Esto SÍ cierra tu sesión
+      //    pero arregla casos donde el token de Supabase quedó corrupto
+      //    (causa típica de pantalla en blanco que persiste tras limpiar
+      //    cachés). Vas a tener que volver a entrar con tu correo y
+      //    contraseña una sola vez.
+      try {
+        const lsCount = localStorage.length;
+        localStorage.clear();
+        log('localStorage borrado (' + lsCount + ' items)');
+      } catch (e) { log('localStorage: ' + e.message); }
+      try {
+        const ssCount = sessionStorage.length;
+        sessionStorage.clear();
+        log('sessionStorage borrado (' + ssCount + ' items)');
+      } catch (e) { log('sessionStorage: ' + e.message); }
+
+      // 4) Borrar IndexedDB (Supabase guarda algo de estado ahí también)
+      if ('indexedDB' in window && indexedDB.databases) {
+        try {
+          const dbs = await indexedDB.databases();
+          log('IndexedDB encontradas: ' + dbs.length);
+          for (const db of dbs) {
+            if (db.name) {
+              indexedDB.deleteDatabase(db.name);
+              log('IDB borrada: ' + db.name);
+            }
+          }
+        } catch (e) { log('IDB: ' + e.message); }
+      }
+
+      log('');
+      log('✅ LIMPIEZA COMPLETA. Toca "Abrir la app".');
+      log('Vas a tener que volver a iniciar sesión.');
       document.getElementById('ir').style.display = 'inline-block';
     } catch (e) {
       log('Error: ' + e.message);
