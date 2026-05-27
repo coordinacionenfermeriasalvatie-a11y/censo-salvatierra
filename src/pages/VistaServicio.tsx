@@ -27,6 +27,7 @@ const VistaFormatoControl   = lazy(() => import('./components/VistaFormatoContro
 const VistaProductividad    = lazy(() => import('./components/VistaProductividad').then(m => ({ default: m.VistaProductividad })));
 const VistaERC              = lazy(() => import('./components/VistaERC').then(m => ({ default: m.VistaERC })));
 const VistaInstructivoHDL   = lazy(() => import('./components/VistaInstructivoHDL').then(m => ({ default: m.VistaInstructivoHDL })));
+const VistaBitacoraHeridas  = lazy(() => import('./components/VistaBitacoraHeridas').then(m => ({ default: m.VistaBitacoraHeridas })));
 const ChatPanel             = lazy(() => import('./components/ChatPanel').then(m => ({ default: m.ChatPanel })));
 
 const FallbackCarga = () => (
@@ -697,6 +698,7 @@ export function VistaServicio() {
       )}
       {pestana === 'erc' && <VistaERC />}
       {pestana === 'instructivo_hdl' && <VistaInstructivoHDL />}
+      {pestana === 'bitacora_heridas' && <VistaBitacoraHeridas servicioId={servicio.id} />}
 
       {/* Chat flotante del servicio: canal interno + canal global. */}
       {perfil && servicio && (
