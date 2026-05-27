@@ -19,11 +19,15 @@ interface Props {
   capturadoPor: string;
   onClose: () => void;
   onGuardado: () => void;
+  // Si está presente, muestra un botón alternativo "Trasladar" arriba que
+  // cierra este modal y abre el de traslado. El paciente no se egresa,
+  // solo cambia de cama (mismo o distinto subservicio).
+  onTrasladar?: () => void;
 }
 
 export const ModalEgreso: React.FC<Props> = ({
   pacienteId, numeroCama, nombrePaciente, fechaIngreso, capturadoPor,
-  onClose, onGuardado,
+  onClose, onGuardado, onTrasladar,
 }) => {
   const [motivos, setMotivos] = useState<MotivoEgreso[]>([]);
   const [cargandoMotivos, setCargandoMotivos] = useState(true);
@@ -128,6 +132,21 @@ export const ModalEgreso: React.FC<Props> = ({
           </div>
         </div>
 
+        {/* Atajo: si el paciente no se va de alta sino que cambia de cama
+            (mismo o distinto subservicio), abre el modal de traslado en
+            lugar de capturar un egreso manual. */}
+        {onTrasladar && (
+          <button
+            type="button"
+            onClick={() => { onClose(); onTrasladar(); }}
+            style={btnTrasladar}
+            disabled={guardando}
+            title="No es un egreso. El paciente solo cambia de cama (mismo o distinto subservicio)."
+          >
+            🔀 ¿No es egreso? Trasladar / cambiar de cama
+          </button>
+        )}
+
         {error && <div style={errorBox}>⚠️ {error}</div>}
 
         <div style={grid}>
@@ -225,4 +244,5 @@ const avisoLegal: React.CSSProperties = { fontSize: 11, color: '#7d5b2f', fontSt
 const botones: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', gap: 10, paddingTop: 16, borderTop: '1px solid #e8dfc6' };
 const botonCancelar: React.CSSProperties = { padding: '10px 18px', background: '#fff', border: '1px solid #888', color: '#888', borderRadius: 6, cursor: 'pointer', fontSize: 13 };
 const botonGuardar: React.CSSProperties = { padding: '10px 18px', background: '#A32D2D', border: 'none', color: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 700 };
+const btnTrasladar: React.CSSProperties = { width: '100%', padding: '10px 14px', background: '#fff', border: '2px solid #0E6755', color: '#0E6755', borderRadius: 6, cursor: 'pointer', fontSize: 13, fontWeight: 700, marginBottom: 14, fontFamily: 'inherit' };
 const errorBox: React.CSSProperties = { background: '#fdecea', color: '#A32D2D', padding: '10px 12px', borderRadius: 4, marginBottom: 12, fontSize: 13 };
