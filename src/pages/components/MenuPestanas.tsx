@@ -1,7 +1,7 @@
 // src/pages/components/MenuPestanas.tsx
 import React from 'react';
 
-export type Pestana = 'censo' | 'dietas' | 'recetario' | 'control' | 'productividad' | 'erc' | 'instructivo_hdl';
+export type Pestana = 'censo' | 'dietas' | 'recetario' | 'control' | 'productividad' | 'erc' | 'instructivo_hdl' | 'bitacora_heridas';
 
 interface Props {
   pestanaActiva: Pestana;
@@ -21,10 +21,16 @@ const pestanasBase: { id: Pestana; etiqueta: string; icono: string; disponible: 
 const pestanaERC = { id: 'erc' as Pestana, etiqueta: 'Censo ERC', icono: '🩺', disponible: true };
 const pestanaInstructivoHDL = { id: 'instructivo_hdl' as Pestana, etiqueta: 'Instructivo HDL', icono: '📖', disponible: true };
 
+// Pestaña adicional SOLO para CLÍNICA DE HERIDAS (CDH).
+const pestanaBitacoraHeridas = { id: 'bitacora_heridas' as Pestana, etiqueta: 'Bitácora Heridas', icono: '🩹', disponible: true };
+
 export const MenuPestanas: React.FC<Props> = ({ pestanaActiva, onCambio, servicioCodigo }) => {
-  const pestanas = servicioCodigo === 'HDL'
-    ? [...pestanasBase, pestanaERC, pestanaInstructivoHDL]
-    : pestanasBase;
+  let pestanas = pestanasBase;
+  if (servicioCodigo === 'HDL') {
+    pestanas = [...pestanasBase, pestanaERC, pestanaInstructivoHDL];
+  } else if (servicioCodigo === 'CDH') {
+    pestanas = [...pestanasBase, pestanaBitacoraHeridas];
+  }
   return (
     <div style={contenedor}>
       <div style={titulo}>
