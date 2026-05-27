@@ -36,6 +36,10 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Mapa paciente_id → etiqueta de aislamiento activo. Se muestra como chip
+  // en la columna NOMBRE para que el personal de nutrición vea de un vistazo
+  // si el paciente requiere precauciones.
+  const [aislamientos, setAislamientos] = useState<Record<string, string>>({});
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -57,6 +61,18 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
 
       if (err) throw err;
       setRenglones((data || []) as DietaRenglon[]);
+
+      // Cargar aislamientos activos de los pacientes de este servicio.
+      const pids = (data || []).map((r: any) => r.paciente_id).filter(Boolean);
+      if (pids.length > 0) {
+        const { data: ais } = await supabase
+          .from('v_aislamiento_activo')
+          .select('paciente_id, etiqueta')
+          .in('paciente_id', pids);
+        const mapa: Record<string, string> = {};
+        (ais || []).forEach((a: any) => { mapa[a.paciente_id] = a.etiqueta; });
+        setAislamientos(mapa);
+      }
     } catch (e: any) {
       setError(e.message || 'Error al cargar dietas');
     } finally {
@@ -137,7 +153,14 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
                 <tr key={r.paciente_id} style={i % 2 === 0 ? rowPar : rowImpar}>
                   <td style={tdAuto}>{r.subservicio}</td>
                   <td style={{ ...tdAuto, textAlign: 'center', fontWeight: 700 }}>{r.numero_cama}</td>
-                  <td style={{ ...tdAuto, fontWeight: 600 }}>{r.nombre_paciente}</td>
+                  <td style={{ ...tdAuto, fontWeight: 600 }}>
+                    {r.nombre_paciente}
+                    {aislamientos[r.paciente_id] && (
+                      <span style={chipAislamiento} title="Precaución de aislamiento activa">
+                        {aislamientos[r.paciente_id]}
+                      </span>
+                    )}
+                  </td>
                   <td style={tdEditable}>
                     <select
                       defaultValue={r.tipo_dieta || ''}
@@ -191,6 +214,7 @@ const tabla: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', 
 const headerRow: React.CSSProperties = { background: '#265C4E' };
 const th: React.CSSProperties = { padding: '10px 8px', color: '#fff', fontWeight: 700, fontSize: 12, textAlign: 'left', border: '1px solid #1a4639' };
 const tdAuto: React.CSSProperties = { padding: '8px', borderBottom: '1px solid #e8dfc6', background: '#F5F1E8', color: '#265C4E' };
+const chipAislamiento: React.CSSProperties = { display: 'inline-block', marginLeft: 8, fontSize: 10, padding: '2px 6px', background: '#fdecea', color: '#A32D2D', border: '1px solid #A32D2D', borderRadius: 10, fontWeight: 700, whiteSpace: 'nowrap' };
 const tdEditable: React.CSSProperties = { padding: '4px', borderBottom: '1px solid #e8dfc6' };
 const rowPar: React.CSSProperties = { background: '#fff' };
 const rowImpar: React.CSSProperties = { background: '#fdfaf2' };

@@ -64,6 +64,11 @@ export const ModalIngreso: React.FC<Props> = ({
   // puede reevaluar desde la pestaña Control.
   const [riesgoCaidas, setRiesgoCaidas] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
   const [riesgoUpp, setRiesgoUpp] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
+  // Aislamiento (universal): se captura aquí y se crea un evento
+  // precaucion_aislamiento que aparece en Control, suma a K03 en
+  // Productividad, y se muestra como chip en Dietas.
+  type AislaCodigo = '' | 'ESTANDAR' | 'POR_GOTA' | 'POR_VIA_AEREA' | 'CONTACTO' | 'PROTECTOR' | 'CONTACTO_PLUS';
+  const [aislamiento, setAislamiento] = useState<AislaCodigo>('');
   // Solo en HDL: fecha de nacimiento se captura aparte de CURP (ambos
   // obligatorios) y se exige seleccionar tipo de terapia.
   const [fnacHDL, setFnacHDL] = useState(''); // yyyy-mm-dd
@@ -226,6 +231,27 @@ export const ModalIngreso: React.FC<Props> = ({
           // El paciente ya quedó admitido; solo registramos el error de
           // riesgos para no perder el ingreso.
           console.warn('Paciente admitido pero no se pudieron guardar riesgos:', errR.message);
+        }
+      }
+
+      // 3) Aislamiento (si se eligió): creamos un evento_apoyo_paciente
+      //    tipo=precaucion_aislamiento con estado=Realizada. El trigger
+      //    fn_evento_productividad lo cuenta automáticamente a K03 y
+      //    queda visible en Control + Dietas (via v_aislamiento_activo).
+      if (nuevoPaciente && aislamiento) {
+        const { error: errA } = await supabase
+          .from('evento_apoyo_paciente')
+          .insert({
+            paciente_id: nuevoPaciente.id,
+            tipo: 'precaucion_aislamiento',
+            codigo: aislamiento,
+            estado: 'Realizada',
+            fecha_realizacion: new Date().toISOString(),
+            capturado_por: capturadoPor,
+            observaciones: 'Capturado al ingreso',
+          });
+        if (errA) {
+          console.warn('No se pudo registrar el aislamiento:', errA.message);
         }
       }
 
@@ -435,6 +461,22 @@ export const ModalIngreso: React.FC<Props> = ({
               <option value="ALTO">🔴 ALTO</option>
               <option value="MEDIANO">🟡 MEDIANO</option>
               <option value="BAJO">🟢 BAJO</option>
+            </select>
+          </div>
+
+          {/* Aislamiento — universal en todos los servicios. Se guarda como
+              evento de tipo precaucion_aislamiento → aparece en Control,
+              suma a K03 en Productividad y se muestra como chip en Dietas. */}
+          <div style={{ ...campo, gridColumn: 'span 2' }}>
+            <label style={label}>PRECAUCIÓN DE AISLAMIENTO (opcional, se traza a Control / Dietas / K03)</label>
+            <select value={aislamiento} onChange={e => setAislamiento(e.target.value as any)} style={input}>
+              <option value="">-- Sin aislamiento / no aplica --</option>
+              <option value="ESTANDAR">🔴 Estándar</option>
+              <option value="POR_GOTA">🟢 Por gota</option>
+              <option value="POR_VIA_AEREA">🔵 Por vía aérea</option>
+              <option value="CONTACTO">🟡 Por contacto</option>
+              <option value="PROTECTOR">⬜ Protector</option>
+              <option value="CONTACTO_PLUS">🟫 Contacto plus</option>
             </select>
           </div>
 
