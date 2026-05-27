@@ -295,6 +295,20 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
         />
       </td>
       <td style={tdEditableSm}>
+        {/* POSOLOGÍA: dosis específica del paciente. Ej. "500 mg", "5 mL",
+            "1 amp", "0.5 mg/kg". Se imprime junto al medicamento en la hoja
+            de recetario para que farmacia entregue lo correcto. */}
+        <input
+          type="text"
+          defaultValue={med.dosis}
+          onBlur={e => { if (e.target.value !== med.dosis) actualizarMedicamento(pacienteId, med.id, 'dosis', e.target.value); }}
+          style={inputSm}
+          placeholder="ej. 500 mg"
+          disabled={soloLectura || guardando === med.id}
+          aria-label="Posología"
+        />
+      </td>
+      <td style={tdEditableSm}>
         <select
           value={med.via}
           onChange={e => actualizarMedicamento(pacienteId, med.id, 'via', e.target.value)}
@@ -450,9 +464,10 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
                     <thead>
                       <tr style={medHeaderRow}>
                         <th style={{ ...thMed, width: '4%', textAlign: 'center' }}>#</th>
-                        <th style={{ ...thMed, width: '50%' }}>MEDICAMENTO</th>
-                        <th style={{ ...thMed, width: '10%' }}>VÍA</th>
-                        <th style={{ ...thMed, width: '16%' }}>FRECUENCIA</th>
+                        <th style={{ ...thMed, width: '38%' }}>MEDICAMENTO</th>
+                        <th style={{ ...thMed, width: '14%' }}>POSOLOGÍA</th>
+                        <th style={{ ...thMed, width: '8%' }}>VÍA</th>
+                        <th style={{ ...thMed, width: '14%' }}>FRECUENCIA</th>
                         <th style={{ ...thMed, width: '7%', textAlign: 'center' }}>SOLICITADA</th>
                         <th style={{ ...thMed, width: '7%', textAlign: 'center' }}>DISPENSADA</th>
                         <th style={{ ...thMed, width: '6%', textAlign: 'center' }}>⚙</th>
@@ -461,7 +476,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
                     <tbody>
                       {p.medicamentos.length === 0 ? (
                         <tr>
-                          <td colSpan={7} style={{ padding: 24, textAlign: 'center', color: '#888', background: '#fdfaf2' }}>
+                          <td colSpan={8} style={{ padding: 24, textAlign: 'center', color: '#888', background: '#fdfaf2' }}>
                             Sin medicamentos. Usa "+ Agregar medicamento" para registrar el primero.
                           </td>
                         </tr>

@@ -11,7 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { MenuPestanas, Pestana } from './components/MenuPestanas';
-import { formatEdad } from '../lib/edad';
+import { formatEdad, edadEnDias } from '../lib/edad';
 
 // Lazy-load: cada modal y cada pestaña pesada vive en su propio chunk.
 // El bundle inicial de VistaServicio baja considerablemente y el
@@ -55,6 +55,7 @@ interface CamaEstado {
   nombre_paciente: string | null;
   edad: number | null;
   edad_unidad?: 'AÑOS' | 'MESES' | 'DIAS' | string | null;
+  fecha_nacimiento?: string | null;
   genero: string | null;
   diagnostico_ingreso: string | null;
   fecha_ingreso: string | null;
@@ -481,6 +482,18 @@ export function VistaServicio() {
         {ocupada ? (
           <>
             <div style={camaNombre}>{c.nombre_paciente}</div>
+            {/* Edad — en Pediatría se muestra unidad capturada + días
+                calculados, porque neonatos/lactantes se siguen en días
+                aunque el ingreso los capturó como meses/años. */}
+            {c.edad != null && (
+              <div style={camaEdadLinea}>
+                {formatEdad(c.edad, c.edad_unidad)}
+                {servicio?.codigo === 'PED' && c.edad_unidad !== 'DIAS' && (() => {
+                  const dias = edadEnDias(c.edad, c.edad_unidad, c.fecha_nacimiento);
+                  return dias != null ? <span style={diasChip}>· {dias} días</span> : null;
+                })()}
+              </div>
+            )}
             {/* Aviso de seguridad clínica: si tiene alergias capturadas, las
                 pintamos en rojo arriba del diagnóstico para que cualquier
                 enfermera o médico que abra el censo las vea al instante.
@@ -938,6 +951,8 @@ const camaOcupada: React.CSSProperties = { background: '#fff', borderColor: '#0E
 const camaNumero: React.CSSProperties = { fontSize: 22, fontWeight: 700, color: '#0E6755' };
 const camaNombre: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#265C4E', lineHeight: 1.2 };
 const camaDx: React.CSSProperties = { fontSize: 11, color: '#7d5b2f', fontStyle: 'italic' };
+const camaEdadLinea: React.CSSProperties = { fontSize: 11, color: '#265C4E', fontWeight: 600 };
+const diasChip: React.CSSProperties = { color: '#1a5f8a', fontWeight: 700, marginLeft: 4 };
 const btnEditarDx: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, lineHeight: 1, opacity: 0.6 };
 // Chip rojo de seguridad clínica para alergias capturadas. Se muestra
 // arriba del diagnóstico para que sea lo primero que se ve al ojear el censo.
