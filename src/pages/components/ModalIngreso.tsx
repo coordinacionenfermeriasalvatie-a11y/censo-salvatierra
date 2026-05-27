@@ -132,11 +132,24 @@ export const ModalIngreso: React.FC<Props> = ({
 
       // 1) Crear el paciente. El trigger tr_crear_hojas_paciente creará
       //    automáticamente la fila en formato_control_paciente con riesgos
-      //    en NULL. Necesitamos el id devuelto para actualizar los riesgos
-      //    capturados en este modal.
-      const { data: nuevoPaciente, error: err } = await supabase
+      //    en NULL. Necesitamos el id ANTES del insert para actualizar los
+      //    riesgos sin requerir RETURNING — porque INSERT...RETURNING
+      //    requiere que la SELECT policy pase sobre la fila recién
+      //    insertada, y en PostgreSQL esto puede fallar aunque la fila
+      //    sea correcta (gestor de HH1 insertando en HH1 sí pasa el
+      //    WITH CHECK pero falla la SELECT policy del RETURNING).
+      const nuevoPacienteId =
+        (globalThis.crypto?.randomUUID?.() as string) ||
+        // Fallback simple si crypto.randomUUID no existe en navegadores muy viejos
+        ('xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+        }));
+
+      const { error: err } = await supabase
         .from('pacientes')
         .insert({
+          id: nuevoPacienteId,
           cama_id: camaId,
           nombre_paciente: nombre.trim().toUpperCase(),
           edad: parseInt(edad, 10),
@@ -151,9 +164,7 @@ export const ModalIngreso: React.FC<Props> = ({
           alergias: alergias.trim() || null,
           estado: 'ACTIVO',
           capturado_por: capturadoPor,
-        })
-        .select('id')
-        .single();
+        });
 
       if (err) {
         // Detectar el caso clásico de RLS por sesión expirada o perfil
@@ -169,6 +180,7 @@ export const ModalIngreso: React.FC<Props> = ({
         }
         throw err;
       }
+      const nuevoPaciente = { id: nuevoPacienteId };
 
       // 2) Si se capturó riesgo de caídas o UPP en el censo, los propagamos
       //    al formato de control. Esto es la trazabilidad que arranca en el
