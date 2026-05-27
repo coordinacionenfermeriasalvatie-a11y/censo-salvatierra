@@ -94,7 +94,10 @@ const SECCIONES: Seccion[] = [
           '⚠️ EVALUACIÓN INICIAL DE RIESGOS (se traza a CONTROL automáticamente):',
           '   • Riesgo de Caídas: ALTO / MEDIANO / BAJO',
           '   • Riesgo Úlcera por Presión (UPP): ALTO / MEDIANO / BAJO',
-          'Si tiene observaciones especiales (aislamiento, vigilar, etc.) escríbelas en el campo Observaciones.',
+          '🦠 PRECAUCIÓN DE AISLAMIENTO (opcional, dropdown universal):',
+          '   • 🔴 Estándar · 🟢 Por gota · 🔵 Por vía aérea · 🟡 Por contacto · ⬜ Protector · 🟫 Contacto plus',
+          '   Lo que elijas se traza automáticamente a 3 lugares: aparece como evento en CONTROL (sección Aislamiento), aparece como chip rojo junto al nombre en DIETAS, y suma +1 a K03 en PRODUCTIVIDAD.',
+          'Si tiene observaciones especiales adicionales, escríbelas en el campo Observaciones.',
           'Toca "✓ Registrar ingreso" para confirmar.',
         ],
       },
@@ -372,13 +375,15 @@ const SECCIONES: Seccion[] = [
         pasos: [
           'CENSO HOSPITALARIO: C01 (recibidos), C02 (ingresos), C03–C06 (egresos), C07 (entregados al siguiente turno), C08, % de ocupación.',
           'TERAPIA DE INFUSIÓN — INSTALACIONES: V01 (CVC), V05 (CVP neonatos), V09 (CVP adultos), V13 (línea media), V25 (catéter umbilical) — al marcar el evento de acceso vascular como Realizada en Control.',
-          'TERAPIA DE INFUSIÓN — CURACIÓN Y REFIJACIÓN (nuevo, hoy 26-may-2026):',
+          'TERAPIA DE INFUSIÓN — CURACIÓN Y REFIJACIÓN:',
           '   • V03 CVC curación, V04 CVC refijación',
           '   • V07 CVP NEONATOS refijación, V08 CVP NEONATOS curación',
           '   • V11 CVP ADULTO refijación, V12 CVP ADULTO curación',
           '   • V15 LÍNEA MEDIA curación, V16 LÍNEA MEDIA refijación',
           '   Se distingue neonato (edad=0 o subservicio UCIN) vs adulto automáticamente.',
           'AGREGADOS (cualquier tipo): AV1 accesos, SD1 sondas, DP1 dispositivos, OX1 oxígeno, CUR1 curaciones, PRC1 procedimientos, K06 higiene, K07 glucemia.',
+          'AISLAMIENTO: K03 (Pacientes con aislamiento) — se suma al elegir tipo de aislamiento en el modal de ingreso o crear el evento en Control.',
+          'HEMODIÁLISIS (solo HDL): P05 Diálisis Peritoneal y P06 Hemodiálisis — al ingresar paciente con tipo de terapia seleccionado.',
           'VENTILACIÓN: ventilación mecánica al iniciar.',
           'Continuidad de sondas y accesos: se hereda al siguiente turno automáticamente.',
         ],
@@ -548,6 +553,54 @@ const SECCIONES: Seccion[] = [
           'No compartas tu contraseña con nadie, ni siquiera con tu compañero de turno.',
           'Cambia tu contraseña inicial cuanto antes después de tu primer ingreso.',
           'Cada acción que realices en el sistema queda registrada con tu identidad y la hora exacta.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 10. SERVICIOS CON FLUJO ESPECIAL
+  // ============================================================
+  {
+    key: 'servicios_especiales',
+    numero: '10',
+    titulo: 'Servicios con flujo especial',
+    icono: '⚕️',
+    subtitulo: 'URPA · HEMODIÁLISIS · HEMODINÁMICA — solo camillas no censables',
+    color: '#7d5b2f',
+    contenido: [
+      {
+        titulo: '10.1. Qué tienen en común',
+        pasos: [
+          'Estos 3 servicios tienen camillas (no censables). NO afectan el % de ocupación censable del hospital ni la cuenta total de camas.',
+          'Tienen sus 5 pestañas estándar: Censo, Dietas, Recetario, Control y Productividad. Productividad propia separada de los demás.',
+          'En el Dashboard aparecen al final, después de Oncología Pediátrica. La tarjeta muestra "X / Y camillas (no censable)" en vez del porcentaje.',
+        ],
+      },
+      {
+        titulo: '10.2. URPA — Unidad de Recuperación Post-Anestésica',
+        pasos: [
+          '10 camillas. Pacientes en recuperación post-anestésica después de un procedimiento quirúrgico.',
+          'Flujo de ingreso normal (igual que urgencias / hospitalización).',
+          'Cuando el paciente despierta y se traslada a su servicio definitivo, usa el chip 🔀 Trasladar para moverlo a su cama destino (con conteo correcto de egreso URPA + ingreso al destino).',
+        ],
+      },
+      {
+        titulo: '10.3. HEMODIÁLISIS — flujo más estricto (lee el instructivo del servicio)',
+        pasos: [
+          '3 camillas. Pacientes que reciben Terapia de Sustitución Renal (Hemodiálisis o Diálisis Peritoneal).',
+          'Tiene 2 pestañas adicionales que NO aparecen en otros servicios: 🩺 Censo ERC (bitácora histórica) y 📖 Instructivo HDL (guía dedicada paso a paso).',
+          'Al ingresar un paciente en HEMODIÁLISIS, el modal exige 3 campos OBLIGATORIOS: CURP completa de 18 caracteres, Fecha de nacimiento, y Tipo de terapia (Hemodiálisis / DPCA / DPA / DPI).',
+          'El sistema sincroniza automáticamente: el ingreso queda en censo, se crea entrada en la bitácora Censo ERC y suma +1 al indicador correcto de Productividad (P06 Hemodiálisis o P05 Diálisis peritoneal).',
+          'En el Tablero Maestro hay una sección dedicada "🩺 HEMODIÁLISIS Y DIÁLISIS" con KPIs históricos.',
+          'Lee el 📖 Instructivo HDL dentro del propio servicio para el paso a paso completo.',
+        ],
+      },
+      {
+        titulo: '10.4. HEMODINÁMICA',
+        pasos: [
+          '1 camilla. Sala de procedimientos hemodinámicos (cateterismo cardíaco, angiografía, etc.).',
+          'Flujo normal de ingreso/egreso. Productividad propia.',
         ],
       },
     ],
