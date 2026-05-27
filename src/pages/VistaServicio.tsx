@@ -22,6 +22,7 @@ import { VistaFormatoControl } from './components/VistaFormatoControl';
 import { VistaProductividad } from './components/VistaProductividad';
 import { VistaERC } from './components/VistaERC';
 import { VistaInstructivoHDL } from './components/VistaInstructivoHDL';
+import { ChatPanel } from './components/ChatPanel';
 
 interface Servicio {
   id: number;
@@ -686,6 +687,11 @@ export function VistaServicio() {
       )}
       {pestana === 'erc' && <VistaERC />}
       {pestana === 'instructivo_hdl' && <VistaInstructivoHDL />}
+
+      {/* Chat flotante del servicio: canal interno + canal global. */}
+      {perfil && servicio && (
+        <ChatPanel servicioId={servicio.id} servicioNombre={servicio.nombre} />
+      )}
 
       {modalTraslado && perfil && (
         <ModalTraslado
