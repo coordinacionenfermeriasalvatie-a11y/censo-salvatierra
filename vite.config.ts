@@ -2,6 +2,18 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Build ID = fecha + hora + 4 caracteres random. Se inyecta como
+// VITE_BUILD_ID y se muestra en el Dashboard. Permite verificar a
+// distancia qué versión tiene cada usuario instalada.
+const BUILD_ID = (() => {
+  const d = new Date()
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const stamp = `${d.getUTCFullYear().toString().slice(-2)}${pad(d.getUTCMonth()+1)}${pad(d.getUTCDate())}.${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}`
+  const r = Math.random().toString(36).slice(2, 6)
+  return `${stamp}.${r}`
+})()
+process.env.VITE_BUILD_ID = BUILD_ID
+
 export default defineConfig({
   plugins: [
     react(),
