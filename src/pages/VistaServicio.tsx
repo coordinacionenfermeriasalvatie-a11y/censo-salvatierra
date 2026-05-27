@@ -20,6 +20,7 @@ import { VistaDietas } from './components/VistaDietas';
 import { VistaRecetario } from './components/VistaRecetario';
 import { VistaFormatoControl } from './components/VistaFormatoControl';
 import { VistaProductividad } from './components/VistaProductividad';
+import { VistaERC } from './components/VistaERC';
 
 interface Servicio {
   id: number;
@@ -682,6 +683,7 @@ export function VistaServicio() {
           servicioNombre={servicio.nombre}
         />
       )}
+      {pestana === 'erc' && <VistaERC />}
 
       {modalTraslado && perfil && (
         <ModalTraslado
