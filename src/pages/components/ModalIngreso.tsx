@@ -102,6 +102,15 @@ export const ModalIngreso: React.FC<Props> = ({
     setGuardando(true);
     setError(null);
     try {
+      // Pre-flight: validar que la sesión sigue viva. Si el JWT expiró
+      // sin que la app se diera cuenta (típico tras >1h sin actividad),
+      // los INSERTs fallan con error de RLS aunque el perfil sea válido,
+      // porque auth.uid() devuelve NULL en la policy.
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) {
+        throw new Error('Tu sesión expiró. Por favor cierra sesión y vuelve a iniciar para registrar el ingreso.');
+      }
+
       // 1) Crear el paciente. El trigger tr_crear_hojas_paciente creará
       //    automáticamente la fila en formato_control_paciente con riesgos
       //    en NULL. Necesitamos el id devuelto para actualizar los riesgos
@@ -127,7 +136,20 @@ export const ModalIngreso: React.FC<Props> = ({
         .select('id')
         .single();
 
-      if (err) throw err;
+      if (err) {
+        // Detectar el caso clásico de RLS por sesión expirada o perfil
+        // sin servicio asignado, para dar un mensaje accionable.
+        const m = (err.message || '').toLowerCase();
+        if (m.includes('row-level security') || m.includes('row level security')) {
+          throw new Error(
+            'No tienes permiso para ingresar en esta cama. ' +
+            'Verifica que: (1) Tu sesión esté activa — cierra y vuelve a iniciar sesión. ' +
+            '(2) Estés asignado al servicio correcto. ' +
+            'Si el problema persiste, contacta a la subjefatura.'
+          );
+        }
+        throw err;
+      }
 
       // 2) Si se capturó riesgo de caídas o UPP en el censo, los propagamos
       //    al formato de control. Esto es la trazabilidad que arranca en el
