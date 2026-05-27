@@ -26,6 +26,7 @@ import type { Evento, TipoEvento } from '../hooks/useEventosApoyo';
 // ---------- Tipos ----------
 interface Servicio {
   id: number;
+  codigo?: string;
   nombre: string;
   total_camas: number;
 }
@@ -34,8 +35,12 @@ interface PacienteImpresion {
   // Identificación
   id: string;
   numero_cama: string;
+  subservicio: string | null;
+  subservicio_orden: number | null;
+  subservicio_completo: string | null;
   nombre_paciente: string;
   edad: number | null;
+  edad_unidad: string | null;
   genero: string | null;
   nss_curp: string | null;
   fecha_nacimiento: string | null;
@@ -172,7 +177,7 @@ export const VistaImpresionControl: React.FC = () => {
         // 1. Servicio
         const { data: svc, error: errSvc } = await supabase
           .from('servicios')
-          .select('id, nombre, total_camas')
+          .select('id, codigo, nombre, total_camas')
           .eq('id', svcId)
           .single();
         if (errSvc) throw errSvc;
@@ -187,6 +192,7 @@ export const VistaImpresionControl: React.FC = () => {
             id,
             nombre_paciente,
             edad,
+            edad_unidad,
             genero,
             nss_curp,
             fecha_nacimiento,
@@ -198,7 +204,7 @@ export const VistaImpresionControl: React.FC = () => {
             estado,
             cama:camas!inner (
               numero_cama,
-              subservicio:subservicios!inner ( servicio_id )
+              subservicio:subservicios!inner ( id, nombre, nombre_completo, orden, servicio_id )
             ),
             especialidad:catalogo_especialidades ( nombre ),
             formato_control_paciente (
@@ -223,11 +229,16 @@ export const VistaImpresionControl: React.FC = () => {
           const fc = Array.isArray(p.formato_control_paciente)
             ? p.formato_control_paciente[0]
             : p.formato_control_paciente;
+          const sub = Array.isArray(cama?.subservicio) ? cama?.subservicio[0] : cama?.subservicio;
           return {
             id: p.id,
             numero_cama: cama?.numero_cama ?? '',
+            subservicio: sub?.nombre ?? null,
+            subservicio_orden: sub?.orden ?? null,
+            subservicio_completo: sub?.nombre_completo ?? null,
             nombre_paciente: p.nombre_paciente,
             edad: p.edad,
+            edad_unidad: p.edad_unidad,
             genero: p.genero,
             nss_curp: p.nss_curp,
             fecha_nacimiento: p.fecha_nacimiento,
@@ -266,8 +277,15 @@ export const VistaImpresionControl: React.FC = () => {
           }
         }
 
-        // Ordenar por número de cama (intentando numérico, fallback a string)
+        // Ordenar: en PEDIATRÍA primero por subservicio_orden (UTIP, UCIN…)
+        // y luego por número de cama. En otros servicios solo por cama.
+        const esPED = (svc as any)?.codigo === 'PED';
         norm.sort((a, b) => {
+          if (esPED) {
+            const oa = a.subservicio_orden ?? 9999;
+            const ob = b.subservicio_orden ?? 9999;
+            if (oa !== ob) return oa - ob;
+          }
           const na = parseInt(a.numero_cama, 10);
           const nb = parseInt(b.numero_cama, 10);
           if (!isNaN(na) && !isNaN(nb)) return na - nb;
@@ -428,8 +446,30 @@ export const VistaImpresionControl: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {pacientes.map((p) => (
-            <tr key={p.id}>
+          {pacientes.map((p, idx) => {
+            // En PEDIATRÍA: insertar encabezado por subservicio antes del primer
+            // paciente de cada grupo. Romper página entre grupos (excepto el 1°).
+            const esPED = servicio?.codigo === 'PED';
+            const subActual = p.subservicio;
+            const subAnterior = idx > 0 ? pacientes[idx - 1].subservicio : null;
+            const inicioGrupo = esPED && subActual !== subAnterior;
+            const encabezadoSub = inicioGrupo ? (
+              <tr
+                key={`sub-${subActual}-${p.id}`}
+                className={idx === 0 ? 'sub-encabezado-pac primera' : 'sub-encabezado-pac'}
+              >
+                <td colSpan={37}>
+                  <span className="sub-abrev">{subActual}</span>
+                  {p.subservicio_completo && p.subservicio_completo !== subActual && (
+                    <span className="sub-completo"> · {p.subservicio_completo}</span>
+                  )}
+                </td>
+              </tr>
+            ) : null;
+            return (
+              <React.Fragment key={p.id}>
+                {encabezadoSub}
+                <tr>
               {/* IDENTIFICACIÓN */}
               <td className="c-cama">{p.numero_cama}</td>
               <td className="c-nombre">
@@ -441,7 +481,7 @@ export const VistaImpresionControl: React.FC = () => {
                   })()}</div>
                 )}
               </td>
-              <td className="c-num">{p.edad ?? ''}</td>
+              <td className="c-num">{p.edad != null ? `${p.edad}${p.edad_unidad === 'DIAS' ? 'd' : p.edad_unidad === 'MESES' ? 'm' : ''}` : ''}</td>
               <td className="c-num">{limpiar(p.genero)}</td>
               <td className="c-id">{limpiar(p.nss_curp)}</td>
               <td className="c-dx">{limpiar(p.diagnostico_ingreso)}</td>
@@ -487,7 +527,9 @@ export const VistaImpresionControl: React.FC = () => {
               {/* OBS GENERAL */}
               <td className="c-obs">{limpiar(p.observaciones_control)}</td>
             </tr>
-          ))}
+              </React.Fragment>
+            );
+          })}
           {/* Filas vacías hasta total de camas */}
           {Array.from({ length: filasVacias }).map((_, i) => (
             <tr key={`vacia-${i}`} className="fila-vacia">
@@ -531,6 +573,37 @@ export const VistaImpresionControl: React.FC = () => {
              todo quepa en una sola hoja legal horizontal. */
           .tabla-control tr { page-break-inside: avoid; }
           .hoja-impresion { padding: 0 !important; }
+          /* PEDIATRÍA: cada subservicio en su propia hoja.
+             La primera sección no rompe página. */
+          .tabla-control .sub-encabezado-pac {
+            page-break-before: always;
+            break-before: page;
+          }
+          .tabla-control .sub-encabezado-pac.primera {
+            page-break-before: auto;
+            break-before: auto;
+          }
+        }
+        /* Estilo de encabezado de subservicio (también en pantalla) */
+        .tabla-control .sub-encabezado-pac td {
+          background: #FAF5EA !important;
+          border-left: 6px solid #C39C59;
+          padding: 6px 10px;
+          text-align: left;
+          font-family: Arial, sans-serif;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .tabla-control .sub-encabezado-pac .sub-abrev {
+          font-size: 14pt;
+          font-weight: 800;
+          color: #0E6755;
+          letter-spacing: 0.5px;
+        }
+        .tabla-control .sub-encabezado-pac .sub-completo {
+          font-size: 9pt;
+          color: #7d5b2f;
+          text-transform: uppercase;
         }
 
         @media screen {

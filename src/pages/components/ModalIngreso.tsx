@@ -40,6 +40,8 @@ export const ModalIngreso: React.FC<Props> = ({
 
   const [nombre, setNombre] = useState('');
   const [edad, setEdad] = useState('');
+  // Unidad de edad — AÑOS por default; UCIN / UTIN suelen usar DÍAS o MESES
+  const [edadUnidad, setEdadUnidad] = useState<'AÑOS' | 'MESES' | 'DIAS'>('AÑOS');
   const [genero, setGenero] = useState<'MASCULINO' | 'FEMENINO'>('MASCULINO');
   // Identidad del paciente: SOLO se pide UNA cosa, fecha de nacimiento
   // o CURP. Ambos formatos se guardan en pacientes.nss_curp:
@@ -183,6 +185,7 @@ export const ModalIngreso: React.FC<Props> = ({
           cama_id: camaId,
           nombre_paciente: nombre.trim().toUpperCase(),
           edad: parseInt(edad, 10),
+          edad_unidad: edadUnidad,
           genero,
           nss_curp: identGuardar,
           diagnostico_ingreso: dx.trim().toUpperCase(),
@@ -282,7 +285,28 @@ export const ModalIngreso: React.FC<Props> = ({
 
           <div style={campo}>
             <label style={label}>EDAD *</label>
-            <input type="number" min="0" max="130" value={edad} onChange={e => setEdad(e.target.value)} style={input} />
+            <div style={{ display: 'flex', gap: 4 }}>
+              <input
+                type="number"
+                min="0"
+                max="130"
+                value={edad}
+                onChange={e => setEdad(e.target.value)}
+                style={{ ...input, flex: 1 }}
+              />
+              {/* Selector de unidad. Para UCIN/UTIN/UTIP los neonatos se
+                  miden en días o meses. Default AÑOS. */}
+              <select
+                value={edadUnidad}
+                onChange={e => setEdadUnidad(e.target.value as any)}
+                style={{ ...input, width: 80, flex: 'none' }}
+                title="Unidad de edad"
+              >
+                <option value="AÑOS">AÑOS</option>
+                <option value="MESES">MESES</option>
+                <option value="DIAS">DÍAS</option>
+              </select>
+            </div>
           </div>
 
           <div style={campo}>

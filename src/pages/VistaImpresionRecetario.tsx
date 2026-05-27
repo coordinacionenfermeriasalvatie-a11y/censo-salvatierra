@@ -30,6 +30,7 @@ import { supabase } from '../lib/supabase';
 // ---------- Tipos ----------
 interface Servicio {
   id: number;
+  codigo?: string;
   nombre: string;
   total_camas: number;
 }
@@ -39,9 +40,12 @@ interface FilaRecetario {
   servicio_id: number;
   servicio_codigo: string | null;
   subservicio: string | null;
+  subservicio_orden: number | null;
+  subservicio_completo: string | null;
   numero_cama: string;
   nombre_paciente: string;
   edad: number | null;
+  edad_unidad: string | null;
   genero: string | null;
   nss_curp: string | null;
   diagnostico_ingreso: string | null;
@@ -58,9 +62,13 @@ interface FilaRecetario {
 
 interface GrupoPaciente {
   paciente_id: string;
+  subservicio: string | null;
+  subservicio_orden: number | null;
+  subservicio_completo: string | null;
   numero_cama: string;
   nombre_paciente: string;
   edad: number | null;
+  edad_unidad: string | null;
   genero: string | null;
   nss_curp: string | null;
   diagnostico_ingreso: string | null;
@@ -88,6 +96,139 @@ function limpiar(s: string | null): string {
   return String(s).trim();
 }
 
+// Edad con unidad para impresión (versión corta)
+function formatEdadCorta(edad: number | null, unidad: string | null): string {
+  if (edad == null) return '';
+  const u = unidad ?? 'AÑOS';
+  if (u === 'DIAS') return `${edad}d`;
+  if (u === 'MESES') return `${edad}m`;
+  return `${edad}a`;
+}
+
+// Agrupa pacientes por subservicio respetando el orden del subservicio.
+interface SubservicioGrupo {
+  subservicio_id: string;
+  nombre: string;
+  nombre_completo: string | null;
+  orden: number;
+  grupos: GrupoPaciente[];
+}
+function agruparPorSubservicio(grupos: GrupoPaciente[]): SubservicioGrupo[] {
+  const m = new Map<string, SubservicioGrupo>();
+  for (const g of grupos) {
+    const key = g.subservicio || '(SIN)';
+    let sg = m.get(key);
+    if (!sg) {
+      sg = {
+        subservicio_id: key,
+        nombre: g.subservicio || 'SIN SUBSERVICIO',
+        nombre_completo: g.subservicio_completo,
+        orden: g.subservicio_orden ?? 9999,
+        grupos: [],
+      };
+      m.set(key, sg);
+    }
+    sg.grupos.push(g);
+  }
+  return [...m.values()].sort((a, b) => a.orden - b.orden);
+}
+
+// Sección de tabla de recetario reutilizable: una tabla con encabezado
+// opcional de subservicio y page-break-after si no es la última.
+const RecetarioSeccion: React.FC<{
+  titulo?: string;
+  subtitulo?: string | null;
+  grupos: GrupoPaciente[];
+  esUltima: boolean;
+}> = ({ titulo, subtitulo, grupos, esUltima }) => {
+  return (
+    <div className={esUltima ? 'rec-seccion' : 'rec-seccion rec-page-break'}>
+      {titulo && (
+        <div className="rec-sub-encabezado">
+          <span className="rec-sub-abrev">{titulo}</span>
+          {subtitulo && subtitulo !== titulo && (
+            <span className="rec-sub-completo">— {subtitulo}</span>
+          )}
+        </div>
+      )}
+      <table className="tabla-recetario">
+        <thead>
+          <tr className="col-row">
+            <th style={{ width: '4%' }}>CAMA</th>
+            <th style={{ width: '13%' }}>PACIENTE</th>
+            <th style={{ width: '9%' }}>DIAGNÓSTICO</th>
+            <th style={{ width: '3%' }}>#</th>
+            <th style={{ width: '18%' }}>MEDICAMENTO</th>
+            <th style={{ width: '10%' }}>POSOLOGÍA</th>
+            <th style={{ width: '5%' }}>VÍA</th>
+            <th style={{ width: '10%' }}>FRECUENCIA</th>
+            <th style={{ width: '3%' }}>SOL</th>
+            <th style={{ width: '3%' }}>DIS</th>
+            <th style={{ width: '22%' }}>OBSERVACIONES</th>
+          </tr>
+        </thead>
+        <tbody>
+          {grupos.map((g) => {
+            const n = Math.max(1, g.medicamentos.length);
+
+            if (g.medicamentos.length === 0) {
+              return (
+                <tr key={g.paciente_id}>
+                  <td className="c-cama">{g.numero_cama}</td>
+                  <td className="c-paciente">
+                    <div className="nombre">{limpiar(g.nombre_paciente)}</div>
+                    <div className="datos-pac">
+                      {formatEdadCorta(g.edad, g.edad_unidad)} {generoCorto(g.genero)} · {limpiar(g.nss_curp)}
+                    </div>
+                  </td>
+                  <td className="c-dx">{limpiar(g.diagnostico_ingreso)}</td>
+                  <td colSpan={9} className="c-sin-meds">
+                    (Sin indicaciones capturadas)
+                  </td>
+                </tr>
+              );
+            }
+
+            return g.medicamentos.map((m, idx) => (
+              <tr key={`${g.paciente_id}-${m.medicamento_id}`}
+                  className={idx === 0 ? 'fila-inicio-pac' : ''}>
+                {idx === 0 && (
+                  <>
+                    <td className="c-cama" rowSpan={n}>{g.numero_cama}</td>
+                    <td className="c-paciente" rowSpan={n}>
+                      <div className="nombre">{limpiar(g.nombre_paciente)}</div>
+                      <div className="datos-pac">
+                        {formatEdadCorta(g.edad, g.edad_unidad)} {generoCorto(g.genero)} · {limpiar(g.nss_curp)}
+                      </div>
+                    </td>
+                    <td className="c-dx" rowSpan={n}>{limpiar(g.diagnostico_ingreso)}</td>
+                  </>
+                )}
+                <td className="c-num">{m.orden ?? (idx + 1)}</td>
+                <td className="c-med">{limpiar(m.medicamento)}</td>
+                {/* POSOLOGÍA: dose detail (ej. "500 mg", "5 mL", "1 amp") */}
+                <td className="c-pos">{limpiar(m.dosis)}</td>
+                <td className="c-via">{limpiar(m.via)}</td>
+                <td className="c-frec">{limpiar(m.frecuencia)}</td>
+                <td className="c-check">{m.solicitada != null && m.solicitada > 0 ? <b>{m.solicitada}</b> : '☐'}</td>
+                <td className="c-check">{m.dispensada != null && m.dispensada > 0 ? <b>{m.dispensada}</b> : '☐'}</td>
+                <td className="c-obs"></td>
+              </tr>
+            ));
+          })}
+          {grupos.length === 0 && (
+            <tr>
+              <td colSpan={11} className="c-vacio">
+                Sin pacientes activos en este subservicio.
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
 // ---------- Componente ----------
 export const VistaImpresionRecetario: React.FC = () => {
   const { servicioId } = useParams<{ servicioId: string }>();
@@ -107,7 +248,7 @@ export const VistaImpresionRecetario: React.FC = () => {
         // 1. Servicio
         const { data: svc, error: errSvc } = await supabase
           .from('servicios')
-          .select('id, nombre, total_camas')
+          .select('id, codigo, nombre, total_camas')
           .eq('id', svcId)
           .single();
         if (errSvc) throw errSvc;
@@ -128,9 +269,13 @@ export const VistaImpresionRecetario: React.FC = () => {
           if (!mapaPacientes.has(f.paciente_id)) {
             mapaPacientes.set(f.paciente_id, {
               paciente_id: f.paciente_id,
+              subservicio: f.subservicio,
+              subservicio_orden: f.subservicio_orden,
+              subservicio_completo: f.subservicio_completo,
               numero_cama: f.numero_cama,
               nombre_paciente: f.nombre_paciente,
               edad: f.edad,
+              edad_unidad: f.edad_unidad,
               genero: f.genero,
               nss_curp: f.nss_curp,
               diagnostico_ingreso: f.diagnostico_ingreso,
@@ -143,9 +288,12 @@ export const VistaImpresionRecetario: React.FC = () => {
           }
         });
 
-        // 4. Ordenar pacientes por cama y medicamentos por orden
+        // 4. Ordenar pacientes por subservicio_orden + cama, medicamentos por orden
         const lista = Array.from(mapaPacientes.values());
         lista.sort((a, b) => {
+          const oa = a.subservicio_orden ?? 9999;
+          const ob = b.subservicio_orden ?? 9999;
+          if (oa !== ob) return oa - ob;
           const na = parseInt(a.numero_cama, 10);
           const nb = parseInt(b.numero_cama, 10);
           if (!isNaN(na) && !isNaN(nb)) return na - nb;
@@ -219,85 +367,20 @@ export const VistaImpresionRecetario: React.FC = () => {
         <span><b>INDICACIONES:</b> {totalMedicamentos}</span>
       </div>
 
-      {/* Tabla principal */}
-      <table className="tabla-recetario">
-        <thead>
-          <tr className="col-row">
-            <th style={{ width: '4%' }}>CAMA</th>
-            <th style={{ width: '14%' }}>PACIENTE</th>
-            <th style={{ width: '10%' }}>DIAGNÓSTICO</th>
-            <th style={{ width: '3%' }}>#</th>
-            <th style={{ width: '25%' }}>MEDICAMENTO</th>
-            <th style={{ width: '5%' }}>VÍA</th>
-            <th style={{ width: '11%' }}>FRECUENCIA</th>
-            <th style={{ width: '3%' }}>SOL</th>
-            <th style={{ width: '3%' }}>DIS</th>
-            <th style={{ width: '22%' }}>OBSERVACIONES</th>
-          </tr>
-        </thead>
-        <tbody>
-          {grupos.map((g) => {
-            const n = Math.max(1, g.medicamentos.length);
-
-            // Caso 1: paciente SIN medicamentos
-            if (g.medicamentos.length === 0) {
-              return (
-                <tr key={g.paciente_id}>
-                  <td className="c-cama">{g.numero_cama}</td>
-                  <td className="c-paciente">
-                    <div className="nombre">{limpiar(g.nombre_paciente)}</div>
-                    <div className="datos-pac">
-                      {g.edad ?? ''} {generoCorto(g.genero)} · {limpiar(g.nss_curp)}
-                    </div>
-                  </td>
-                  <td className="c-dx">{limpiar(g.diagnostico_ingreso)}</td>
-                  <td colSpan={8} className="c-sin-meds">
-                    (Sin indicaciones capturadas)
-                  </td>
-                </tr>
-              );
-            }
-
-            // Caso 2: paciente CON medicamentos (rowSpan en columnas comunes)
-            return g.medicamentos.map((m, idx) => (
-              <tr key={`${g.paciente_id}-${m.medicamento_id}`}
-                  className={idx === 0 ? 'fila-inicio-pac' : ''}>
-                {idx === 0 && (
-                  <>
-                    <td className="c-cama" rowSpan={n}>{g.numero_cama}</td>
-                    <td className="c-paciente" rowSpan={n}>
-                      <div className="nombre">{limpiar(g.nombre_paciente)}</div>
-                      <div className="datos-pac">
-                        {g.edad ?? ''} {generoCorto(g.genero)} · {limpiar(g.nss_curp)}
-                      </div>
-                    </td>
-                    <td className="c-dx" rowSpan={n}>{limpiar(g.diagnostico_ingreso)}</td>
-                  </>
-                )}
-                <td className="c-num">{m.orden ?? (idx + 1)}</td>
-                <td className="c-med">{limpiar(m.medicamento)}</td>
-                <td className="c-via">{limpiar(m.via)}</td>
-                <td className="c-frec">{limpiar(m.frecuencia)}</td>
-                {/* Solicitada/Dispensada: si hay cantidad capturada, se imprime
-                    el número (en negritas) para que la farmacia vea exactamente
-                    cuántas piezas se piden y cuántas dispensó. Si está vacío
-                    se deja la casilla ☐ por si el captura ocurre a mano. */}
-                <td className="c-check">{m.solicitada != null && m.solicitada > 0 ? <b>{m.solicitada}</b> : '☐'}</td>
-                <td className="c-check">{m.dispensada != null && m.dispensada > 0 ? <b>{m.dispensada}</b> : '☐'}</td>
-                <td className="c-obs"></td>
-              </tr>
-            ));
-          })}
-          {/* Si no hay pacientes, mostrar fila informativa */}
-          {grupos.length === 0 && (
-            <tr>
-              <td colSpan={11} className="c-vacio">
-                Sin pacientes activos en este servicio.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+      {/* Para PEDIATRÍA: una hoja por subservicio (UTIP, UCIN, UTIN, CYD,
+          ESCOLARES, LACTANTES). Cada bloque rompe página. Para los demás
+          servicios se imprime una sola tabla continua como antes. */}
+      {servicio?.codigo === 'PED'
+        ? agruparPorSubservicio(grupos).map((sg, i, arr) => (
+            <RecetarioSeccion
+              key={sg.subservicio_id}
+              titulo={sg.nombre}
+              subtitulo={sg.nombre_completo}
+              grupos={sg.grupos}
+              esUltima={i === arr.length - 1}
+            />
+          ))
+        : <RecetarioSeccion grupos={grupos} esUltima={true} />}
 
       {/* Leyenda y pie con 3 firmas clásicas de receta IMSS */}
       <div style={leyendaBox}>
@@ -424,10 +507,43 @@ export const VistaImpresionRecetario: React.FC = () => {
           font-weight: 600;
           font-size: 8.5pt;
         }
+        .tabla-recetario .c-pos {
+          text-align: center;
+          font-size: 8pt;
+          font-weight: 600;
+          color: #265C4E;
+          background: #fafafa;
+        }
         .tabla-recetario .c-via,
         .tabla-recetario .c-frec {
           text-align: center;
           font-size: 8pt;
+        }
+
+        /* Sección de subservicio (impresión por hoja en Pediatría) */
+        .rec-seccion { margin-bottom: 16px; }
+        .rec-page-break { page-break-after: always; }
+        .rec-sub-encabezado {
+          background: #FAF5EA;
+          border-left: 6px solid #C39C59;
+          padding: 6px 10px;
+          margin-bottom: 4px;
+          font-family: Arial, sans-serif;
+        }
+        .rec-sub-abrev {
+          font-size: 16pt;
+          font-weight: 800;
+          color: #0E6755;
+          letter-spacing: 0.5px;
+        }
+        .rec-sub-completo {
+          font-size: 10pt;
+          color: #7d5b2f;
+          margin-left: 8px;
+          text-transform: uppercase;
+        }
+        @media print {
+          .rec-page-break { page-break-after: always; break-after: page; }
         }
         .tabla-recetario .c-check {
           text-align: center;

@@ -25,6 +25,7 @@ interface ControlRenglon {
   genero: string;
   nss_curp: string | null;
   fecha_nacimiento: string | null;
+  edad_unidad?: 'AÑOS' | 'MESES' | 'DIAS' | string | null;
   diagnostico_ingreso: string;
   [key: string]: any;
 }
@@ -35,6 +36,15 @@ function formatearFechaNac(f: string | null | undefined): string {
   const [y, m, d] = f.split('-');
   if (!y || !m || !d) return f;
   return `${d}/${m}/${y}`;
+}
+
+// Edad con unidad — para neonatos en UCIN se ven días/meses en vez de años.
+function formatEdadInline(edad: number | null | undefined, unidad: any): string {
+  if (edad == null) return '';
+  const u = (unidad ?? 'AÑOS') as string;
+  if (u === 'DIAS') return `${edad} ${edad === 1 ? 'día' : 'días'}`;
+  if (u === 'MESES') return `${edad} ${edad === 1 ? 'mes' : 'meses'}`;
+  return `${edad} ${edad === 1 ? 'año' : 'años'}`;
 }
 
 interface CatalogoItem {
@@ -402,7 +412,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                     <div>
                       <div style={pacienteNombre}>{r.nombre_paciente}</div>
                       <div style={pacienteSub}>
-                        {r.subservicio} · {r.edad} años · {r.genero?.substring(0, 4)} · Exp {r.nss_curp || '--'}
+                        {r.subservicio} · {formatEdadInline(r.edad, r.edad_unidad)} · {r.genero?.substring(0, 4)} · Exp {r.nss_curp || '--'}
                         {r.fecha_nacimiento && (
                           <> · <strong>F. Nac:</strong> {formatearFechaNac(r.fecha_nacimiento)}</>
                         )}
