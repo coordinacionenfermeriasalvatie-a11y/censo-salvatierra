@@ -342,7 +342,7 @@ export function VistaServicio() {
     return () => { cancelado = true; };
   }, [pestana, servicioIdNum, camas]);
 
-  const onCamaClick = (cama: CamaEstado) => {
+  const onCamaClick = useCallback((cama: CamaEstado) => {
     // Enfermeria: lectura. Click no abre modales de ingreso/egreso.
     if (censoSoloLectura) return;
     if (cama.paciente_id) {
@@ -357,7 +357,7 @@ export function VistaServicio() {
       // ingreso o bloqueo, o se libera si ya estaba bloqueada.
       setModalGestionCama(cama);
     }
-  };
+  }, [censoSoloLectura]);
 
   // PARCHE v4.5 — Separar camas en dos grupos: censables y no censables (camillas)
   // PERF — memoizar particiones para no rebuscar 4 veces sobre camas en

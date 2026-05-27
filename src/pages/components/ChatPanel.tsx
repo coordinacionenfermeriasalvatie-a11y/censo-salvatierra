@@ -64,33 +64,39 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
     })();
   }, [abierto, canalActivo]);
 
-  // Realtime: recibir mensajes nuevos
+  // Realtime: recibir mensajes nuevos. Solo nos suscribimos cuando el
+  // perfil está listo. El nombre del canal incluye perfilId para evitar
+  // que múltiples instancias compartan el mismo y stackeen listeners.
   useEffect(() => {
     if (!perfil) return;
+    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
     const ch = supabase
-      .channel('chat-mensajes')
+      .channel(`chat-mensajes-${perfil.id}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_mensajes' },
         async (payload) => {
           const m = payload.new as Mensaje;
           await hidratarRemitentes([m]);
-          // Filtro: solo nos interesan los canales relevantes
           if (m.canal === canalActivo && abierto) {
             setMensajes(prev => prev.concat(m));
-            // Auto-scroll
-            setTimeout(() => listaRef.current?.scrollTo({ top: 999999, behavior: 'smooth' }), 50);
-          } else {
-            // Notificación de no leído si el chat está cerrado o en otro tab
-            if (m.remitente !== perfil.id) {
-              if (m.canal === `servicio:${servicioId}`) setUnreadServicio(c => c + 1);
-              else if (m.canal === 'global') setUnreadGlobal(c => c + 1);
-            }
+            if (scrollTimer) clearTimeout(scrollTimer);
+            scrollTimer = setTimeout(() => {
+              listaRef.current?.scrollTo({ top: 999999, behavior: 'smooth' });
+            }, 50);
+          } else if (m.remitente !== perfil.id) {
+            if (m.canal === `servicio:${servicioId}`) setUnreadServicio(c => c + 1);
+            else if (m.canal === 'global') setUnreadGlobal(c => c + 1);
           }
         }
       )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
+    return () => {
+      if (scrollTimer) clearTimeout(scrollTimer);
+      supabase.removeChannel(ch);
+    };
   }, [perfil, canalActivo, abierto, servicioId]);
 
+  // Batch lookup de perfiles que aún no están en cache. SI el componente
+  // hidrata 100 mensajes nuevos, hace UNA query con IN, no 100.
   const hidratarRemitentes = async (msgs: Mensaje[]) => {
     const faltantes = Array.from(new Set(msgs.map(m => m.remitente))).filter(id => !perfiles[id]);
     if (faltantes.length === 0) return;
@@ -106,11 +112,12 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
     }
   };
 
-  // Auto-scroll al abrir
+  // Auto-scroll al abrir o cambiar de tab. Cleanup para evitar acceso
+  // al ref después de desmontar.
   useEffect(() => {
-    if (abierto) {
-      setTimeout(() => listaRef.current?.scrollTo({ top: 999999 }), 100);
-    }
+    if (!abierto) return;
+    const t = setTimeout(() => listaRef.current?.scrollTo({ top: 999999 }), 100);
+    return () => clearTimeout(t);
   }, [abierto, tab]);
 
   const enviar = async () => {
