@@ -15,6 +15,7 @@ interface Props {
   camaId: number;
   subservicioId: number;
   servicioId: number;
+  servicioCodigo?: string; // 'HDL' habilita flujo especial de hemodiálisis
   numeroCama: string;
   capturadoPor: string; // uuid del perfil
   onClose: () => void;
@@ -22,8 +23,12 @@ interface Props {
 }
 
 export const ModalIngreso: React.FC<Props> = ({
-  camaId, numeroCama, capturadoPor, onClose, onGuardado,
+  camaId, numeroCama, capturadoPor, servicioCodigo, onClose, onGuardado,
 }) => {
+  // Flag de servicio HEMODIALISIS: cambia la captura de identidad
+  // (exige CURP + fecha de nacimiento, ambos) y agrega dropdown de
+  // tipo de terapia (Hemodiálisis / DPCA / DPA / DPI).
+  const esHDL = servicioCodigo === 'HDL';
   const [especialidades, setEspecialidades] = useState<Especialidad[]>([]);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +64,10 @@ export const ModalIngreso: React.FC<Props> = ({
   // puede reevaluar desde la pestaña Control.
   const [riesgoCaidas, setRiesgoCaidas] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
   const [riesgoUpp, setRiesgoUpp] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
+  // Solo en HDL: fecha de nacimiento se captura aparte de CURP (ambos
+  // obligatorios) y se exige seleccionar tipo de terapia.
+  const [fnacHDL, setFnacHDL] = useState(''); // yyyy-mm-dd
+  const [tipoTerapia, setTipoTerapia] = useState<'' | 'Hemodiálisis' | 'DPCA' | 'DPA' | 'DPI'>('');
 
   useEffect(() => {
     (async () => {
@@ -93,11 +102,27 @@ export const ModalIngreso: React.FC<Props> = ({
       setError('Selecciona una especialidad');
       return;
     }
-    if (tipoIdent === 'curp' && curp.trim().length > 0 && curp.trim().length !== 18) {
+    // En HDL exigimos AMBOS: CURP completa + fecha de nacimiento + tipo terapia
+    if (esHDL) {
+      const c = curp.trim().toUpperCase();
+      if (c.length !== 18) {
+        setError('En HEMODIÁLISIS la CURP de 18 caracteres es obligatoria.');
+        return;
+      }
+      if (!fnacHDL) {
+        setError('En HEMODIÁLISIS la fecha de nacimiento es obligatoria.');
+        return;
+      }
+      if (!tipoTerapia) {
+        setError('Selecciona el tipo de terapia (Hemodiálisis / DPCA / DPA).');
+        return;
+      }
+    } else if (tipoIdent === 'curp' && curp.trim().length > 0 && curp.trim().length !== 18) {
       setError('La CURP debe tener 18 caracteres (o déjala vacía si no la conoces)');
       return;
     }
-    const identGuardar = construirIdent();
+    // En HDL forzamos CURP como identificador (ya validamos arriba).
+    const identGuardar = esHDL ? curp.trim().toUpperCase() : construirIdent();
 
     setGuardando(true);
     setError(null);
@@ -162,6 +187,10 @@ export const ModalIngreso: React.FC<Props> = ({
           observaciones: observaciones.trim() || null,
           grupo_sanguineo: grupoSanguineo || null,
           alergias: alergias.trim() || null,
+          // Solo aplican en HDL — el trigger AFTER INSERT los lee
+          // para sincronizar pacientes_erc y sumar productividad.
+          tipo_terapia: esHDL ? tipoTerapia : null,
+          fecha_nacimiento: esHDL && fnacHDL ? fnacHDL : null,
           estado: 'ACTIVO',
           capturado_por: capturadoPor,
         });
@@ -238,41 +267,89 @@ export const ModalIngreso: React.FC<Props> = ({
             </select>
           </div>
 
-          {/* Identidad: pedimos UNA sola cosa, fecha de nacimiento o CURP.
-              El toggle cambia el input que se muestra. Ambos se persisten
-              en pacientes.nss_curp (formato distinguible para la ficha). */}
-          <div style={{ ...campo, gridColumn: 'span 2' }}>
-            <label style={label}>IDENTIFICACIÓN DEL PACIENTE</label>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-              <button
-                type="button"
-                onClick={() => setTipoIdent('fnac')}
-                style={tipoIdent === 'fnac' ? togglePillActivo : togglePill}
-              >📅 Fecha de nacimiento</button>
-              <button
-                type="button"
-                onClick={() => setTipoIdent('curp')}
-                style={tipoIdent === 'curp' ? togglePillActivo : togglePill}
-              >🪪 CURP</button>
+          {/* Identidad. En HDL: AMBOS campos obligatorios (CURP + fecha nac)
+              + dropdown de tipo de terapia. En otros servicios: toggle
+              clásico (uno u otro). */}
+          {esHDL ? (
+            <>
+              <div style={{ ...campo, gridColumn: 'span 2', borderTop: '1px dashed #0E6755', paddingTop: 10, marginTop: 4 }}>
+                <div style={{ fontSize: 10, color: '#0E6755', fontWeight: 700, letterSpacing: 0.3, marginBottom: 2 }}>
+                  🩺 INGRESO HEMODIÁLISIS — CURP + FECHA NAC. + TERAPIA REQUERIDOS
+                </div>
+              </div>
+              <div style={campo}>
+                <label style={label}>CURP *</label>
+                <input
+                  value={curp}
+                  onChange={e => setCurp(e.target.value.toUpperCase().slice(0, 18))}
+                  style={input}
+                  placeholder="GAHF800523HBSXXX01"
+                  maxLength={18}
+                />
+              </div>
+              <div style={campo}>
+                <label style={label}>FECHA DE NACIMIENTO *</label>
+                <input
+                  type="date"
+                  value={fnacHDL}
+                  onChange={e => setFnacHDL(e.target.value)}
+                  style={input}
+                  max={new Date().toISOString().substring(0, 10)}
+                />
+              </div>
+              <div style={{ ...campo, gridColumn: 'span 2' }}>
+                <label style={label}>TIPO DE TERAPIA SUSTITUTIVA *</label>
+                <select
+                  value={tipoTerapia}
+                  onChange={e => setTipoTerapia(e.target.value as any)}
+                  style={input}
+                >
+                  <option value="">-- Selecciona --</option>
+                  <option value="Hemodiálisis">Hemodiálisis</option>
+                  <option value="DPCA">DPCA — Diálisis Peritoneal Continua Ambulatoria</option>
+                  <option value="DPA">DPA — Diálisis Peritoneal Automatizada</option>
+                  <option value="DPI">DPI — Diálisis Peritoneal Intermitente</option>
+                </select>
+                <div style={{ fontSize: 10, color: '#7d5b2f', marginTop: 4 }}>
+                  Esto alimenta: Censo HDL, bitácora Censo ERC y productividad
+                  ({tipoTerapia === 'Hemodiálisis' ? 'P06' : tipoTerapia ? 'P05' : 'P05 o P06'}).
+                </div>
+              </div>
+            </>
+          ) : (
+            <div style={{ ...campo, gridColumn: 'span 2' }}>
+              <label style={label}>IDENTIFICACIÓN DEL PACIENTE</label>
+              <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
+                <button
+                  type="button"
+                  onClick={() => setTipoIdent('fnac')}
+                  style={tipoIdent === 'fnac' ? togglePillActivo : togglePill}
+                >📅 Fecha de nacimiento</button>
+                <button
+                  type="button"
+                  onClick={() => setTipoIdent('curp')}
+                  style={tipoIdent === 'curp' ? togglePillActivo : togglePill}
+                >🪪 CURP</button>
+              </div>
+              {tipoIdent === 'fnac' ? (
+                <input
+                  type="date"
+                  value={fnac}
+                  onChange={e => setFnac(e.target.value)}
+                  style={input}
+                  max={new Date().toISOString().substring(0, 10)}
+                />
+              ) : (
+                <input
+                  value={curp}
+                  onChange={e => setCurp(e.target.value.toUpperCase().slice(0, 18))}
+                  style={input}
+                  placeholder="GAHF800523HBSXXX01"
+                  maxLength={18}
+                />
+              )}
             </div>
-            {tipoIdent === 'fnac' ? (
-              <input
-                type="date"
-                value={fnac}
-                onChange={e => setFnac(e.target.value)}
-                style={input}
-                max={new Date().toISOString().substring(0, 10)}
-              />
-            ) : (
-              <input
-                value={curp}
-                onChange={e => setCurp(e.target.value.toUpperCase().slice(0, 18))}
-                style={input}
-                placeholder="GAHF800523HBSXXX01"
-                maxLength={18}
-              />
-            )}
-          </div>
+          )}
 
           <div style={{ ...campo, gridColumn: 'span 2' }}>
             <label style={label}>DIAGNÓSTICO DE INGRESO *</label>

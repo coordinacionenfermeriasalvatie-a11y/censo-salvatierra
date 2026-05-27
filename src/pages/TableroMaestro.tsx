@@ -141,6 +141,11 @@ export function TableroMaestro() {
   const [cargando, setCargando]         = useState(true);
   const [error, setError]               = useState<string | null>(null);
   const [exportando, setExportando]     = useState(false);
+  // HDL: estadísticas de censo ERC histórico + sesiones de HD/DP.
+  // Se cargan en paralelo al resto.
+  const [hdlStats, setHdlStats] = useState<{ ercTotal: number; ercActivos: number; hdMes: number; dpMes: number }>({
+    ercTotal: 0, ercActivos: 0, hdMes: 0, dpMes: 0,
+  });
 
   // ---- Rango de fechas calculado ----
   const rangoFechas = useMemo(() => {
@@ -275,6 +280,32 @@ export function TableroMaestro() {
       if (prodErr) throw prodErr;
 
       setOcupacion((ocupData || []) as Ocupacion[]);
+
+      // Cargar stats de HDL en paralelo (no críticas — degradación silenciosa)
+      try {
+        const [{ data: ercAll }, { data: prodHdl }] = await Promise.all([
+          supabase.from('pacientes_erc').select('id, estatus'),
+          supabase
+            .from('productividad_capturas')
+            .select('indicador_id, valor, catalogo_indicadores_productividad(codigo)')
+            .eq('servicio_id', 12) // HDL
+            .eq('anio', anio).eq('mes', mes),
+        ]);
+        const ercTotal = (ercAll || []).length;
+        const ercActivos = (ercAll || []).filter((r: any) => {
+          const s = (r.estatus || '').toUpperCase();
+          return !/EGRESO|BAJA|DEFUNCION/.test(s);
+        }).length;
+        let hdMes = 0, dpMes = 0;
+        for (const c of (prodHdl || []) as any[]) {
+          const cod = c.catalogo_indicadores_productividad?.codigo;
+          if (cod === 'P06') hdMes += Number(c.valor) || 0;
+          else if (cod === 'P05') dpMes += Number(c.valor) || 0;
+        }
+        setHdlStats({ ercTotal, ercActivos, hdMes, dpMes });
+      } catch (e) {
+        console.warn('HDL stats failed:', e);
+      }
 
       // ---- Normalizar resumen ----
       if (periodo === 'mes') {
@@ -553,6 +584,15 @@ export function TableroMaestro() {
             <KPI label="Traslados"             valor={`${totalTraslados}`}      color="#7d5b2f" />
             <KPI label="Defunciones"           valor={`${totalDefunciones}`}    color="#A32D2D" />
             <KPI label="Promedio estancia"     valor={`${promedioEstancia} d`}  color="#265C4E" />
+          </div>
+
+          {/* ===== SECCIÓN HDL: HEMODIÁLISIS + DIÁLISIS ===== */}
+          <h2 style={seccionTitulo}>🩺 HEMODIÁLISIS Y DIÁLISIS</h2>
+          <div style={kpiGrid}>
+            <KPI label="Pacientes ERC (bitácora total)"  valor={`${hdlStats.ercTotal}`}    color="#0E6755" subrayado="HISTÓRICO" />
+            <KPI label="ERC activos hoy"                  valor={`${hdlStats.ercActivos}`} color="#0E6755" />
+            <KPI label="Hemodiálisis del mes (P06)"       valor={`${hdlStats.hdMes}`}      color="#1a5f8a" />
+            <KPI label="Diálisis peritoneal del mes (P05)" valor={`${hdlStats.dpMes}`}     color="#7d5b2f" />
           </div>
 
           {/* ===== SECCIÓN 2: OCUPACIÓN POR SERVICIO ===== */}

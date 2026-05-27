@@ -728,6 +728,7 @@ export function VistaServicio() {
           camaId={modalIngreso.camaId}
           subservicioId={modalIngreso.subservicioId}
           servicioId={servicio.id}
+          servicioCodigo={servicio.codigo}
           numeroCama={modalIngreso.numeroCama}
           capturadoPor={perfil.id}
           onClose={() => setModalIngreso(null)}
