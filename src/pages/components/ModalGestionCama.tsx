@@ -9,7 +9,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 
-const CAUSAS = ['SIN CAMA', 'DESCOMPUESTA', 'SIN COLCHÓN', 'EN REPARACIÓN', 'OTRA'] as const;
+const CAUSAS = ['SIN CAMA', 'DESCOMPUESTA', 'SIN COLCHÓN', 'EN REPARACIÓN', 'AISLAMIENTO', 'OTRA'] as const;
 
 interface Props {
   camaId: number;
