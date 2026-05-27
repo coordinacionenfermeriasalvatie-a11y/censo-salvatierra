@@ -326,22 +326,14 @@ export function VistaServicio() {
     }
   };
 
-  if (cargando) {
-    return <div style={contenedor}><div style={{ padding: 40, textAlign: 'center', color: '#265C4E' }}>Cargando servicio...</div></div>;
-  }
-
-  if (error || !servicio) {
-    return (
-      <div style={contenedor}>
-        <div style={{ padding: 40, textAlign: 'center', color: '#A32D2D' }}>{error || 'Servicio no encontrado'}</div>
-        <button onClick={() => navigate('/')} style={botonVolver}>← Volver al tablero</button>
-      </div>
-    );
-  }
-
   // PARCHE v4.5 — Separar camas en dos grupos: censables y no censables (camillas)
   // PERF — memoizar particiones para no rebuscar 4 veces sobre camas en
   // cada render del componente.
+  //
+  // IMPORTANTE: este useMemo va ANTES de los early returns (cargando/error)
+  // para no violar Rules of Hooks. Antes estaba después y al cambiar
+  // `cargando` de true→false React detectaba "rendered more hooks than
+  // during previous render" → error #310 → pantalla en blanco.
   const { camasCensables, camasNoCensables, ocupadasCensables, totalCensables, ocupadasCamillas, totalCamillas } = useMemo(() => {
     const cens: CamaEstado[] = [];
     const ncens: CamaEstado[] = [];
@@ -365,6 +357,19 @@ export function VistaServicio() {
       totalCamillas: ncens.length,
     };
   }, [camas]);
+
+  if (cargando) {
+    return <div style={contenedor}><div style={{ padding: 40, textAlign: 'center', color: '#265C4E' }}>Cargando servicio...</div></div>;
+  }
+
+  if (error || !servicio) {
+    return (
+      <div style={contenedor}>
+        <div style={{ padding: 40, textAlign: 'center', color: '#A32D2D' }}>{error || 'Servicio no encontrado'}</div>
+        <button onClick={() => navigate('/')} style={botonVolver}>← Volver al tablero</button>
+      </div>
+    );
+  }
 
   // Función auxiliar para renderizar una tarjeta de cama
   const renderCama = (c: CamaEstado) => {
