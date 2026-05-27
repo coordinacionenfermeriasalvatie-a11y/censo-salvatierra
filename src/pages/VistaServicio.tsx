@@ -21,6 +21,7 @@ import { VistaRecetario } from './components/VistaRecetario';
 import { VistaFormatoControl } from './components/VistaFormatoControl';
 import { VistaProductividad } from './components/VistaProductividad';
 import { VistaERC } from './components/VistaERC';
+import { VistaInstructivoHDL } from './components/VistaInstructivoHDL';
 
 interface Servicio {
   id: number;
@@ -684,6 +685,7 @@ export function VistaServicio() {
         />
       )}
       {pestana === 'erc' && <VistaERC />}
+      {pestana === 'instructivo_hdl' && <VistaInstructivoHDL />}
 
       {modalTraslado && perfil && (
         <ModalTraslado
