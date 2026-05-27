@@ -106,9 +106,28 @@ export const ModalIngreso: React.FC<Props> = ({
       // sin que la app se diera cuenta (típico tras >1h sin actividad),
       // los INSERTs fallan con error de RLS aunque el perfil sea válido,
       // porque auth.uid() devuelve NULL en la policy.
+      // Primero intentamos un refresh defensivo — si el refresh token es
+      // válido, esto extiende la sesión silenciosamente. Si el refresh
+      // falla pero hay sesión actual, también seguimos (puede ser que
+      // simplemente el JWT vigente aún no ha expirado).
+      try {
+        await supabase.auth.refreshSession();
+      } catch { /* ignorar; el getSession siguiente decide */ }
       const { data: sess } = await supabase.auth.getSession();
       if (!sess.session) {
-        throw new Error('Tu sesión expiró. Por favor cierra sesión y vuelve a iniciar para registrar el ingreso.');
+        throw new Error(
+          'Tu sesión expiró. Cierra sesión (botón arriba a la derecha) ' +
+          'y vuelve a iniciar con tu correo y contraseña para registrar el ingreso.'
+        );
+      }
+      // Verificar que el id del paciente que vamos a capturar coincide
+      // con el id autenticado. Si no, hay un desync de estado y vamos a
+      // fallar RLS con seguridad — mejor avisar antes.
+      if (sess.session.user.id !== capturadoPor) {
+        throw new Error(
+          'Detectamos que tu sesión cambió mientras tenías esta pantalla abierta. ' +
+          'Cierra este diálogo y vuelve a entrar al servicio para sincronizar.'
+        );
       }
 
       // 1) Crear el paciente. El trigger tr_crear_hojas_paciente creará
