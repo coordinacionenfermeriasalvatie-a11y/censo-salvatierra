@@ -85,7 +85,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           <div style={{ textAlign: 'right' }}>
             <p style={styles.nombreUsuario}>{perfil.nombre_completo}</p>
             <p style={styles.matricula}>
-              Matricula {perfil.matricula} - {perfil.rol.toUpperCase()}
+              Matrícula {perfil.matricula} - {perfil.rol.toUpperCase()}
             </p>
           </div>
           {ROLES_VEN_TABLERO.includes(perfil.rol) && (
@@ -100,7 +100,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
             🔑 Contrasena
           </button>
           <button onClick={onCerrarSesion} style={styles.botonSalir}>
-            Cerrar sesion
+            Cerrar sesión
           </button>
         </div>
       </header>
@@ -170,7 +170,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
         </h3>
 
         {cargando ? (
-          <p style={styles.cargando}>Cargando ocupacion...</p>
+          <p style={styles.cargando}>Cargando ocupación...</p>
         ) : (
           <div style={styles.serviciosGrid}>
             {serviciosVisibles.map(s => (
