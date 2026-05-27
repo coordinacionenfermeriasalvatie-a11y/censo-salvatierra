@@ -6,23 +6,32 @@
 // PARCHE v4.5 — secciones separadas: censables arriba, camillas no censables abajo
 //               + contador dual "X de N censables · Y de M camillas"
 // PARCHE v4.6 — columna DIAGNÓSTICO en tabla de egresados recientes
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, lazy, Suspense } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { ModalIngreso } from './components/ModalIngreso';
-import { ModalEgreso } from './components/ModalEgreso';
-import { ModalAsignarEnfermero } from './components/ModalAsignarEnfermero';
-import { ModalGestionCama } from './components/ModalGestionCama';
-import { ModalTraslado } from './components/ModalTraslado';
 import { MenuPestanas, Pestana } from './components/MenuPestanas';
-import { VistaDietas } from './components/VistaDietas';
-import { VistaRecetario } from './components/VistaRecetario';
-import { VistaFormatoControl } from './components/VistaFormatoControl';
-import { VistaProductividad } from './components/VistaProductividad';
-import { VistaERC } from './components/VistaERC';
-import { VistaInstructivoHDL } from './components/VistaInstructivoHDL';
-import { ChatPanel } from './components/ChatPanel';
+
+// Lazy-load: cada modal y cada pestaña pesada vive en su propio chunk.
+// El bundle inicial de VistaServicio baja considerablemente y el
+// usuario solo descarga lo que efectivamente abre. Cada uno re-exporta
+// como default desde named export para que React.lazy funcione.
+const ModalIngreso          = lazy(() => import('./components/ModalIngreso').then(m => ({ default: m.ModalIngreso })));
+const ModalEgreso           = lazy(() => import('./components/ModalEgreso').then(m => ({ default: m.ModalEgreso })));
+const ModalAsignarEnfermero = lazy(() => import('./components/ModalAsignarEnfermero').then(m => ({ default: m.ModalAsignarEnfermero })));
+const ModalGestionCama      = lazy(() => import('./components/ModalGestionCama').then(m => ({ default: m.ModalGestionCama })));
+const ModalTraslado         = lazy(() => import('./components/ModalTraslado').then(m => ({ default: m.ModalTraslado })));
+const VistaDietas           = lazy(() => import('./components/VistaDietas').then(m => ({ default: m.VistaDietas })));
+const VistaRecetario        = lazy(() => import('./components/VistaRecetario').then(m => ({ default: m.VistaRecetario })));
+const VistaFormatoControl   = lazy(() => import('./components/VistaFormatoControl').then(m => ({ default: m.VistaFormatoControl })));
+const VistaProductividad    = lazy(() => import('./components/VistaProductividad').then(m => ({ default: m.VistaProductividad })));
+const VistaERC              = lazy(() => import('./components/VistaERC').then(m => ({ default: m.VistaERC })));
+const VistaInstructivoHDL   = lazy(() => import('./components/VistaInstructivoHDL').then(m => ({ default: m.VistaInstructivoHDL })));
+const ChatPanel             = lazy(() => import('./components/ChatPanel').then(m => ({ default: m.ChatPanel })));
+
+const FallbackCarga = () => (
+  <div style={{ padding: 24, textAlign: 'center', color: '#888', fontSize: 13 }}>Cargando...</div>
+);
 
 interface Servicio {
   id: number;
@@ -555,6 +564,7 @@ export function VistaServicio() {
   };
 
   return (
+    <Suspense fallback={<FallbackCarga />}>
     <div style={contenedor}>
       <div style={header}>
         <button onClick={() => navigate('/')} style={botonVolver}>← Tablero</button>
@@ -776,6 +786,7 @@ export function VistaServicio() {
         />
       )}
     </div>
+    </Suspense>
   );
 }
 
