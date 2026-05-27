@@ -24,12 +24,23 @@ const pestanaInstructivoHDL = { id: 'instructivo_hdl' as Pestana, etiqueta: 'Ins
 // Pestaña adicional SOLO para CLÍNICA DE HERIDAS (CDH).
 const pestanaBitacoraHeridas = { id: 'bitacora_heridas' as Pestana, etiqueta: 'Bitácora Heridas', icono: '🩹', disponible: true };
 
+// Servicios ambulatorios: los pacientes no se hospitalizan ni reciben
+// dietas hospitalarias ni medicación de recetario inter-hospitalario.
+// Por eso se ocultan esas dos pestañas.
+const SERVICIOS_AMBULATORIOS = new Set(['CDH', 'HDL', 'HDN']);
+
 export const MenuPestanas: React.FC<Props> = ({ pestanaActiva, onCambio, servicioCodigo }) => {
   let pestanas = pestanasBase;
+
+  // Filtrar Dietas y Recetario en servicios ambulatorios
+  if (SERVICIOS_AMBULATORIOS.has(servicioCodigo)) {
+    pestanas = pestanasBase.filter(p => p.id !== 'dietas' && p.id !== 'recetario');
+  }
+
   if (servicioCodigo === 'HDL') {
-    pestanas = [...pestanasBase, pestanaERC, pestanaInstructivoHDL];
+    pestanas = [...pestanas, pestanaERC, pestanaInstructivoHDL];
   } else if (servicioCodigo === 'CDH') {
-    pestanas = [...pestanasBase, pestanaBitacoraHeridas];
+    pestanas = [...pestanas, pestanaBitacoraHeridas];
   }
   return (
     <div style={contenedor}>
