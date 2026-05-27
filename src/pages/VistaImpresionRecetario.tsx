@@ -154,17 +154,16 @@ const RecetarioSeccion: React.FC<{
       <table className="tabla-recetario">
         <thead>
           <tr className="col-row">
-            <th style={{ width: '4%' }}>CAMA</th>
-            <th style={{ width: '13%' }}>PACIENTE</th>
-            <th style={{ width: '9%' }}>DIAGNÓSTICO</th>
+            <th style={{ width: '5%' }}>CAMA</th>
+            <th style={{ width: '17%' }}>PACIENTE</th>
             <th style={{ width: '3%' }}>#</th>
-            <th style={{ width: '18%' }}>MEDICAMENTO</th>
-            <th style={{ width: '10%' }}>POSOLOGÍA</th>
-            <th style={{ width: '5%' }}>VÍA</th>
-            <th style={{ width: '10%' }}>FRECUENCIA</th>
+            <th style={{ width: '23%' }}>MEDICAMENTO</th>
+            <th style={{ width: '12%' }}>POSOLOGÍA</th>
+            <th style={{ width: '6%' }}>VÍA</th>
+            <th style={{ width: '12%' }}>FRECUENCIA</th>
             <th style={{ width: '3%' }}>SOL</th>
             <th style={{ width: '3%' }}>DIS</th>
-            <th style={{ width: '22%' }}>OBSERVACIONES</th>
+            <th style={{ width: '16%' }}>OBSERVACIONES</th>
           </tr>
         </thead>
         <tbody>
@@ -181,8 +180,7 @@ const RecetarioSeccion: React.FC<{
                       {formatEdadCorta(g.edad, g.edad_unidad)} {generoCorto(g.genero)} · {limpiar(g.nss_curp)}
                     </div>
                   </td>
-                  <td className="c-dx">{limpiar(g.diagnostico_ingreso)}</td>
-                  <td colSpan={9} className="c-sin-meds">
+                  <td colSpan={8} className="c-sin-meds">
                     (Sin indicaciones capturadas)
                   </td>
                 </tr>
@@ -201,7 +199,6 @@ const RecetarioSeccion: React.FC<{
                         {formatEdadCorta(g.edad, g.edad_unidad)} {generoCorto(g.genero)} · {limpiar(g.nss_curp)}
                       </div>
                     </td>
-                    <td className="c-dx" rowSpan={n}>{limpiar(g.diagnostico_ingreso)}</td>
                   </>
                 )}
                 <td className="c-num">{m.orden ?? (idx + 1)}</td>
@@ -218,7 +215,7 @@ const RecetarioSeccion: React.FC<{
           })}
           {grupos.length === 0 && (
             <tr>
-              <td colSpan={11} className="c-vacio">
+              <td colSpan={10} className="c-vacio">
                 Sin pacientes activos en este subservicio.
               </td>
             </tr>
