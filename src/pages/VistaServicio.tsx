@@ -45,6 +45,8 @@ interface CamaEstado {
   cama_id: number;
   subservicio_id: number;
   subservicio: string;
+  subservicio_completo?: string | null;
+  subservicio_orden?: number | null;
   numero_cama: string;
   es_censable: boolean;
   paciente_id: string | null;
@@ -117,6 +119,35 @@ function leerCache(servicioId: number): ServiceCacheData | null {
     return null;
   }
   return entry;
+}
+
+// Grupo de camas por subservicio para renderizar encabezados
+// (abreviatura grande + nombre completo abajo).
+interface GrupoSubservicio {
+  subservicio_id: number;
+  nombre: string;
+  nombre_completo: string | null;
+  orden: number;
+  camas: CamaEstado[];
+}
+
+function agruparPorSubservicio(lista: CamaEstado[]): GrupoSubservicio[] {
+  const m = new Map<number, GrupoSubservicio>();
+  for (const c of lista) {
+    let g = m.get(c.subservicio_id);
+    if (!g) {
+      g = {
+        subservicio_id: c.subservicio_id,
+        nombre: c.subservicio,
+        nombre_completo: c.subservicio_completo || null,
+        orden: c.subservicio_orden ?? 9999,
+        camas: [],
+      };
+      m.set(c.subservicio_id, g);
+    }
+    g.camas.push(c);
+  }
+  return [...m.values()].sort((a, b) => a.orden - b.orden);
 }
 
 export function VistaServicio() {
@@ -394,6 +425,12 @@ export function VistaServicio() {
     };
   }, [camas]);
 
+  // Agrupar camas por subservicio para renderizar encabezados.
+  // Cada grupo conserva el orden del subservicio (sub.orden) y dentro
+  // del grupo las camas ya vienen ordenadas por numero_cama_sort en el query.
+  const gruposCensables = useMemo(() => agruparPorSubservicio(camasCensables), [camasCensables]);
+  const gruposCamillas  = useMemo(() => agruparPorSubservicio(camasNoCensables), [camasNoCensables]);
+
   if (cargando) {
     return (
       <div style={contenedor}>
@@ -628,10 +665,20 @@ export function VistaServicio() {
               📖 Censo en modo solo lectura — Solo ves los pacientes asignados a ti en este turno. El ingreso y egreso lo realiza el gestor del servicio.
             </div>
           )}
-          {/* Sección 1: camas censables */}
-          <div style={camasGrid}>
-            {camasCensables.map(renderCama)}
-          </div>
+          {/* Sección 1: camas censables agrupadas por subservicio */}
+          {gruposCensables.map((g) => (
+            <div key={g.subservicio_id} style={subBloque}>
+              <div style={subEncabezado}>
+                <div style={subAbreviatura}>{g.nombre}</div>
+                {g.nombre_completo && g.nombre_completo !== g.nombre && (
+                  <div style={subNombreCompleto}>{g.nombre_completo}</div>
+                )}
+              </div>
+              <div style={camasGrid}>
+                {g.camas.map(renderCama)}
+              </div>
+            </div>
+          ))}
 
           {/* Sección 2: camillas NO CENSABLES (colapsable) */}
           {totalCamillas > 0 && (
@@ -651,9 +698,19 @@ export function VistaServicio() {
                     Estas camas <strong>NO cuentan</strong> en el % de ocupación oficial,
                     pero sí registran ingresos, egresos, dispositivos y productividad de enfermería.
                   </div>
-                  <div style={camasGrid}>
-                    {camasNoCensables.map(renderCama)}
-                  </div>
+                  {gruposCamillas.map((g) => (
+                    <div key={g.subservicio_id} style={subBloque}>
+                      <div style={subEncabezado}>
+                        <div style={subAbreviatura}>{g.nombre}</div>
+                        {g.nombre_completo && g.nombre_completo !== g.nombre && (
+                          <div style={subNombreCompleto}>{g.nombre_completo}</div>
+                        )}
+                      </div>
+                      <div style={camasGrid}>
+                        {g.camas.map(renderCama)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
@@ -836,6 +893,31 @@ const titulo: React.CSSProperties = { fontSize: 24, color: '#0E6755', margin: 0,
 const subtitulo: React.CSSProperties = { fontSize: 13, color: '#888', textAlign: 'center', marginTop: 4 };
 const botonVolver: React.CSSProperties = { background: 'transparent', border: '1px solid #0E6755', color: '#0E6755', padding: '8px 16px', borderRadius: 6, cursor: 'pointer', fontSize: 13 };
 const camasGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 };
+// Encabezado por subservicio: abreviatura grande arriba, nombre completo
+// más chico abajo. Se ve antes del grid de camas del subservicio.
+const subBloque: React.CSSProperties = { marginBottom: 16 };
+const subEncabezado: React.CSSProperties = {
+  borderLeft: '6px solid #C39C59',
+  background: '#FAF5EA',
+  padding: '8px 12px',
+  borderRadius: '4px 4px 0 0',
+  marginBottom: 10,
+};
+const subAbreviatura: React.CSSProperties = {
+  fontSize: 22,
+  fontWeight: 800,
+  color: '#0E6755',
+  letterSpacing: 0.5,
+  lineHeight: 1.1,
+};
+const subNombreCompleto: React.CSSProperties = {
+  fontSize: 12,
+  color: '#7d5b2f',
+  fontWeight: 500,
+  marginTop: 2,
+  textTransform: 'uppercase',
+  letterSpacing: 0.3,
+};
 const camaNoCensable: React.CSSProperties = { border: '2px dashed #C39C59', background: 'repeating-linear-gradient(45deg, #FFF, #FFF 6px, #FAF5EA 6px, #FAF5EA 12px)' };
 const badgeNoCensable: React.CSSProperties = { position: 'absolute', top: 4, right: 4, background: '#C39C59', color: '#fff', fontSize: 9, fontWeight: 700, padding: '2px 6px', borderRadius: 8, letterSpacing: 0.3 };
 const camaCard: React.CSSProperties = { padding: 14, border: '2px solid #C39C59', borderRadius: 8, background: '#fff', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', minHeight: 110, transition: 'all 0.15s', position: 'relative', display: 'flex', flexDirection: 'column', gap: 4 };
