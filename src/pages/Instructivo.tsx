@@ -140,7 +140,22 @@ const SECCIONES: Seccion[] = [
         ],
       },
       {
-        titulo: '2.6. Imprimir la Tarjeta de Identificación 🪪 del paciente',
+        titulo: '2.6. Trasladar / cambiar de cama a un paciente 🔀',
+        pasos: [
+          '⚠️ NO uses este flujo para altas o egresos definitivos. Es solo para cuando el paciente cambia de cama (mismo o distinto subservicio).',
+          'OPCIÓN 1: Toca el chip 🔀 directamente en la tarjeta del paciente ocupado (junto a 🍽️ 💊 📋 🪪).',
+          'OPCIÓN 2: Si ya abriste el modal de Egreso por error, toca el botón verde arriba "🔀 ¿No es egreso? Trasladar / cambiar de cama".',
+          'Se abre el modal con la lista de TODAS las camas disponibles del hospital, agrupadas por Servicio · Subservicio.',
+          'Usa el buscador para filtrar por nombre de servicio, subservicio o número de cama.',
+          'Toca la cama destino. Aparece un preview abajo que te dice cuál de los 2 escenarios se va a aplicar:',
+          '   ✓ Cambio de cama en MISMO subservicio (ej. URG OBSERV cama 1 → URG OBSERV cama 3): solo cambia el cama_id del paciente. NO cuenta como egreso/ingreso.',
+          '   🔀 Traslado entre subservicios (ej. URG CHOQUE → URG OBSERV, URG → UCI, HH1 → HM): cuenta como EGRESO del subservicio origen (con motivo TRASLADO, suma C04 en productividad) e INGRESO al subservicio destino (suma C02). Los datos del paciente (nombre, edad, sexo, CURP/fecha-nac, diagnóstico, especialidad, grupo sanguíneo, alergias, riesgos UPP/caídas) se copian automáticamente — no tienes que volver a capturarlos.',
+          'Toca "🔀 Trasladar" o "✓ Cambiar de cama" según el caso. La operación es atómica.',
+          'Quién puede trasladar: jefe, subjefe, supervisor y gestor del servicio. Las enfermeras de piso (modo lectura) no ven el chip.',
+        ],
+      },
+      {
+        titulo: '2.7. Imprimir la Tarjeta de Identificación 🪪 del paciente',
         pasos: [
           'En cualquier tarjeta de paciente ocupado, busca el chip 🪪 en la fila de chips junto a 🍽️ 💊 📋.',
           'Tócalo. Se abre una nueva pestaña con la Tarjeta de Identificación impresa al estilo del Hospital Juan María de Salvatierra.',
