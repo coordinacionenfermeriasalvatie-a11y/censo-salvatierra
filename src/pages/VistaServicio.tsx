@@ -159,11 +159,29 @@ export function VistaServicio() {
     setCargando(true);
     setError(null);
     try {
+      // Validar sesión activa antes de pedir datos — si el JWT expiró
+      // las queries no fallan con error claro, solo se quedan colgadas.
+      const { data: sess } = await supabase.auth.getSession();
+      if (!sess.session) {
+        throw new Error('Tu sesión expiró. Cierra sesión y vuelve a iniciar para continuar.');
+      }
+
+      // Timeout duro de 20s en las queries paralelas. En 4G mobile a veces
+      // Supabase tarda y dejaba al usuario viendo "Cargando servicio..."
+      // indefinidamente. Mejor cortar y permitir reintento.
+      const timeout = <T,>(p: Promise<T>, ms: number, label: string): Promise<T> =>
+        Promise.race([
+          p,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error(`Tiempo de espera agotado (${label}). Revisa tu conexión y reintenta.`)), ms)
+          ),
+        ]);
+
       // PERF — 4 consultas en paralelo + completitud en segundo turno.
       // La 5a (completitud) NECESITA los paciente_ids del servicio para
       // no traerse TODO el hospital cada vez. Se ejecuta justo después
       // de tener las camas, antes de cualquier set de estado.
-      const [servRes, camasRes, egrRes, asigRes] = await Promise.all([
+      const [servRes, camasRes, egrRes, asigRes] = await timeout(Promise.all([
         supabase
           .from('servicios')
           .select('id, codigo, nombre')
@@ -187,7 +205,7 @@ export function VistaServicio() {
           .select('paciente_id, enfermero_nombre, categoria_codigo')
           .eq('servicio_id', servicioIdNum)
           .not('enfermero_nombre', 'is', null),
-      ]);
+      ]), 20000, 'carga del servicio');
 
       // Críticas: servicio y camas
       if (servRes.error) throw servRes.error;
@@ -359,14 +377,26 @@ export function VistaServicio() {
   }, [camas]);
 
   if (cargando) {
-    return <div style={contenedor}><div style={{ padding: 40, textAlign: 'center', color: '#265C4E' }}>Cargando servicio...</div></div>;
+    return (
+      <div style={contenedor}>
+        <div style={{ padding: 40, textAlign: 'center', color: '#265C4E' }}>
+          Cargando servicio...
+          <div style={{ marginTop: 24, fontSize: 12, color: '#888' }}>
+            Si tarda más de 20 segundos, revisa tu conexión y toca el botón ↻ recargar de tu navegador.
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (error || !servicio) {
     return (
       <div style={contenedor}>
-        <div style={{ padding: 40, textAlign: 'center', color: '#A32D2D' }}>{error || 'Servicio no encontrado'}</div>
-        <button onClick={() => navigate('/')} style={botonVolver}>← Volver al tablero</button>
+        <div style={{ padding: 40, textAlign: 'center', color: '#A32D2D', whiteSpace: 'pre-wrap' }}>{error || 'Servicio no encontrado'}</div>
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 8 }}>
+          <button onClick={() => cargar(true)} style={{ ...botonVolver, background: '#0E6755', color: '#fff', border: 'none' }}>↻ Reintentar</button>
+          <button onClick={() => navigate('/')} style={botonVolver}>← Volver al tablero</button>
+        </div>
       </div>
     );
   }
