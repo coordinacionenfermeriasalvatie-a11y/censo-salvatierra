@@ -1,7 +1,7 @@
 // src/pages/components/MenuPestanas.tsx
 import React from 'react';
 
-export type Pestana = 'censo' | 'dietas' | 'recetario' | 'control' | 'productividad' | 'erc';
+export type Pestana = 'censo' | 'dietas' | 'recetario' | 'control' | 'productividad' | 'erc' | 'instructivo_hdl';
 
 interface Props {
   pestanaActiva: Pestana;
@@ -17,12 +17,13 @@ const pestanasBase: { id: Pestana; etiqueta: string; icono: string; disponible: 
   { id: 'productividad', etiqueta: 'Productividad', icono: '📊', disponible: true },
 ];
 
-// Pestaña adicional ERC solo para HEMODIALISIS.
+// Pestañas adicionales SOLO para HEMODIALISIS.
 const pestanaERC = { id: 'erc' as Pestana, etiqueta: 'Censo ERC', icono: '🩺', disponible: true };
+const pestanaInstructivoHDL = { id: 'instructivo_hdl' as Pestana, etiqueta: 'Instructivo HDL', icono: '📖', disponible: true };
 
 export const MenuPestanas: React.FC<Props> = ({ pestanaActiva, onCambio, servicioCodigo }) => {
   const pestanas = servicioCodigo === 'HDL'
-    ? [...pestanasBase, pestanaERC]
+    ? [...pestanasBase, pestanaERC, pestanaInstructivoHDL]
     : pestanasBase;
   return (
     <div style={contenedor}>
