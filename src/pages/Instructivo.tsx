@@ -133,13 +133,15 @@ const SECCIONES: Seccion[] = [
       {
         titulo: '2.5. Marcar una cama como NO OCUPABLE (sin paciente)',
         pasos: [
-          'Si una cama no se puede ocupar (descompuesta, sin colchón, en reparación, etc.) y NO quieres ingresar un paciente para registrarlo:',
+          'Si una cama no se puede ocupar (descompuesta, sin colchón, en reparación, aislamiento por limpieza terminal, etc.) y NO quieres ingresar un paciente para registrarlo:',
           'Toca la cama disponible. En el selector elige "🚫 Marcar como no ocupable".',
-          'Selecciona la causa: SIN CAMA, DESCOMPUESTA, SIN COLCHÓN, EN REPARACIÓN, OTRA.',
+          'Selecciona la causa: SIN CAMA / DESCOMPUESTA / SIN COLCHÓN / EN REPARACIÓN / AISLAMIENTO / OTRA.',
+          '   • AISLAMIENTO se usa típicamente tras egresar un paciente con precauciones, mientras el cuarto está en limpieza terminal o descontaminación.',
           'Escribe una nota opcional (ej. "Motor del respaldo no enciende, reportado a biomédica").',
           'Toca "🚫 Marcar no ocupable".',
           'La cama queda en rojo rayado con la causa visible en el censo.',
-          'Para LIBERAR la cama después: toca la cama bloqueada, ve la causa actual y toca "✓ Liberar cama". Vuelve a estado DISPONIBLE.',
+          '⚡ IMPORTANTE: Mientras la cama esté bloqueada, NO cuenta como censable en el % de ocupación del servicio ni del hospital. El total censable se ajusta automáticamente. Al liberarla vuelve a contar.',
+          'Para LIBERAR la cama: toca la cama bloqueada, ve la causa actual y toca "✓ Liberar cama". Vuelve a estado DISPONIBLE.',
         ],
       },
       {
@@ -559,18 +561,93 @@ const SECCIONES: Seccion[] = [
   },
 
   // ============================================================
-  // 10. SERVICIOS CON FLUJO ESPECIAL
+  // 9.5 CHAT (lo puse antes de servicios especiales)
+  // ============================================================
+  // Renumeramos: el chat es la nueva sección 10, servicios especiales 11.
+  // (Si llegas hasta aquí editando, considera renumerar los IDs key
+  // para que no choquen).
+  // ============================================================
+
+  // ============================================================
+  // 10. CHAT ENTRE SERVICIOS
+  // ============================================================
+  {
+    key: 'chat',
+    numero: '10',
+    titulo: 'Chat entre servicios 💬',
+    icono: '💬',
+    subtitulo: 'Coordinación interna y comunicación con la jefatura en tiempo real',
+    color: '#1F4E79',
+    contenido: [
+      {
+        titulo: '10.1. Cómo abrir el chat',
+        pasos: [
+          'Entra a cualquier servicio.',
+          'Verás un botón verde flotante 💬 en la esquina inferior derecha.',
+          'Tócalo para abrir el panel de chat (queda como ventana flotante encima del censo).',
+          'Vuelve a tocarlo (o el ✕ arriba a la derecha del panel) para cerrar.',
+        ],
+      },
+      {
+        titulo: '10.2. Dos pestañas de chat',
+        pasos: [
+          '🏥 [Tu servicio] — chat INTERNO del servicio. Solo lo ven y escriben los gestores asignados al servicio y los admins globales (jefe / subjefe / supervisor). Útil para coordinar entregas de turno, alertas, dudas dentro del equipo.',
+          '🌐 Global / Jefatura — canal COMÚN del hospital. Todos los autenticados ven y escriben. La jefatura aparece con badge rojo "JEFE" para identificarla. Aquí van comunicados generales, escalamientos y anuncios.',
+        ],
+      },
+      {
+        titulo: '10.3. Cómo enviar un mensaje',
+        pasos: [
+          'Selecciona la pestaña (Tu servicio o Global).',
+          'Escribe en el cuadro de texto abajo del panel.',
+          'Toca el botón verde ➤ o presiona Enter para enviar.',
+          'Shift+Enter agrega un salto de línea sin enviar.',
+        ],
+      },
+      {
+        titulo: '10.4. Mensajes no leídos',
+        pasos: [
+          'Si llegan mensajes con el panel cerrado, aparece un círculo rojo con el número de mensajes nuevos sobre el botón 💬.',
+          'Si llegan mensajes en una pestaña distinta a la que tienes abierta, aparece un badge rojo pequeño sobre el nombre de esa pestaña con el conteo.',
+          'Al abrir la pestaña los contadores se ponen en 0.',
+        ],
+      },
+      {
+        titulo: '10.5. Identificación de remitente',
+        pasos: [
+          'Cada mensaje muestra el nombre completo del remitente y un chip de rol:',
+          '   • JEFE (rojo)',
+          '   • SUBJEFE / SUPERV. (dorado)',
+          '   • GESTOR (verde)',
+          '   • ENF. (gris)',
+          'Tus propios mensajes aparecen en burbuja verde a la derecha. Los demás en burbujas blancas a la izquierda. Igual que WhatsApp.',
+        ],
+      },
+      {
+        titulo: '10.6. Reglas importantes',
+        pasos: [
+          'Los mensajes no se editan después de enviar. Verifica antes de enviar.',
+          'Si te equivocas, puedes "borrar" tu propio mensaje (soft delete). No aparece más en el chat pero queda en el historial de auditoría.',
+          'Mantén un tono profesional: el canal global lo lee TODO el personal y la jefatura.',
+          'Para temas confidenciales de un paciente, usa el canal del servicio, no el global.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 11. SERVICIOS CON FLUJO ESPECIAL
   // ============================================================
   {
     key: 'servicios_especiales',
-    numero: '10',
+    numero: '11',
     titulo: 'Servicios con flujo especial',
     icono: '⚕️',
     subtitulo: 'URPA · HEMODIÁLISIS · HEMODINÁMICA — solo camillas no censables',
     color: '#7d5b2f',
     contenido: [
       {
-        titulo: '10.1. Qué tienen en común',
+        titulo: '11.1. Qué tienen en común',
         pasos: [
           'Estos 3 servicios tienen camillas (no censables). NO afectan el % de ocupación censable del hospital ni la cuenta total de camas.',
           'Tienen sus 5 pestañas estándar: Censo, Dietas, Recetario, Control y Productividad. Productividad propia separada de los demás.',
@@ -578,7 +655,7 @@ const SECCIONES: Seccion[] = [
         ],
       },
       {
-        titulo: '10.2. URPA — Unidad de Recuperación Post-Anestésica',
+        titulo: '11.2. URPA — Unidad de Recuperación Post-Anestésica',
         pasos: [
           '10 camillas. Pacientes en recuperación post-anestésica después de un procedimiento quirúrgico.',
           'Flujo de ingreso normal (igual que urgencias / hospitalización).',
@@ -586,7 +663,7 @@ const SECCIONES: Seccion[] = [
         ],
       },
       {
-        titulo: '10.3. HEMODIÁLISIS — flujo más estricto (lee el instructivo del servicio)',
+        titulo: '11.3. HEMODIÁLISIS — flujo más estricto (lee el instructivo del servicio)',
         pasos: [
           '3 camillas. Pacientes que reciben Terapia de Sustitución Renal (Hemodiálisis o Diálisis Peritoneal).',
           'Tiene 2 pestañas adicionales que NO aparecen en otros servicios: 🩺 Censo ERC (bitácora histórica) y 📖 Instructivo HDL (guía dedicada paso a paso).',
@@ -597,7 +674,7 @@ const SECCIONES: Seccion[] = [
         ],
       },
       {
-        titulo: '10.4. HEMODINÁMICA',
+        titulo: '11.4. HEMODINÁMICA',
         pasos: [
           '1 camilla. Sala de procedimientos hemodinámicos (cateterismo cardíaco, angiografía, etc.).',
           'Flujo normal de ingreso/egreso. Productividad propia.',
