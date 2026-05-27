@@ -173,7 +173,14 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           <p style={styles.cargando}>Cargando ocupación...</p>
         ) : (
           <div style={styles.serviciosGrid}>
-            {serviciosVisibles.map(s => (
+            {serviciosVisibles.map(s => {
+              // Servicio sin camas censables (ej. URPA con solo camillas):
+              // no aplica el % ni el conteo de "X de Y camas". Mostramos
+              // las camillas en su lugar.
+              const soloCamillas = s.total_camas === 0 && Number(s.extras_totales || 0) > 0;
+              const pctNum = Number(s.porcentaje_ocupacion);
+              const pctValido = !soloCamillas && !isNaN(pctNum);
+              return (
               <button
                 key={s.servicio_id}
                 onClick={() => navigate(`/servicio/${s.servicio_id}`)}
@@ -184,26 +191,34 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
                   <span
                     style={{
                       ...styles.tarjetaPct,
-                      color: colorOcupacion(Number(s.porcentaje_ocupacion))
+                      color: pctValido ? colorOcupacion(pctNum) : '#888',
+                      fontSize: soloCamillas ? 11 : undefined,
                     }}
                   >
-                    {Math.round(Number(s.porcentaje_ocupacion))}%
+                    {soloCamillas
+                      ? `${Number(s.extras_ocupados || 0)} / ${Number(s.extras_totales || 0)}`
+                      : `${Math.round(pctNum)}%`}
                   </span>
                 </div>
                 <p style={styles.tarjetaDetalle}>
-                  {s.camas_ocupadas} de {s.total_camas} camas
+                  {soloCamillas
+                    ? `${Number(s.extras_ocupados || 0)} de ${Number(s.extras_totales || 0)} camillas (no censable)`
+                    : `${s.camas_ocupadas} de ${s.total_camas} camas`}
                 </p>
                 <div style={styles.barra}>
                   <div
                     style={{
                       ...styles.barraInterna,
-                      width: `${s.porcentaje_ocupacion}%`,
-                      background: colorOcupacion(Number(s.porcentaje_ocupacion))
+                      width: soloCamillas
+                        ? `${Math.min(100, (Number(s.extras_ocupados || 0) / Math.max(1, Number(s.extras_totales || 1))) * 100)}%`
+                        : `${s.porcentaje_ocupacion}%`,
+                      background: pctValido ? colorOcupacion(pctNum) : '#C39C59',
                     }}
                   />
                 </div>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
