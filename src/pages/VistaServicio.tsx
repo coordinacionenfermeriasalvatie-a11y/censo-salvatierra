@@ -754,6 +754,14 @@ export function VistaServicio() {
           capturadoPor={perfil.id}
           onClose={() => setModalEgreso(null)}
           onGuardado={() => { setModalEgreso(null); cargar(true); }}
+          onTrasladar={() => {
+            // Cerrar el modal de egreso y abrir el de traslado para la
+            // misma cama/paciente. Buscamos la cama en el state local.
+            const camaActual = camas.find(c => c.paciente_id === modalEgreso.pacienteId);
+            if (camaActual) {
+              setModalTraslado(camaActual);
+            }
+          }}
         />
       )}
     </div>
