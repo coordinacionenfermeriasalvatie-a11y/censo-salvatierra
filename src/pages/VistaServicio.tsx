@@ -11,6 +11,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { MenuPestanas, Pestana } from './components/MenuPestanas';
+import { formatEdad } from '../lib/edad';
 
 // Lazy-load: cada modal y cada pestaña pesada vive en su propio chunk.
 // El bundle inicial de VistaServicio baja considerablemente y el
@@ -29,6 +30,7 @@ const VistaERC              = lazy(() => import('./components/VistaERC').then(m 
 const VistaInstructivoHDL   = lazy(() => import('./components/VistaInstructivoHDL').then(m => ({ default: m.VistaInstructivoHDL })));
 const VistaBitacoraHeridas  = lazy(() => import('./components/VistaBitacoraHeridas').then(m => ({ default: m.VistaBitacoraHeridas })));
 const ModalEditarDx         = lazy(() => import('./components/ModalEditarDx').then(m => ({ default: m.ModalEditarDx })));
+const ModalEditarPaciente   = lazy(() => import('./components/ModalEditarPaciente').then(m => ({ default: m.ModalEditarPaciente })));
 const ChatPanel             = lazy(() => import('./components/ChatPanel').then(m => ({ default: m.ChatPanel })));
 
 const FallbackCarga = () => (
@@ -52,6 +54,7 @@ interface CamaEstado {
   paciente_id: string | null;
   nombre_paciente: string | null;
   edad: number | null;
+  edad_unidad?: 'AÑOS' | 'MESES' | 'DIAS' | string | null;
   genero: string | null;
   diagnostico_ingreso: string | null;
   fecha_ingreso: string | null;
@@ -87,6 +90,7 @@ interface Egresado {
   subservicio: string;
   nombre_paciente: string;
   edad: number;
+  edad_unidad?: 'AÑOS' | 'MESES' | 'DIAS' | string | null;
   diagnostico_ingreso: string | null;
   genero: string;
   fecha_ingreso: string;
@@ -177,6 +181,7 @@ export function VistaServicio() {
   const [modalTraslado, setModalTraslado] = useState<CamaEstado | null>(null);
   const [modalAsignar, setModalAsignar] = useState<{ pacienteId: string; nombre: string; numeroCama: string } | null>(null);
   const [modalEditarDx, setModalEditarDx] = useState<{ pacienteId: string; nombre: string; numeroCama: string; dxActual: string } | null>(null);
+  const [modalEditarPaciente, setModalEditarPaciente] = useState<{ pacienteId: string; numeroCama: string } | null>(null);
   const [asignaciones, setAsignaciones] = useState<Record<string, { nombre: string; codigo: string }>>({});
 
   // Trazabilidad — mapa paciente_id -> flags de completitud del día
@@ -517,14 +522,12 @@ export function VistaServicio() {
                   style={btnEditarDx}
                   onClick={(e) => {
                     e.stopPropagation();
-                    setModalEditarDx({
+                    setModalEditarPaciente({
                       pacienteId: c.paciente_id!,
-                      nombre: c.nombre_paciente || '',
                       numeroCama: c.numero_cama,
-                      dxActual: c.diagnostico_ingreso || '',
                     });
                   }}
-                  title="Editar diagnóstico médico"
+                  title="Editar datos del paciente (nombre, edad, Dx, alergias, etc.)"
                 >
                   ✏️
                 </button>
@@ -753,7 +756,7 @@ export function VistaServicio() {
                       <tr key={e.paciente_id} style={idx % 2 === 0 ? egresadosTdRowPar : egresadosTdRowImpar}>
                         <td style={egresadosTd}>{e.numero_cama}</td>
                         <td style={{ ...egresadosTd, fontWeight: 600 }}>{e.nombre_paciente}</td>
-                        <td style={egresadosTd}>{e.edad}</td>
+                        <td style={egresadosTd}>{formatEdad(e.edad, e.edad_unidad)}</td>
                         <td style={{ ...egresadosTd, fontStyle: 'italic', color: '#7d5b2f' }}>{e.diagnostico_ingreso ?? '—'}</td>
                         <td style={egresadosTd}>{e.fecha_ingreso}</td>
                         <td style={egresadosTd}>{e.fecha_egreso} {e.hora_egreso?.substring(0, 5)}</td>
@@ -848,6 +851,15 @@ export function VistaServicio() {
           dxActual={modalEditarDx.dxActual}
           onClose={() => setModalEditarDx(null)}
           onGuardado={() => { setModalEditarDx(null); cargar(true); }}
+        />
+      )}
+
+      {modalEditarPaciente && (
+        <ModalEditarPaciente
+          pacienteId={modalEditarPaciente.pacienteId}
+          numeroCama={modalEditarPaciente.numeroCama}
+          onClose={() => setModalEditarPaciente(null)}
+          onGuardado={() => { setModalEditarPaciente(null); cargar(true); }}
         />
       )}
 
