@@ -20,7 +20,7 @@ export function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
-      setError('Credenciales incorrectas. Verifica usuario y contrasena.')
+      setError('Credenciales incorrectas. Verifica usuario y contraseña.')
     }
     setCargando(false)
   }
@@ -38,7 +38,7 @@ export function Login() {
     if (error) {
       setError('No se pudo enviar el correo. Verifica que sea correcto.')
     } else {
-      setInfo('Te enviamos un correo con un enlace para restablecer tu contrasena. Revisa tu bandeja de entrada (y la carpeta de SPAM).')
+      setInfo('Te enviamos un correo con un enlace para restablecer tu contraseña. Revisa tu bandeja de entrada (y la carpeta de SPAM).')
     }
     setCargando(false)
   }
@@ -60,7 +60,7 @@ export function Login() {
         />
         <img
           src="/logos/LOGO_HOSPITAL.jpg"
-          alt="Hospital General con Especialidades Juan Maria de Salvatierra"
+          alt="Hospital General con Especialidades Juan María de Salvatierra"
           style={styles.logoDerecha}
         />
       </header>
@@ -69,7 +69,7 @@ export function Login() {
         <div style={styles.tarjeta}>
           <h1 style={styles.titulo}>Sistema de censo hospitalario</h1>
           <p style={styles.subtitulo}>
-            {modo === 'recuperar' ? 'Recuperar contrasena' : 'Coordinacion de Enfermeria'}
+            {modo === 'recuperar' ? 'Recuperar contraseña' : 'Coordinación de Enfermería'}
           </p>
 
           {modo === 'login' ? (
@@ -101,7 +101,7 @@ export function Login() {
               {error && <p style={styles.error}>{error}</p>}
 
               <button type="submit" disabled={cargando} style={styles.boton}>
-                {cargando ? 'Iniciando sesion...' : 'Iniciar sesion'}
+                {cargando ? 'Iniciando sesión...' : 'Iniciar sesión'}
               </button>
 
               <button
@@ -109,13 +109,13 @@ export function Login() {
                 onClick={() => cambiarModo('recuperar')}
                 style={styles.linkBoton}
               >
-                Olvide mi contrasena
+                Olvidé mi contraseña
               </button>
             </form>
           ) : (
             <form onSubmit={manejarRecuperar}>
               <p style={styles.descripcion}>
-                Ingresa tu correo y te enviaremos un enlace para crear una nueva contrasena.
+                Ingresa tu correo y te enviaremos un enlace para crear una nueva contraseña.
               </p>
 
               <div style={styles.campo}>
@@ -143,14 +143,14 @@ export function Login() {
                 onClick={() => cambiarModo('login')}
                 style={styles.linkBoton}
               >
-                Volver a iniciar sesion
+                Volver a iniciar sesión
               </button>
             </form>
           )}
 
           {modo === 'login' && (
             <p style={styles.ayuda}>
-              Si no recibes el correo de recuperacion, contacta al subjefe de enfermeria.
+              Si no recibes el correo de recuperación, contacta a la subjefatura de enfermería.
             </p>
           )}
         </div>

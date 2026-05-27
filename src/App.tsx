@@ -71,12 +71,12 @@ export function App() {
               path="*"
               element={
                 <div style={pantallaCargando}>
-                  <p>Tu cuenta aun no tiene perfil asignado.</p>
+                  <p>Tu cuenta aún no tiene perfil asignado.</p>
                   <p style={{ fontSize: 12, marginTop: 8 }}>
-                    Contacta al subjefe de enfermeria para que cree tu perfil con rol y servicio.
+                    Contacta a la subjefatura de enfermería para que cree tu perfil con rol y servicio.
                   </p>
                   <button onClick={cerrarSesion} style={btnSalir}>
-                    Cerrar sesion
+                    Cerrar sesión
                   </button>
                 </div>
               }

@@ -4,8 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
 /**
- * Pantalla para cambiar contrasena desde dentro del sistema.
- * El usuario debe estar logueado y conocer su contrasena actual.
+ * Pantalla para cambiar contraseña desde dentro del sistema.
+ * El usuario debe estar logueado y conocer su contraseña actual.
  */
 export function CambiarPassword() {
   const navigate = useNavigate()
@@ -22,24 +22,24 @@ export function CambiarPassword() {
     setError(null)
 
     if (nueva.length < 6) {
-      setError('La nueva contrasena debe tener al menos 6 caracteres.')
+      setError('La nueva contraseña debe tener al menos 6 caracteres.')
       return
     }
     if (nueva !== confirm) {
-      setError('La confirmacion no coincide.')
+      setError('La confirmación no coincide.')
       return
     }
     if (nueva === actual) {
-      setError('La nueva contrasena debe ser distinta a la actual.')
+      setError('La nueva contraseña debe ser distinta a la actual.')
       return
     }
 
     setCargando(true)
 
-    // 1) Verificar contrasena actual reautenticando
+    // 1) Verificar contraseña actual reautenticando
     const email = session?.user?.email
     if (!email) {
-      setError('No se pudo identificar tu correo. Cierra sesion y vuelve a entrar.')
+      setError('No se pudo identificar tu correo. Cierra sesión y vuelve a entrar.')
       setCargando(false)
       return
     }
@@ -48,7 +48,7 @@ export function CambiarPassword() {
       password: actual
     })
     if (errAuth) {
-      setError('La contrasena actual es incorrecta.')
+      setError('La contraseña actual es incorrecta.')
       setCargando(false)
       return
     }
@@ -57,7 +57,7 @@ export function CambiarPassword() {
     const { error: errUpd } = await supabase.auth.updateUser({ password: nueva })
 
     if (errUpd) {
-      setError('No se pudo actualizar la contrasena: ' + errUpd.message)
+      setError('No se pudo actualizar la contraseña: ' + errUpd.message)
       setCargando(false)
       return
     }
@@ -78,7 +78,7 @@ export function CambiarPassword() {
           <div style={styles.tarjeta}>
             <h1 style={styles.titulo}>✅ Contrasena cambiada</h1>
             <p style={styles.descripcion}>
-              Tu contrasena se actualizó correctamente.
+              Tu contraseña se actualizó correctamente.
             </p>
             <p style={{ ...styles.descripcion, fontWeight: 600, marginTop: 16 }}>
               ⚠ Por seguridad, tu sesión actual se cerrará.
@@ -111,7 +111,7 @@ export function CambiarPassword() {
 
       <main style={styles.main}>
         <div style={styles.tarjeta}>
-          <h1 style={styles.titulo}>Cambiar contrasena</h1>
+          <h1 style={styles.titulo}>Cambiar contraseña</h1>
           {perfil && (
             <p style={styles.subtitulo}>
               {perfil.nombre_completo}
@@ -132,7 +132,7 @@ export function CambiarPassword() {
             </div>
 
             <div style={styles.campo}>
-              <label style={styles.label}>Nueva contrasena</label>
+              <label style={styles.label}>Nueva contraseña</label>
               <input
                 type="password"
                 value={nueva}
@@ -144,7 +144,7 @@ export function CambiarPassword() {
             </div>
 
             <div style={styles.campo}>
-              <label style={styles.label}>Confirmar nueva contrasena</label>
+              <label style={styles.label}>Confirmar nueva contraseña</label>
               <input
                 type="password"
                 value={confirm}
@@ -158,7 +158,7 @@ export function CambiarPassword() {
             {error && <p style={styles.error}>{error}</p>}
 
             <button type="submit" disabled={cargando} style={styles.boton}>
-              {cargando ? 'Guardando...' : 'Guardar nueva contrasena'}
+              {cargando ? 'Guardando...' : 'Guardar nueva contraseña'}
             </button>
 
             <button

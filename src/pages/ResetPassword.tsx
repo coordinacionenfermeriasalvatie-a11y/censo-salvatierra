@@ -4,9 +4,9 @@ import { supabase } from '../lib/supabase'
 
 /**
  * Pantalla a la que llega el usuario despues de hacer click en el enlace
- * del correo de recuperacion de contrasena. Supabase ya valido el token
+ * del correo de recuperacion de contraseña. Supabase ya valido el token
  * en la URL antes de cargar este componente; solo pedimos la nueva
- * contrasena y la actualizamos con supabase.auth.updateUser().
+ * contraseña y la actualizamos con supabase.auth.updateUser().
  */
 export function ResetPassword() {
   const navigate = useNavigate()
@@ -29,11 +29,11 @@ export function ResetPassword() {
     setError(null)
 
     if (password.length < 6) {
-      setError('La contrasena debe tener al menos 6 caracteres.')
+      setError('La contraseña debe tener al menos 6 caracteres.')
       return
     }
     if (password !== confirm) {
-      setError('Las contrasenas no coinciden.')
+      setError('Las contraseñas no coinciden.')
       return
     }
 
@@ -42,7 +42,7 @@ export function ResetPassword() {
     setCargando(false)
 
     if (error) {
-      setError('No se pudo actualizar la contrasena: ' + error.message)
+      setError('No se pudo actualizar la contraseña: ' + error.message)
       return
     }
 
@@ -54,9 +54,9 @@ export function ResetPassword() {
       <div style={styles.contenedor}>
         <main style={styles.main}>
           <div style={styles.tarjeta}>
-            <h1 style={styles.titulo}>Enlace invalido o expirado</h1>
+            <h1 style={styles.titulo}>Enlace inválido o expirado</h1>
             <p style={styles.descripcion}>
-              El enlace de recuperacion no es valido o expiro. Vuelve a solicitar uno desde la pantalla de inicio de sesion.
+              El enlace de recuperación no es válido o expiró. Vuelve a solicitar uno desde la pantalla de inicio de sesión.
             </p>
             <button onClick={() => navigate('/')} style={styles.boton}>
               Volver al inicio
@@ -74,7 +74,7 @@ export function ResetPassword() {
           <div style={styles.tarjeta}>
             <h1 style={styles.titulo}>✅ Contrasena actualizada</h1>
             <p style={styles.descripcion}>
-              Tu nueva contrasena ya esta activa. Puedes empezar a usar el sistema.
+              Tu nueva contraseña ya está activa. Puedes empezar a usar el sistema.
             </p>
             <button onClick={() => navigate('/')} style={styles.boton}>
               Ir al inicio
@@ -94,14 +94,14 @@ export function ResetPassword() {
 
       <main style={styles.main}>
         <div style={styles.tarjeta}>
-          <h1 style={styles.titulo}>Crear nueva contrasena</h1>
+          <h1 style={styles.titulo}>Crear nueva contraseña</h1>
           <p style={styles.descripcion}>
-            Define una contrasena nueva para tu cuenta. Recomendado: minimo 8 caracteres con letras y numeros.
+            Define una contraseña nueva para tu cuenta. Recomendado: mínimo 8 caracteres con letras y números.
           </p>
 
           <form onSubmit={manejarSubmit}>
             <div style={styles.campo}>
-              <label style={styles.label}>Nueva contrasena</label>
+              <label style={styles.label}>Nueva contraseña</label>
               <input
                 type="password"
                 value={password}
@@ -114,7 +114,7 @@ export function ResetPassword() {
             </div>
 
             <div style={styles.campo}>
-              <label style={styles.label}>Confirmar contrasena</label>
+              <label style={styles.label}>Confirmar contraseña</label>
               <input
                 type="password"
                 value={confirm}
@@ -128,7 +128,7 @@ export function ResetPassword() {
             {error && <p style={styles.error}>{error}</p>}
 
             <button type="submit" disabled={cargando} style={styles.boton}>
-              {cargando ? 'Actualizando...' : 'Guardar contrasena'}
+              {cargando ? 'Actualizando...' : 'Guardar contraseña'}
             </button>
           </form>
         </div>

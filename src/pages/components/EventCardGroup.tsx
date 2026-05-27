@@ -81,9 +81,9 @@ export const EventCardGroup: React.FC<Props> = ({
 
   const confirmarCrear = async () => {
     const c = codigoNuevo.trim();
-    if (!c) { setErrorLocal('Selecciona o escribe un codigo'); return; }
+    if (!c) { setErrorLocal('Selecciona o escribe un código'); return; }
     if (codigosUsados.has(c)) {
-      setErrorLocal('Ya existe un evento activo con ese codigo');
+      setErrorLocal('Ya existe un evento activo con ese código');
       return;
     }
     setErrorLocal(null);
@@ -136,7 +136,7 @@ export const EventCardGroup: React.FC<Props> = ({
               type="text"
               value={codigoNuevo}
               onChange={e => setCodigoNuevo(e.target.value)}
-              placeholder="Escribe nombre/codigo"
+              placeholder="Escribe nombre/código"
               style={inputAgregar}
               disabled={trabajando}
               autoFocus
