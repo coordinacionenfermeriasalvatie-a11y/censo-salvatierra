@@ -38,6 +38,7 @@ interface PacienteImpresion {
   edad: number | null;
   genero: string | null;
   nss_curp: string | null;
+  fecha_nacimiento: string | null;
   diagnostico_ingreso: string | null;
   especialidad_nombre: string | null;
   fecha_ingreso: string | null;
@@ -188,6 +189,7 @@ export const VistaImpresionControl: React.FC = () => {
             edad,
             genero,
             nss_curp,
+            fecha_nacimiento,
             diagnostico_ingreso,
             fecha_ingreso,
             hora_ingreso,
@@ -228,6 +230,7 @@ export const VistaImpresionControl: React.FC = () => {
             edad: p.edad,
             genero: p.genero,
             nss_curp: p.nss_curp,
+            fecha_nacimiento: p.fecha_nacimiento,
             diagnostico_ingreso: p.diagnostico_ingreso,
             especialidad_nombre: esp?.nombre ?? null,
             fecha_ingreso: p.fecha_ingreso,
@@ -429,7 +432,15 @@ export const VistaImpresionControl: React.FC = () => {
             <tr key={p.id}>
               {/* IDENTIFICACIÓN */}
               <td className="c-cama">{p.numero_cama}</td>
-              <td className="c-nombre">{limpiar(p.nombre_paciente)}</td>
+              <td className="c-nombre">
+                {limpiar(p.nombre_paciente)}
+                {p.fecha_nacimiento && (
+                  <div className="fecha-nac">F.Nac: {(() => {
+                    const [y, m, d] = p.fecha_nacimiento.split('-');
+                    return y && m && d ? `${d}/${m}/${y}` : p.fecha_nacimiento;
+                  })()}</div>
+                )}
+              </td>
               <td className="c-num">{p.edad ?? ''}</td>
               <td className="c-num">{limpiar(p.genero)}</td>
               <td className="c-id">{limpiar(p.nss_curp)}</td>
@@ -610,9 +621,14 @@ export const VistaImpresionControl: React.FC = () => {
           font-weight: 700;
           font-size: 6pt;
           line-height: 1.05;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
+        }
+        /* Nombre en una línea, fecha de nacimiento debajo en menor tamaño. */
+        .tabla-control .c-nombre .fecha-nac {
+          font-size: 4.8pt;
+          font-weight: 500;
+          color: #555;
+          margin-top: 1px;
+          font-family: 'Courier New', monospace;
         }
         .tabla-control .c-dx,
         .tabla-control .c-esp {

@@ -28,6 +28,7 @@ const VistaProductividad    = lazy(() => import('./components/VistaProductividad
 const VistaERC              = lazy(() => import('./components/VistaERC').then(m => ({ default: m.VistaERC })));
 const VistaInstructivoHDL   = lazy(() => import('./components/VistaInstructivoHDL').then(m => ({ default: m.VistaInstructivoHDL })));
 const VistaBitacoraHeridas  = lazy(() => import('./components/VistaBitacoraHeridas').then(m => ({ default: m.VistaBitacoraHeridas })));
+const ModalEditarDx         = lazy(() => import('./components/ModalEditarDx').then(m => ({ default: m.ModalEditarDx })));
 const ChatPanel             = lazy(() => import('./components/ChatPanel').then(m => ({ default: m.ChatPanel })));
 
 const FallbackCarga = () => (
@@ -144,6 +145,7 @@ export function VistaServicio() {
   // Modal de traslado a otra cama del hospital.
   const [modalTraslado, setModalTraslado] = useState<CamaEstado | null>(null);
   const [modalAsignar, setModalAsignar] = useState<{ pacienteId: string; nombre: string; numeroCama: string } | null>(null);
+  const [modalEditarDx, setModalEditarDx] = useState<{ pacienteId: string; nombre: string; numeroCama: string; dxActual: string } | null>(null);
   const [asignaciones, setAsignaciones] = useState<Record<string, { nombre: string; codigo: string }>>({});
 
   // Trazabilidad — mapa paciente_id -> flags de completitud del día
@@ -465,7 +467,32 @@ export function VistaServicio() {
                 )}
               </div>
             )}
-            <div style={camaDx}>{c.diagnostico_ingreso}</div>
+            {/* Dx editable: jefe/subjefe/supervisor/gestor pueden actualizarlo
+                clickeando el lápiz (p.ej. paciente pasa a postoperado). */}
+            <div
+              style={{ ...camaDx, display: 'flex', alignItems: 'flex-start', gap: 4 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <span style={{ flex: 1 }}>{c.diagnostico_ingreso}</span>
+              {!censoSoloLectura && c.paciente_id && (
+                <button
+                  type="button"
+                  style={btnEditarDx}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setModalEditarDx({
+                      pacienteId: c.paciente_id!,
+                      nombre: c.nombre_paciente || '',
+                      numeroCama: c.numero_cama,
+                      dxActual: c.diagnostico_ingreso || '',
+                    });
+                  }}
+                  title="Editar diagnóstico médico"
+                >
+                  ✏️
+                </button>
+              )}
+            </div>
             {/* Trazabilidad — chips de completitud del día (dieta/receta/control) */}
             {(() => {
               const comp = c.paciente_id ? completitud[c.paciente_id] : undefined;
@@ -756,6 +783,17 @@ export function VistaServicio() {
         />
       )}
 
+      {modalEditarDx && (
+        <ModalEditarDx
+          pacienteId={modalEditarDx.pacienteId}
+          nombrePaciente={modalEditarDx.nombre}
+          numeroCama={modalEditarDx.numeroCama}
+          dxActual={modalEditarDx.dxActual}
+          onClose={() => setModalEditarDx(null)}
+          onGuardado={() => { setModalEditarDx(null); cargar(true); }}
+        />
+      )}
+
       {modalAsignar && perfil && (
         <ModalAsignarEnfermero
           pacienteId={modalAsignar.pacienteId}
@@ -806,6 +844,7 @@ const camaOcupada: React.CSSProperties = { background: '#fff', borderColor: '#0E
 const camaNumero: React.CSSProperties = { fontSize: 22, fontWeight: 700, color: '#0E6755' };
 const camaNombre: React.CSSProperties = { fontSize: 13, fontWeight: 600, color: '#265C4E', lineHeight: 1.2 };
 const camaDx: React.CSSProperties = { fontSize: 11, color: '#7d5b2f', fontStyle: 'italic' };
+const btnEditarDx: React.CSSProperties = { background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12, lineHeight: 1, opacity: 0.6 };
 // Chip rojo de seguridad clínica para alergias capturadas. Se muestra
 // arriba del diagnóstico para que sea lo primero que se ve al ojear el censo.
 const alergiaChip: React.CSSProperties = {
