@@ -14,6 +14,7 @@ import { ModalIngreso } from './components/ModalIngreso';
 import { ModalEgreso } from './components/ModalEgreso';
 import { ModalAsignarEnfermero } from './components/ModalAsignarEnfermero';
 import { ModalGestionCama } from './components/ModalGestionCama';
+import { ModalTraslado } from './components/ModalTraslado';
 import { MenuPestanas, Pestana } from './components/MenuPestanas';
 import { VistaDietas } from './components/VistaDietas';
 import { VistaRecetario } from './components/VistaRecetario';
@@ -127,6 +128,8 @@ export function VistaServicio() {
   // bloquear la cama como NO OCUPABLE. También sirve para ver/cambiar el
   // bloqueo actual y liberar la cama.
   const [modalGestionCama, setModalGestionCama] = useState<CamaEstado | null>(null);
+  // Modal de traslado a otra cama del hospital.
+  const [modalTraslado, setModalTraslado] = useState<CamaEstado | null>(null);
   const [modalAsignar, setModalAsignar] = useState<{ pacienteId: string; nombre: string; numeroCama: string } | null>(null);
   const [asignaciones, setAsignaciones] = useState<Record<string, { nombre: string; codigo: string }>>({});
 
@@ -484,6 +487,18 @@ export function VistaServicio() {
                     }}
                     title="Imprimir Tarjeta de Identificación"
                   >🪪</span>
+                  {/* Trasladar: cambia el paciente a otra cama. Si es otro
+                      subservicio, cuenta como egreso/ingreso. */}
+                  {!censoSoloLectura && (
+                    <span
+                      style={chip(true)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setModalTraslado(c);
+                      }}
+                      title="Trasladar paciente a otra cama"
+                    >🔀</span>
+                  )}
                 </div>
               );
             })()}
@@ -665,6 +680,20 @@ export function VistaServicio() {
         <VistaProductividad
           servicioId={servicio.id}
           servicioNombre={servicio.nombre}
+        />
+      )}
+
+      {modalTraslado && perfil && (
+        <ModalTraslado
+          pacienteId={modalTraslado.paciente_id!}
+          nombrePaciente={modalTraslado.nombre_paciente || ''}
+          camaActualId={modalTraslado.cama_id}
+          numeroCamaActual={modalTraslado.numero_cama}
+          subservicioActualId={modalTraslado.subservicio_id}
+          servicioActual={servicio?.nombre || ''}
+          perfilId={perfil.id}
+          onClose={() => setModalTraslado(null)}
+          onGuardado={() => { setModalTraslado(null); cargar(true); }}
         />
       )}
 
