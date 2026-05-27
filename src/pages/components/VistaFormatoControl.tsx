@@ -279,9 +279,19 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
   // ---- Componentes mini para los campos no-evento ----
   // `onGuardar`: permite redirigir el update a otra tabla (p.ej. pacientes
   // en lugar de formato_control_paciente). Default = guardarCampo.
-  const CampoDropdownConColor = ({ r, campo, label, opciones, onGuardar }:
-    { r: ControlRenglon; campo: string; label: string; opciones: CatalogoItem[];
-      onGuardar?: (pid: string, campo: string, valor: string | null) => void; }) => {
+  // IMPORTANTE: estos NO son componentes (intencional). Son helpers que
+  // devuelven JSX para inlinearlo en el render del padre. Antes eran
+  // componentes declarados dentro del padre, lo que provocaba que React
+  // los desmontara/remontara en cada render — el textarea perdía foco
+  // cada vez que `guardando` o `pacienteExpandido` cambiaba, y a veces
+  // se perdía el texto no-blurreado del usuario.
+  const campoDropdownConColor = (
+    r: ControlRenglon,
+    campo: string,
+    label: string,
+    opciones: CatalogoItem[],
+    onGuardar?: (pid: string, campo: string, valor: string | null) => void,
+  ) => {
     const valor = r[campo] != null ? String(r[campo]) : '';
     const sel = opciones.find(o => o.codigo === valor);
     const styleColor: React.CSSProperties = sel?.color
@@ -304,7 +314,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
     );
   };
 
-  const CampoCausaOcupacion = ({ r, campo, label }: { r: ControlRenglon; campo: string; label: string }) => (
+  const campoCausaOcupacion = (r: ControlRenglon, campo: string, label: string) => (
     <div style={campoContenedor}>
       <label style={campoLabel}>{label}</label>
       <select value={r[campo] || ''} onChange={e => guardarCampo(r.paciente_id, campo, e.target.value)}
@@ -315,10 +325,13 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
     </div>
   );
 
-  const CampoTextoLibre = ({ r, campo, label, onGuardar, placeholder }:
-    { r: ControlRenglon; campo: string; label: string;
-      onGuardar?: (pid: string, campo: string, valor: string | null) => void;
-      placeholder?: string; }) => {
+  const campoTextoLibre = (
+    r: ControlRenglon,
+    campo: string,
+    label: string,
+    onGuardar?: (pid: string, campo: string, valor: string | null) => void,
+    placeholder?: string,
+  ) => {
     const save = onGuardar || guardarCampo;
     return (
       <div style={campoContenedor}>
@@ -492,9 +505,9 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                         RIESGOS Y AISLAMIENTO <span style={infoChip}>riesgos legacy · aislamiento como evento</span>
                       </div>
                       <div style={camposGrid}>
-                        <CampoDropdownConColor r={r} campo="riesgo_upp" label="Riesgo UPP" opciones={riesgos} />
-                        <CampoDropdownConColor r={r} campo="riesgo_caidas" label="Riesgo de caídas" opciones={riesgos} />
-                        <CampoCausaOcupacion r={r} campo="causa_no_ocupacion" label="Causa no ocupación" />
+                        {campoDropdownConColor(r, "riesgo_upp", "Riesgo UPP", riesgos)}
+                        {campoDropdownConColor(r, "riesgo_caidas", "Riesgo de caídas", riesgos)}
+                        {campoCausaOcupacion(r, "causa_no_ocupacion", "Causa no ocupación")}
                       </div>
                       <div style={gridGrupos}>
                         <EventCardGroup
@@ -565,7 +578,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                         />
                       </div>
                       <div style={camposGrid}>
-                        <CampoTextoLibre r={r} campo="traslado" label="Traslado (texto libre)" />
+                        {campoTextoLibre(r, "traslado", "Traslado (texto libre)")}
                       </div>
                     </div>
 
@@ -577,26 +590,9 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                         TARJETA DE IDENTIFICACIÓN <span style={infoChip}>alimenta la ficha impresa 🪪</span>
                       </div>
                       <div style={camposGrid}>
-                        <CampoDropdownConColor
-                          r={r}
-                          campo="grupo_sanguineo"
-                          label="Grupo y RH"
-                          opciones={GRUPO_SANGUINEO_OPCIONES}
-                          onGuardar={guardarCampoPaciente}
-                        />
-                        <CampoTextoLibre
-                          r={r}
-                          campo="alergias"
-                          label="Alergias (NO = vacío)"
-                          onGuardar={guardarCampoPaciente}
-                          placeholder="Ej. Penicilina, AINEs"
-                        />
-                        <CampoDropdownConColor
-                          r={r}
-                          campo="dolor_escala"
-                          label="Escala del dolor (0–10)"
-                          opciones={DOLOR_ESCALA_OPCIONES}
-                        />
+                        {campoDropdownConColor(r, "grupo_sanguineo", "Grupo y RH", GRUPO_SANGUINEO_OPCIONES, guardarCampoPaciente)}
+                        {campoTextoLibre(r, "alergias", "Alergias (NO = vacío)", guardarCampoPaciente, "Ej. Penicilina, AINEs")}
+                        {campoDropdownConColor(r, "dolor_escala", "Escala del dolor (0–10)", DOLOR_ESCALA_OPCIONES)}
                       </div>
                       <div style={{ padding: '0 8px 8px', fontSize: 10, color: '#888' }}>
                         💡 Estos datos se imprimen automáticamente en la Tarjeta de Identificación (🪪).

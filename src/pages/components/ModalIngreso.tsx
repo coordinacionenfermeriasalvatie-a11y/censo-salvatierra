@@ -198,7 +198,13 @@ export const ModalIngreso: React.FC<Props> = ({
           // Solo aplican en HDL — el trigger AFTER INSERT los lee
           // para sincronizar pacientes_erc y sumar productividad.
           tipo_terapia: esHDL ? tipoTerapia : null,
-          fecha_nacimiento: esHDL && fnacHDL ? fnacHDL : null,
+          // fecha_nacimiento: HDL usa fnacHDL (campo separado, obligatorio);
+          // los demás servicios la toman del toggle de identidad cuando
+          // tipoIdent='fnac'. Crítico para Pediatría: permite calcular
+          // edad exacta en días para neonatos en UCIN/UTIN.
+          fecha_nacimiento: esHDL
+            ? (fnacHDL || null)
+            : (tipoIdent === 'fnac' && fnac ? fnac : null),
           estado: 'ACTIVO',
           capturado_por: capturadoPor,
         });

@@ -458,7 +458,7 @@ export const VistaImpresionControl: React.FC = () => {
                 key={`sub-${subActual}-${p.id}`}
                 className={idx === 0 ? 'sub-encabezado-pac primera' : 'sub-encabezado-pac'}
               >
-                <td colSpan={37}>
+                <td colSpan={36}>
                   <span className="sub-abrev">{subActual}</span>
                   {p.subservicio_completo && p.subservicio_completo !== subActual && (
                     <span className="sub-completo"> · {p.subservicio_completo}</span>

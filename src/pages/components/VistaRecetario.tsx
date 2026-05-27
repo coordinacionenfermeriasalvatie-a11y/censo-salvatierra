@@ -10,6 +10,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { formatEdad } from '../../lib/edad';
 
 interface RecetarioRow {
   paciente_id: string;
@@ -19,6 +20,7 @@ interface RecetarioRow {
   numero_cama: string;
   nombre_paciente: string;
   edad: number;
+  edad_unidad?: string | null;
   genero: string;
   nss_curp: string | null;
   diagnostico_ingreso: string;
@@ -41,6 +43,7 @@ interface PacienteAgrupado {
   numero_cama: string;
   nombre_paciente: string;
   edad: number;
+  edad_unidad?: string | null;
   genero: string;
   nss_curp: string | null;
   diagnostico_ingreso: string;
@@ -99,6 +102,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           numero_cama: r.numero_cama,
           nombre_paciente: r.nombre_paciente,
           edad: r.edad,
+          edad_unidad: r.edad_unidad,
           genero: r.genero,
           nss_curp: r.nss_curp,
           diagnostico_ingreso: r.diagnostico_ingreso,
@@ -279,8 +283,12 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
 
   if (cargando) return <div style={{ padding: 40, textAlign: 'center', color: '#265C4E' }}>Cargando recetario...</div>;
 
-  const FilaMedicamento: React.FC<{ pacienteId: string; med: MedicamentoFila; numero: number }> = ({ pacienteId, med, numero }) => (
-    <tr style={numero % 2 === 0 ? rowImpar : rowPar}>
+  // Helper que devuelve JSX inline (NO es un componente). Antes era un
+  // FC declarado dentro del padre, lo que provocaba remount en cada
+  // render → cualquier setState (`actualizarMedicamento` dispara
+  // setPacientes) hacía perder foco al campo que estabas tecleando.
+  const renderFilaMedicamento = (pacienteId: string, med: MedicamentoFila, numero: number) => (
+    <tr key={med.id} style={numero % 2 === 0 ? rowImpar : rowPar}>
       <td style={tdNumero}>{numero}</td>
       <td style={tdEditableSm}>
         <input
@@ -415,7 +423,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
                       <td style={tdAuto}>{p.subservicio}</td>
                       <td style={{ ...tdAuto, textAlign: 'center', fontWeight: 700 }}>{p.numero_cama}</td>
                       <td style={{ ...tdAuto, fontWeight: 600 }}>{p.nombre_paciente}</td>
-                      <td style={{ ...tdAuto, textAlign: 'center' }}>{p.edad}</td>
+                      <td style={{ ...tdAuto, textAlign: 'center' }}>{formatEdad(p.edad, p.edad_unidad)}</td>
                       <td style={{ ...tdAuto, textAlign: 'center' }}>{p.genero?.substring(0, 4) || ''}</td>
                       <td style={{ ...tdAuto, fontSize: 11 }}>{p.nss_curp || '--'}</td>
                       <td style={{ ...tdAuto, textAlign: 'center', fontWeight: 700, color: p.medicamentos.length > 0 ? '#0E6755' : '#888' }}>
@@ -450,7 +458,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
                     <div>
                       <div style={pacienteNombre}>{p.nombre_paciente}</div>
                       <div style={pacienteSub}>
-                        {p.subservicio} · {p.edad} años · {p.genero?.substring(0, 4)} · Exp {p.nss_curp || '--'}
+                        {p.subservicio} · {formatEdad(p.edad, p.edad_unidad)} · {p.genero?.substring(0, 4)} · Exp {p.nss_curp || '--'}
                         <br />
                         <span style={{ color: '#7d5b2f' }}>Dx: {p.diagnostico_ingreso}</span>
                       </div>
@@ -481,9 +489,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
                           </td>
                         </tr>
                       ) : (
-                        p.medicamentos.map((med, idx) => (
-                          <FilaMedicamento key={med.id} pacienteId={p.paciente_id} med={med} numero={idx + 1} />
-                        ))
+                        p.medicamentos.map((med, idx) => renderFilaMedicamento(p.paciente_id, med, idx + 1))
                       )}
                     </tbody>
                   </table>
