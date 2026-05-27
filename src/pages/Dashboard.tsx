@@ -207,8 +207,20 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           </div>
         )}
       </main>
+      {/* Badge de versión: permite verificar a distancia si un usuario tiene
+          la versión más reciente. Cambia automáticamente en cada deploy. */}
+      <div style={versionBadgeStyle} title="Versión del bundle desplegado">
+        v{import.meta.env.VITE_BUILD_ID || 'dev'}
+      </div>
     </div>
   )
+}
+
+const versionBadgeStyle: React.CSSProperties = {
+  position: 'fixed', bottom: 6, right: 8, fontSize: 10,
+  color: '#888', background: 'rgba(255,255,255,0.7)',
+  padding: '2px 6px', borderRadius: 4, zIndex: 1,
+  fontFamily: 'monospace', pointerEvents: 'none',
 }
 
 function KpiCard({
