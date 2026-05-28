@@ -93,6 +93,11 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
               📊 Tablero Maestro
             </button>
           )}
+          {perfil.rol === 'jefe' && (
+            <button onClick={() => navigate('/auditoria')} style={styles.botonTablero}>
+              🔍 Auditoría
+            </button>
+          )}
           <button onClick={() => navigate('/instructivo')} style={styles.botonInstructivo}>
             📖 Instructivo
           </button>

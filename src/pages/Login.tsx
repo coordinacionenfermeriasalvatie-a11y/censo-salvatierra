@@ -75,12 +75,12 @@ export function Login() {
           {modo === 'login' ? (
             <form onSubmit={manejarLogin}>
               <div style={styles.campo}>
-                <label style={styles.label}>Correo institucional</label>
+                <label style={styles.label}>Correo Gmail registrado</label>
                 <input
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="usuario@imssbienestar.gob.mx"
+                  placeholder="tu-correo@gmail.com"
                   style={styles.input}
                   required
                   autoFocus

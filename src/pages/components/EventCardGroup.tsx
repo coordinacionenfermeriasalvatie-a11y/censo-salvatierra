@@ -27,7 +27,9 @@ interface Props {
   opciones: OpcionCatalogo[];             // catalogo del que se elige codigo
   estadoInicial?: EstadoEvento;           // default 'Solicitada'
   permitirCodigoLibre?: boolean;          // ej. para interconsulta donde el codigo es texto libre
+  permitirDuplicados?: boolean;           // ej. glucemia capilar: cada toma es un evento separado
   maxEventos?: number;                    // opcional limite (default: sin limite)
+  estadosCreacion?: EstadoEvento[];       // si se define, muestra dropdown de estado al crear (default: usa estadoInicial)
 
   // Forward a EventCard
   estadosPermitidos?: EstadoEvento[];
@@ -50,14 +52,18 @@ interface Props {
 
 export const EventCardGroup: React.FC<Props> = ({
   pacienteId, tipo, label, eventos, opciones, estadoInicial = 'Solicitada',
-  permitirCodigoLibre = false, maxEventos,
+  permitirCodigoLibre = false, permitirDuplicados = false, maxEventos,
+  estadosCreacion,
   estadosPermitidos, etiquetasEstado, mostrarEstado, mostrarSolicitud, mostrarObservaciones,
   onCrear, onActualizar, onCambiarEstado, onCancelar, disabled,
 }) => {
   const [agregando, setAgregando] = useState(false);
   const [codigoNuevo, setCodigoNuevo] = useState('');
+  const [estadoNuevo, setEstadoNuevo] = useState<EstadoEvento>(estadoInicial);
   const [trabajando, setTrabajando] = useState(false);
   const [errorLocal, setErrorLocal] = useState<string | null>(null);
+
+  const labelEstadoCreacion = (s: EstadoEvento) => etiquetasEstado?.[s] ?? s;
 
   const nombrePorCodigo = useMemo(() => {
     const m = new Map(opciones.map(o => [o.codigo, o.nombre]));
@@ -77,24 +83,26 @@ export const EventCardGroup: React.FC<Props> = ({
   const lleno = maxEventos != null && activosCount >= maxEventos;
 
   const codigosUsados = new Set(eventos.filter(e => e.estado !== 'Cancelada').map(e => e.codigo));
-  const opcionesDisponibles = opciones.filter(o => !codigosUsados.has(o.codigo));
+  const opcionesDisponibles = permitirDuplicados ? opciones : opciones.filter(o => !codigosUsados.has(o.codigo));
 
   const confirmarCrear = async () => {
     const c = codigoNuevo.trim();
     if (!c) { setErrorLocal('Selecciona o escribe un código'); return; }
-    if (codigosUsados.has(c)) {
+    if (!permitirDuplicados && codigosUsados.has(c)) {
       setErrorLocal('Ya existe un evento activo con ese código');
       return;
     }
     setErrorLocal(null);
     setTrabajando(true);
-    const r = await onCrear(pacienteId, tipo, c, { estado: estadoInicial });
+    const estado = estadosCreacion ? estadoNuevo : estadoInicial;
+    const r = await onCrear(pacienteId, tipo, c, { estado });
     setTrabajando(false);
     if (!r.ok) {
       setErrorLocal(r.error || 'No se pudo crear el evento');
       return;
     }
     setCodigoNuevo('');
+    setEstadoNuevo(estadoInicial);
     setAgregando(false);
   };
 
@@ -130,41 +138,55 @@ export const EventCardGroup: React.FC<Props> = ({
 
       {/* Bloque "+ Nuevo" */}
       {agregando ? (
-        <div style={agregarFila}>
-          {permitirCodigoLibre ? (
-            <input
-              type="text"
-              value={codigoNuevo}
-              onChange={e => setCodigoNuevo(e.target.value)}
-              placeholder="Escribe nombre/código"
-              style={inputAgregar}
+        <div style={agregarFilaCol}>
+          <div style={agregarFila}>
+            {permitirCodigoLibre ? (
+              <input
+                type="text"
+                value={codigoNuevo}
+                onChange={e => setCodigoNuevo(e.target.value)}
+                placeholder="Escribe nombre/código"
+                style={inputAgregar}
+                disabled={trabajando}
+                autoFocus
+              />
+            ) : (
+              <select
+                value={codigoNuevo}
+                onChange={e => setCodigoNuevo(e.target.value)}
+                style={inputAgregar}
+                disabled={trabajando}
+                autoFocus
+              >
+                <option value="">-- elige --</option>
+                {opcionesDisponibles.map(o => (
+                  <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.nombre}</option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={confirmarCrear}
+              disabled={trabajando || !codigoNuevo.trim()}
+              style={btnConfirmar}
+            >✓</button>
+            <button
+              onClick={() => { setAgregando(false); setCodigoNuevo(''); setEstadoNuevo(estadoInicial); setErrorLocal(null); }}
               disabled={trabajando}
-              autoFocus
-            />
-          ) : (
+              style={btnCancelar}
+            >✕</button>
+          </div>
+          {estadosCreacion && (
             <select
-              value={codigoNuevo}
-              onChange={e => setCodigoNuevo(e.target.value)}
+              value={estadoNuevo}
+              onChange={e => setEstadoNuevo(e.target.value as EstadoEvento)}
               style={inputAgregar}
               disabled={trabajando}
-              autoFocus
             >
-              <option value="">-- elige --</option>
-              {opcionesDisponibles.map(o => (
-                <option key={o.codigo} value={o.codigo}>{o.codigo} — {o.nombre}</option>
+              {estadosCreacion.map(s => (
+                <option key={s} value={s}>{labelEstadoCreacion(s)}</option>
               ))}
             </select>
           )}
-          <button
-            onClick={confirmarCrear}
-            disabled={trabajando || !codigoNuevo.trim()}
-            style={btnConfirmar}
-          >✓</button>
-          <button
-            onClick={() => { setAgregando(false); setCodigoNuevo(''); setErrorLocal(null); }}
-            disabled={trabajando}
-            style={btnCancelar}
-          >✕</button>
         </div>
       ) : !lleno && (
         <button
@@ -210,6 +232,9 @@ const cardsContainer: React.CSSProperties = {
 };
 const agregarFila: React.CSSProperties = {
   display: 'flex', gap: 4, alignItems: 'center',
+};
+const agregarFilaCol: React.CSSProperties = {
+  display: 'flex', flexDirection: 'column', gap: 4,
 };
 const inputAgregar: React.CSSProperties = {
   flex: 1, padding: '4px 6px', border: '1px solid #C39C59', borderRadius: 3, fontSize: 11, background: '#fff',

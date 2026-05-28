@@ -18,6 +18,7 @@ const VistaImpresionRecetario    = lazy(() => import('./pages/VistaImpresionRece
 const VistaImpresionDietas       = lazy(() => import('./pages/VistaImpresionDietas').then(m => ({ default: m.VistaImpresionDietas })))
 const VistaImpresionProductividad = lazy(() => import('./pages/VistaImpresionProductividad').then(m => ({ default: m.VistaImpresionProductividad })))
 const TableroMaestro             = lazy(() => import('./pages/TableroMaestro').then(m => ({ default: m.TableroMaestro })))
+const Auditoria                  = lazy(() => import('./pages/Auditoria').then(m => ({ default: m.Auditoria })))
 const Instructivo                = lazy(() => import('./pages/Instructivo').then(m => ({ default: m.Instructivo })))
 const VistaImpresionFicha        = lazy(() => import('./pages/VistaImpresionFicha').then(m => ({ default: m.VistaImpresionFicha })))
 
@@ -88,6 +89,7 @@ export function App() {
               <Route path="/" element={<Dashboard perfil={perfil} onCerrarSesion={cerrarSesion} />} />
               <Route path="/servicio/:servicioId" element={<VistaServicio />} />
               <Route path="/tablero" element={<TableroMaestro />} />
+              <Route path="/auditoria" element={<Auditoria />} />
               <Route path="/instructivo" element={<Instructivo />} />
               <Route path="/cambiar-contrasena" element={<CambiarPassword />} />
               <Route path="/imprimir/dietas/:servicioId" element={<VistaImpresionDietas />} />

@@ -531,6 +531,8 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                         <EventCardGroup
                           {...grupoProps(r.paciente_id, 'interconsulta')}
                           {...PERFIL_EVENTO_CLASICO}
+                          etiquetasEstado={{ Solicitada: 'Ordenada' }}
+                          estadosCreacion={['Solicitada', 'Pendiente', 'Realizada']}
                           label="Interconsultas"
                           opciones={interconsultaOpciones}
                           maxEventos={10}
@@ -575,6 +577,8 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                           {...PERFIL_DONE_MINIMAL}
                           label="Glucemia capilar"
                           opciones={GLUCEMIA_OPCIONES}
+                          permitirDuplicados
+                          maxEventos={20}
                         />
                       </div>
                       <div style={camposGrid}>
