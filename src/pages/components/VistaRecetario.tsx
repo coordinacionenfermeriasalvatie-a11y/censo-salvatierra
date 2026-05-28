@@ -11,6 +11,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { formatEdad } from '../../lib/edad';
+import { ModalRecetaControlada } from './ModalRecetaControlada';
 
 interface RecetarioRow {
   paciente_id: string;
@@ -83,6 +84,8 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
   const { perfil } = useAuth();
   // Enfermeria de piso solo tiene acceso de LECTURA al recetario
   const soloLectura = perfil?.rol === 'enfermera';
+  const puedeRecetaControlada = perfil != null && perfil.rol !== 'enfermera';
+  const [modalRcAbierto, setModalRcAbierto] = useState<string | null>(null); // paciente_id pre-seleccionado o '' para vacío
 
   const [pacientes, setPacientes] = useState<PacienteAgrupado[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -379,6 +382,15 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
         <span style={{ flex: 1, textAlign: 'center' }}>
           RECETARIO COLECTIVO — MEDICAMENTOS POR PACIENTE
         </span>
+        {puedeRecetaControlada && (
+          <button
+            onClick={() => setModalRcAbierto('')}
+            title="Crear receta de medicamento controlado (Grupos I-V LGS)"
+            style={{ background: '#A32D2D', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            💊 Receta controlada
+          </button>
+        )}
         <button
           onClick={() => window.open(`/imprimir/recetario/${servicioId}?auto=0`, '_blank', 'noopener,noreferrer')}
           title="Abrir vista de impresión del recetario completo (Oficio horizontal)"
@@ -387,6 +399,25 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           🖨️ Imprimir Recetario
         </button>
       </div>
+
+      {modalRcAbierto !== null && (
+        <ModalRecetaControlada
+          servicioId={servicioId}
+          pacientes={pacientes.map(p => ({
+            paciente_id: p.paciente_id,
+            nombre_paciente: p.nombre_paciente,
+            edad: p.edad,
+            edad_unidad: p.edad_unidad ?? null,
+            genero: p.genero,
+            nss_curp: p.nss_curp,
+            diagnostico_ingreso: p.diagnostico_ingreso,
+            numero_cama: p.numero_cama,
+            subservicio: p.subservicio,
+          }))}
+          pacienteInicialId={modalRcAbierto || undefined}
+          onCerrar={() => setModalRcAbierto(null)}
+        />
+      )}
       {soloLectura && (
         <div style={{ background: '#fff7e0', color: '#7d5b2f', padding: '8px 14px', borderRadius: 4, marginTop: 8, marginBottom: 10, fontSize: 12, border: '1px solid #C39C59' }}>
           📖 Modo solo lectura — Las recetas las captura/edita el gestor o jefe de servicio.
