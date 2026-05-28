@@ -530,18 +530,18 @@ export function TableroMaestro() {
         </div>
         {esJefeOAdmin(perfil) && (
           <button
-            onClick={() => navigate('/supervision')}
+            onClick={() => navigate('/auditoria')}
             style={{
               ...botonVolver,
-              background: '#7d5b2f',
+              background: '#5a4a8a',
               color: '#fff',
               border: 'none',
               marginRight: 8,
               whiteSpace: 'nowrap',
             }}
-            title="Acceder a las herramientas de supervisión (bitácoras, stock, auditoría)"
+            title="Quién hace qué cambios en el sistema (últimos 30 días)"
           >
-            🗂️ Supervisión
+            🔍 Auditoría
           </button>
         )}
         <div style={selectorMes}>
