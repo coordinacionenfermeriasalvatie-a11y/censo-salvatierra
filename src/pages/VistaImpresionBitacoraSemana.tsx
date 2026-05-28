@@ -168,7 +168,7 @@ export const VistaImpresionBitacoraSemana: React.FC = () => {
           <div style={titMayor}>"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
           <div style={titMenor}>Unidad de Atención a la Salud · Coordinación de Enfermería</div>
         </div>
-        <img src="/logos/LOGO_HOSPITAL.jpg" alt='Hospital "Juan María de Salvatierra"' style={logo} />
+        <img src="/logos/LOGO_HOSPITAL.png" alt='Hospital "Juan María de Salvatierra"' style={logo} />
       </div>
 
       <div style={tituloDoc}>CONTROL MEDICAMENTOS PSICOTRÓPICOS — BITÁCORA SEMANAL</div>

@@ -44,7 +44,7 @@ export const EncabezadoOficial: React.FC<Props> = ({
       )}
     </div>
     <img
-      src="/logos/LOGO_HOSPITAL.jpg"
+      src="/logos/LOGO_HOSPITAL.png"
       alt='Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"'
       style={{ maxHeight: alturaLogos, maxWidth: alturaLogos * 1.4, width: 'auto', height: 'auto', objectFit: 'contain', flexShrink: 0 }}
     />

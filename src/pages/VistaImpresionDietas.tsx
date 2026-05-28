@@ -201,7 +201,7 @@ export const VistaImpresionDietas: React.FC = () => {
               SOLICITUD DE DIETAS — SERVICIO DE NUTRICIÓN Y DIETOLOGÍA
             </div>
           </div>
-          <img src="/logos/LOGO_HOSPITAL.jpg" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado" />
+          <img src="/logos/LOGO_HOSPITAL.png" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado" />
         </div>
 
         {/* SUB-ENCABEZADO DE SERVICIO */}

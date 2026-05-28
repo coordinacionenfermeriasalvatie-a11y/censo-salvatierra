@@ -118,7 +118,7 @@ const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ rece
           <div style={hospitalSubNombre}>"JUAN MARÍA DE SALVATIERRA"</div>
           <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
         </div>
-        <img src="/logos/LOGO_HOSPITAL.jpg" alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
+        <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
       </div>
 
       {/* TÍTULO Y BADGE */}
