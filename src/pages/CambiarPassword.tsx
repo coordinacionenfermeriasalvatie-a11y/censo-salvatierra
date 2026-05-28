@@ -13,6 +13,9 @@ export function CambiarPassword() {
   const [actual, setActual] = useState('')
   const [nueva, setNueva] = useState('')
   const [confirm, setConfirm] = useState('')
+  const [verNueva, setVerNueva] = useState(false)
+  const [verConfirm, setVerConfirm] = useState(false)
+  const [anote, setAnote] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cargando, setCargando] = useState(false)
   const [hecho, setHecho] = useState(false)
@@ -31,6 +34,10 @@ export function CambiarPassword() {
     }
     if (nueva === actual) {
       setError('La nueva contraseña debe ser distinta a la actual.')
+      return
+    }
+    if (!anote) {
+      setError('Por favor marca la casilla confirmando que anotaste la contraseña.')
       return
     }
 
@@ -133,31 +140,62 @@ export function CambiarPassword() {
 
             <div style={styles.campo}>
               <label style={styles.label}>Nueva contraseña</label>
-              <input
-                type="password"
-                value={nueva}
-                onChange={e => setNueva(e.target.value)}
-                style={styles.input}
-                required
-                minLength={6}
-              />
+              <div style={styles.inputConOjo}>
+                <input
+                  type={verNueva ? 'text' : 'password'}
+                  value={nueva}
+                  onChange={e => setNueva(e.target.value)}
+                  style={styles.inputOjo}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setVerNueva(v => !v)}
+                  style={styles.botonOjo}
+                  title={verNueva ? 'Ocultar' : 'Ver'}
+                >{verNueva ? '🙈' : '👁️'}</button>
+              </div>
             </div>
 
             <div style={styles.campo}>
               <label style={styles.label}>Confirmar nueva contraseña</label>
-              <input
-                type="password"
-                value={confirm}
-                onChange={e => setConfirm(e.target.value)}
-                style={styles.input}
-                required
-                minLength={6}
-              />
+              <div style={styles.inputConOjo}>
+                <input
+                  type={verConfirm ? 'text' : 'password'}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  style={styles.inputOjo}
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setVerConfirm(v => !v)}
+                  style={styles.botonOjo}
+                  title={verConfirm ? 'Ocultar' : 'Ver'}
+                >{verConfirm ? '🙈' : '👁️'}</button>
+              </div>
             </div>
+
+            <div style={styles.aviso}>
+              📝 <strong>IMPORTANTE:</strong> Anota tu contraseña en un lugar seguro <em>antes</em> de guardar.
+              Si la olvidas, tendrás que pedirle a la subjefatura que te la resetee.
+            </div>
+
+            <label style={styles.checkboxLabel}>
+              <input
+                type="checkbox"
+                checked={anote}
+                onChange={e => setAnote(e.target.checked)}
+                style={styles.checkbox}
+              />
+              <span>Confirmo que <strong>ya anoté</strong> mi nueva contraseña en un lugar seguro.</span>
+            </label>
 
             {error && <p style={styles.error}>{error}</p>}
 
-            <button type="submit" disabled={cargando} style={styles.boton}>
+            <button type="submit" disabled={cargando || !anote} style={{ ...styles.boton, opacity: (cargando || !anote) ? 0.5 : 1, cursor: (cargando || !anote) ? 'not-allowed' : 'pointer' }}>
               {cargando ? 'Guardando...' : 'Guardar nueva contraseña'}
             </button>
 
@@ -232,6 +270,56 @@ const styles: Record<string, React.CSSProperties> = {
     borderRadius: 6,
     fontSize: 14,
     fontFamily: 'inherit'
+  },
+  inputConOjo: {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+  },
+  inputOjo: {
+    width: '100%',
+    boxSizing: 'border-box',
+    padding: '10px 44px 10px 12px',
+    border: `1px solid ${COLOR_DORADO}`,
+    borderRadius: 6,
+    fontSize: 14,
+    fontFamily: 'inherit'
+  },
+  botonOjo: {
+    position: 'absolute',
+    right: 4,
+    background: 'transparent',
+    border: 'none',
+    fontSize: 18,
+    cursor: 'pointer',
+    padding: '4px 8px',
+    lineHeight: 1,
+  },
+  aviso: {
+    background: '#FFF8E5',
+    border: `1px solid ${COLOR_DORADO}`,
+    borderRadius: 6,
+    padding: 12,
+    fontSize: 12,
+    color: '#7d5b2f',
+    marginBottom: 12,
+    lineHeight: 1.4,
+  },
+  checkboxLabel: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 14,
+    fontSize: 13,
+    color: COLOR_VERDE_OSCURO,
+    cursor: 'pointer',
+  },
+  checkbox: {
+    marginTop: 2,
+    width: 18,
+    height: 18,
+    cursor: 'pointer',
+    flexShrink: 0,
   },
   error: {
     margin: '0 0 12px',
