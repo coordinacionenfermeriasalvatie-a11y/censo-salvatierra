@@ -360,7 +360,9 @@ body {
   margin-bottom: 8px;
 }
 .logo-encabezado {
-  height: 50px;
+  max-height: 50px;
+  max-width: 60px;
+  height: auto;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;

@@ -340,7 +340,7 @@ const btnImp: React.CSSProperties = { background: '#0E6755', color: '#fff', bord
 const btnCer: React.CSSProperties = { background: '#888', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontFamily: 'sans-serif' };
 
 const headerOfi: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, borderBottom: '2px double #0E6755', paddingBottom: 4, marginBottom: 4 };
-const logo: React.CSSProperties = { height: 38, width: 'auto', objectFit: 'contain' as const, flexShrink: 0 };
+const logo: React.CSSProperties = { maxHeight: 38, maxWidth: 50, height: 'auto', width: 'auto', objectFit: 'contain' as const, flexShrink: 0 };
 const titMayor: React.CSSProperties = { fontSize: 9, fontWeight: 700, color: '#0E6755' };
 const titMenor: React.CSSProperties = { fontSize: 7, color: '#7d5b2f', fontStyle: 'italic' as const };
 const tituloDoc: React.CSSProperties = { background: '#0E6755', color: '#fff', textAlign: 'center' as const, fontWeight: 700, padding: '3px 0', marginBottom: 4, fontSize: 10, letterSpacing: 0.5 };

@@ -25,7 +25,7 @@ export const EncabezadoOficial: React.FC<Props> = ({
     <img
       src="/logos/imss_bienestar.png"
       alt="IMSS-Bienestar"
-      style={{ height: alturaLogos, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
+      style={{ maxHeight: alturaLogos, maxWidth: alturaLogos * 1.4, width: 'auto', height: 'auto', objectFit: 'contain', flexShrink: 0 }}
     />
     <div style={{ flex: 1, textAlign: 'center' }}>
       <div style={{
@@ -46,7 +46,7 @@ export const EncabezadoOficial: React.FC<Props> = ({
     <img
       src="/logos/LOGO_HOSPITAL.jpg"
       alt='Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"'
-      style={{ height: alturaLogos, width: 'auto', objectFit: 'contain', flexShrink: 0 }}
+      style={{ maxHeight: alturaLogos, maxWidth: alturaLogos * 1.4, width: 'auto', height: 'auto', objectFit: 'contain', flexShrink: 0 }}
     />
   </header>
 );

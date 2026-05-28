@@ -229,12 +229,18 @@ const boleta: React.CSSProperties = {
 };
 
 const headerOficial: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: '60px 1fr 60px', alignItems: 'center', gap: 6,
+  display: 'grid', gridTemplateColumns: '48px 1fr 48px', alignItems: 'center', gap: 10,
   borderBottom: '2px double #0E6755', paddingBottom: 4, marginBottom: 6,
 };
-const headerTexto: React.CSSProperties = { textAlign: 'center' };
-const logoIzq: React.CSSProperties = { height: 50, width: 'auto', objectFit: 'contain' };
-const logoDer: React.CSSProperties = { height: 50, width: 'auto', objectFit: 'contain' };
+const headerTexto: React.CSSProperties = { textAlign: 'center', minWidth: 0 };
+const logoIzq: React.CSSProperties = {
+  maxHeight: 42, maxWidth: 48, width: 'auto', height: 'auto',
+  objectFit: 'contain' as const, display: 'block',
+};
+const logoDer: React.CSSProperties = {
+  maxHeight: 42, maxWidth: 48, width: 'auto', height: 'auto',
+  objectFit: 'contain' as const, display: 'block', marginLeft: 'auto',
+};
 const instituciones: React.CSSProperties = { fontSize: 8.5, color: '#444', letterSpacing: 0.8 };
 const hospitalNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755', marginTop: 2 };
 const hospitalSubNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755' };
