@@ -97,36 +97,44 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
     setGuardando(true);
     setError(null);
 
-    const { data, error: err } = await supabase
-      .from('recetas_controladas')
-      .insert({
-        paciente_id: paciente.paciente_id,
-        paciente_nombre: paciente.nombre_paciente,
-        paciente_edad: paciente.edad,
-        paciente_edad_unidad: paciente.edad_unidad,
-        paciente_genero: paciente.genero,
-        paciente_nss_curp: paciente.nss_curp,
-        paciente_diagnostico: paciente.diagnostico_ingreso,
-        paciente_cama: paciente.numero_cama,
-        paciente_subservicio: paciente.subservicio,
-        servicio_id: servicioId,
-        medicamento_id: medicamento.id,
-        medicamento_nombre: medicamento.nombre,
-        medicamento_grupo: medicamento.grupo_control,
-        dosis, via, frecuencia, duracion,
-        cantidad_numero: cantidadNumero,
-        cantidad_letra: cantidadLetra,
-        indicaciones,
-        medico_nombre: medicoNombre.trim(),
-        medico_cedula: medicoCedula.trim(),
-        medico_especialidad: medicoEspecialidad.trim() || null,
-        enfermera_id: perfil.id,
-        enfermera_nombre: perfil.nombre_completo,
-        enfermera_matricula: perfil.matricula,
-        enfermera_rol: perfil.rol,
-      })
-      .select('id, folio')
-      .single();
+    const payload = {
+      paciente_id: paciente.paciente_id,
+      paciente_nombre: paciente.nombre_paciente,
+      paciente_edad: paciente.edad,
+      paciente_edad_unidad: paciente.edad_unidad,
+      paciente_genero: paciente.genero,
+      paciente_nss_curp: paciente.nss_curp,
+      paciente_diagnostico: paciente.diagnostico_ingreso,
+      paciente_cama: paciente.numero_cama,
+      paciente_subservicio: paciente.subservicio,
+      servicio_id: servicioId,
+      medicamento_id: medicamento.id,
+      medicamento_nombre: medicamento.nombre,
+      medicamento_grupo: medicamento.grupo_control,
+      dosis, via, frecuencia, duracion,
+      cantidad_numero: cantidadNumero,
+      cantidad_letra: cantidadLetra,
+      indicaciones,
+      medico_nombre: medicoNombre.trim(),
+      medico_cedula: medicoCedula.trim(),
+      medico_especialidad: medicoEspecialidad.trim() || null,
+      enfermera_id: perfil.id,
+      enfermera_nombre: perfil.nombre_completo,
+      enfermera_matricula: perfil.matricula,
+      enfermera_rol: perfil.rol,
+    };
+
+    // Reintentar hasta 3 veces si falla por race condition del folio.
+    let data: any = null;
+    let err: any = null;
+    for (let intento = 1; intento <= 3; intento++) {
+      const r = await supabase.from('recetas_controladas').insert(payload).select('id, folio').single();
+      data = r.data; err = r.error;
+      if (!err) break;
+      // Solo reintentar si es un duplicate del folio (race condition)
+      if (!/duplicate key|folio_key|recetas_controladas_folio/i.test(err.message)) break;
+      await new Promise(res => setTimeout(res, 80 * intento));  // backoff 80/160/240 ms
+    }
 
     setGuardando(false);
     if (err) { setError(err.message); return; }
