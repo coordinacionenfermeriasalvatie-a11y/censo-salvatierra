@@ -360,16 +360,16 @@ body {
   margin-bottom: 8px;
 }
 .logo-encabezado {
-  max-height: 50px;
-  max-width: 60px;
+  max-height: 64px;
+  max-width: 78px;
   height: auto;
   width: auto;
   object-fit: contain;
   flex-shrink: 0;
 }
 .encabezado {
-  border: 2px solid #0E6755;
-  border-radius: 4px;
+  border: 1px solid #0E6755;
+  border-radius: 3px;
   overflow: hidden;
   flex: 1;
 }
@@ -377,31 +377,34 @@ body {
 .banda-dorada {
   background: #C39C59;
   color: #fff;
-  padding: 4px 10px;
-  font-size: 10pt;
+  padding: 2px 10px;
+  font-size: 8.5pt;
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.3px;
+  line-height: 1.25;
 }
 
 .banda-verde {
   background: #0E6755;
   color: #fff;
-  padding: 4px 10px;
-  font-size: 10pt;
+  padding: 2px 10px;
+  font-size: 8.5pt;
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.3px;
+  line-height: 1.25;
 }
 
 .subtitulo {
   background: #fff;
   color: #0E6755;
-  padding: 5px 10px;
-  font-size: 10pt;
+  padding: 2px 10px;
+  font-size: 8pt;
   font-weight: 700;
   text-align: center;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  line-height: 1.25;
   border-top: 1px solid #C39C59;
 }
 
