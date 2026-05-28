@@ -425,9 +425,15 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                     <div>
                       <div style={pacienteNombre}>{r.nombre_paciente}</div>
                       <div style={pacienteSub}>
-                        {r.subservicio} · {formatEdadInline(r.edad, r.edad_unidad)} · {r.genero?.substring(0, 4)} · Exp {r.nss_curp || '--'}
+                        {r.subservicio} · {formatEdadInline(r.edad, r.edad_unidad)} · {r.genero?.substring(0, 4)}
+                        {r.nss_curp && (
+                          <> · <strong>NSS/CURP:</strong> {r.nss_curp}</>
+                        )}
                         {r.fecha_nacimiento && (
                           <> · <strong>F. Nac:</strong> {formatearFechaNac(r.fecha_nacimiento)}</>
+                        )}
+                        {!r.nss_curp && !r.fecha_nacimiento && (
+                          <> · <em style={{ color: '#A32D2D' }}>Sin NSS/CURP ni fecha de nacimiento — actualiza en Censo</em></>
                         )}
                         <br />
                         <span style={{ color: '#7d5b2f' }}>Dx: {r.diagnostico_ingreso}</span>
