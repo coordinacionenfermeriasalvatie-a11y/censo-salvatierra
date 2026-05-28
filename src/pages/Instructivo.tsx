@@ -1,12 +1,15 @@
 // src/pages/Instructivo.tsx
 // Instructivo de uso del sistema Censo Salvatierra.
-// Paso por paso, organizado por HOJA (censo, dietas, recetario, control,
-// productividad). Mismo contenido para todos los usuarios — sin etiquetas
-// de rol ni alcance.
+// Cada sección está marcada con los roles que pueden usar esa función.
+// Las secciones se filtran según el rol del usuario logueado.
 //
 // Accesible desde Dashboard. Imprimible. Mobile-friendly.
 
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import type { Rol } from '../types';
+import { esJefeOAdmin, formatearTitulo } from '../types';
 
 interface Bloque {
   titulo: string;
@@ -21,7 +24,14 @@ interface Seccion {
   subtitulo: string;
   color: string;
   contenido: Bloque[];
+  /** Si está definido, solo se muestra a estos roles. Si es undefined, todos lo ven. */
+  roles?: Rol[];
+  /** Si está definido, además del rol debe ser admin del sistema (es_admin_sistema=true). */
+  soloAdminSistema?: boolean;
 }
+
+const TODOS_GLOBAL: Rol[] = ['jefe','subjefe','supervisor'];
+const TODOS_GESTOR_ARRIBA: Rol[] = ['jefe','subjefe','supervisor','gestor'];
 
 const SECCIONES: Seccion[] = [
   // ============================================================
@@ -682,11 +692,319 @@ const SECCIONES: Seccion[] = [
       },
     ],
   },
+
+  // ============================================================
+  // 12. RECETA DE MEDICAMENTO CONTROLADO (gestor y arriba)
+  // ============================================================
+  {
+    key: 'receta_controlada',
+    numero: '12',
+    titulo: 'Receta de Medicamento Controlado',
+    icono: '💊',
+    subtitulo: 'Cómo generar un vale para psicotrópicos y estupefacientes (Grupos I-V LGS)',
+    color: '#A32D2D',
+    roles: TODOS_GESTOR_ARRIBA,
+    contenido: [
+      {
+        titulo: '12.1. ¿Cuándo usar este formato?',
+        pasos: [
+          'SOLO para medicamentos clasificados como controlados por la Ley General de Salud: Grupo I (estupefacientes/narcóticos como Morfina, Fentanilo, Buprenorfina, Codeína), Grupo II (psicotrópicos potentes como Ketamina), Grupo III (benzodiacepinas como Diazepam, Midazolam, Lorazepam, Clonazepam, Tramadol).',
+          'Para medicamentos NO controlados usa el Recetario normal.',
+        ],
+      },
+      {
+        titulo: '12.2. Cómo crear el vale',
+        pasos: [
+          'Entra a tu servicio → pestaña 💊 Recetario.',
+          'Toca el botón rojo "💊 Receta controlada" arriba a la derecha.',
+          'Selecciona al paciente del listado del servicio. Sus datos (nombre, edad, sexo, NSS/expediente, dx, cama) se rellenan SOLOS — son SOLO LECTURA.',
+          'Elige el medicamento del catálogo (solo aparecen los controlados clasificados por grupo I/II/III).',
+          'Llena: Dosis, Vía (IV/oral/SC), Frecuencia (c/8h, una vez), Duración, Cantidad en número y cantidad en letra.',
+          'Captura el médico prescriptor: Nombre completo, Cédula profesional y Especialidad (texto libre — el médico de turno varía).',
+          'Tu nombre y matrícula aparecen automáticamente como personal de enfermería que solicita.',
+          'Toca "💾 Guardar e imprimir".',
+        ],
+      },
+      {
+        titulo: '12.3. La impresión: DOBLE BOLETA por hoja',
+        pasos: [
+          'Cada hoja imprime DOS boletas idénticas separadas por una línea de corte punteada.',
+          'BOLETA SUPERIOR — badge guinda "Original · Jefatura de Enfermería": se queda en archivo de Jefatura.',
+          'BOLETA INFERIOR — badge dorado "Copia · Supervisión de Enfermería": se usa para canjear físicamente el medicamento.',
+          'Llena AMBAS boletas con los mismos datos y firmas (médico, enfermera que solicita, supervisora que entrega).',
+          'Corta por la línea punteada. Entrega la Copia en Supervisión.',
+        ],
+      },
+      {
+        titulo: '12.4. Folios automáticos',
+        pasos: [
+          'Folio de entrada: NNNN/YYYY (numeración anual). Se asigna al crear.',
+          'Folio de salida: S-NNNN/YYYY. Se asigna automáticamente cuando la supervisión marca el vale como "canjeada".',
+          'Ambos folios quedan registrados en la receta impresa y en el sistema (trazabilidad permanente).',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 13. CARPETA DE SUPERVISIÓN (subjefe/supervisor + jefe/admin)
+  // ============================================================
+  {
+    key: 'carpeta_supervision',
+    numero: '13',
+    titulo: 'Carpeta de Supervisión',
+    icono: '🗂️',
+    subtitulo: 'Herramientas exclusivas para jefatura, subjefatura y supervisión',
+    color: '#7d5b2f',
+    roles: TODOS_GLOBAL,
+    contenido: [
+      {
+        titulo: '13.1. ¿Cómo entro?',
+        pasos: [
+          'Subjefes y supervisores: botón "🗂️ Supervisión" directamente en el Dashboard.',
+          'Jefatura y administrador del sistema: dentro del Tablero Maestro, botón "🗂️ Supervisión" en el header.',
+          'Verás 4 tarjetas: Bitácora de Supervisión · Stock de Psicotrópicos · Tablero General · Auditoría.',
+        ],
+      },
+      {
+        titulo: '13.2. Qué puedes hacer en cada herramienta',
+        pasos: [
+          'Bitácora de Supervisión: concentrado diario de TODOS los vales controlados del hospital. Aprobar, rechazar (con motivo) o marcar como canjeados.',
+          'Stock de Psicotrópicos: ver inventario con fondo fijo (12 medicamentos institucionales), registrar entradas (Recibido) y salidas (Surtido) manuales. El stock se descuenta solo cuando un vale se marca como canjeado.',
+          'Tablero General del Hospital: KPIs de ocupación, hemodiálisis, ERC. Vista del día solamente para subjefe/supervisor; vista completa Día/Semana/Mes para jefatura y administrador.',
+          'Auditoría: quién hace qué cambios. Subjefes/supervisores ven solo HOY y SU TURNO ACTUAL; jefatura y administrador ven los últimos 30 días completos.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 14. BITÁCORA DE SUPERVISIÓN (subjefe/supervisor + jefe/admin)
+  // ============================================================
+  {
+    key: 'bitacora_supervision',
+    numero: '14',
+    titulo: 'Bitácora de Supervisión — Vales Controlados',
+    icono: '📋',
+    subtitulo: 'Aprobar, rechazar y canjear vales generados por los gestores',
+    color: '#0E6755',
+    roles: TODOS_GLOBAL,
+    contenido: [
+      {
+        titulo: '14.1. Vista general',
+        pasos: [
+          'Acceso: Carpeta de Supervisión → 📋 Bitácora de Supervisión.',
+          'Verás los vales del día agrupados en 3 turnos: Matutino (07-13h), Vespertino (14-19h), Nocturno (20-06h, hora Mazatlán).',
+          'Arriba: KPIs con conteo de pendientes / aprobadas / canjeadas / rechazadas.',
+          'Filtros disponibles: fecha, servicio, estado.',
+        ],
+      },
+      {
+        titulo: '14.2. Flujo del vale',
+        pasos: [
+          'Estado 1 PENDIENTE: el gestor del servicio recién lo creó. Aparece en amarillo.',
+          'Estado 2 APROBADA: tú das visto bueno con el botón "✓ Aprobar". Aparece en verde. Quedas registrada como supervisora que aprobó.',
+          'Estado 3 CANJEADA: cuando el gestor recoge físicamente el medicamento, marcas "📦 Canjeada". Aparece en azul. Esto descuenta automáticamente el stock de psicotrópicos.',
+          'Estado RECHAZADA: si hay un error o problema, usa "✕ Rechazar" y el sistema te pide motivo obligatorio. El vale queda registrado pero invalidado.',
+        ],
+      },
+      {
+        titulo: '14.3. Exportar a Excel',
+        pasos: [
+          'Botón "📊 Exportar a Excel" descarga un archivo con: portada institucional + 3 hojas (una por turno).',
+          'El formato es compatible con el control de psicotrópicos físico para archivar.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 15. STOCK DE PSICOTRÓPICOS (subjefe/supervisor + jefe/admin)
+  // ============================================================
+  {
+    key: 'stock_psicotropicos',
+    numero: '15',
+    titulo: 'Stock de Psicotrópicos',
+    icono: '💉',
+    subtitulo: 'Inventario con fondo fijo, entradas y salidas',
+    color: '#A32D2D',
+    roles: TODOS_GLOBAL,
+    contenido: [
+      {
+        titulo: '15.1. Vista del día',
+        pasos: [
+          'Acceso: Carpeta de Supervisión → 💊 Stock de Psicotrópicos.',
+          '12 medicamentos del fondo fijo institucional: Diazepam, Nalbufina, Buprenorfina, Haloperidol, Midazolam, Propofol, Fentanilo, Morfina, Flumazenil, Amitriptilina, Lorazepam, Clonazepam.',
+          'Por cada medicamento ves: Unidad · Fondo fijo · Recibido · Utilizado y Vales por turno (M/V/N) · STOCK ACTUAL (con semáforo: verde >30%, amarillo <30%, rojo agotado).',
+          'Abajo se autollena el detalle de vales del día (Folio, Folio salida, Paciente, Medicamento, Médico, Enfermero solicita, Supervisora, Estado).',
+        ],
+      },
+      {
+        titulo: '15.2. Registrar entradas y salidas manuales',
+        pasos: [
+          'Botón "+ Recibido" en cada renglón: registras lo que llega de farmacia (entrada que SUMA al stock).',
+          'Botón "− Surtido" en cada renglón: registras lo que entregas a algo distinto de un canje normal (salida que RESTA del stock).',
+          'Los UTILIZADOS por canje de vale se generan SOLOS — no necesitas registrarlos manualmente.',
+        ],
+      },
+      {
+        titulo: '15.3. Imprimir hoja del día',
+        pasos: [
+          'Botón "🖨️ Hoja del día" arriba a la derecha.',
+          'Imprime la vista actual con stock, movimientos por turno y detalle de vales. Sirve como evidencia física para archivo.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 16. BITÁCORA SEMANAL E HISTÓRICO (jefatura + administrador SOLO)
+  // ============================================================
+  {
+    key: 'bitacora_semanal',
+    numero: '16',
+    titulo: 'Bitácora Semanal e Histórico de Psicotrópicos',
+    icono: '📅',
+    subtitulo: 'Hoja semanal estilo PDF + archivo histórico inmutable',
+    color: '#7d5b2f',
+    roles: ['jefe','subjefe','supervisor'],
+    soloAdminSistema: true,
+    contenido: [
+      {
+        titulo: '16.1. ¿Quién puede usar esto?',
+        pasos: [
+          'EXCLUSIVO para Manuel (jefe) y Stavros (subjefe administrador del sistema).',
+          'Otros subjefes y supervisores ven SOLO la hoja del día. El histórico y la hoja semanal NO les aparecen.',
+        ],
+      },
+      {
+        titulo: '16.2. Cambiar de fecha (histórico)',
+        pasos: [
+          'En la página de Stock de Psicotrópicos, el selector "Fecha" te permite navegar a cualquier día pasado.',
+          'El sistema reconstruye el día a partir de los movimientos guardados.',
+        ],
+      },
+      {
+        titulo: '16.3. Imprimir hoja semanal (estilo PDF oficial)',
+        pasos: [
+          'Botón "📅 Imprimir Semana": abre una vista de impresión en oficio horizontal.',
+          'Replica el formato exacto del PDF de Control de Medicamentos Psicotrópicos: 12 medicamentos × 7 días (Lun-Dom) × 3 turnos × 4 columnas (Surtido/Recibido/Utilizado/Vales).',
+          'La sección inferior se autollena con el detalle de TODOS los vales canjeados de la semana.',
+          'Folio semanal del documento: BIT-YYYY-Sxx.',
+        ],
+      },
+      {
+        titulo: '16.4. Archivo histórico (snapshots)',
+        pasos: [
+          'Cada vez que abres una fecha, el sistema guarda automáticamente un snapshot JSON inmutable para auditorías futuras.',
+          'Botón "💾 Guardar histórico" fuerza un snapshot manual (sobreescribe si ya existía).',
+          'Los snapshots se conservan permanentemente — nadie los puede borrar.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 17. AUDITORÍA (subjefe/supervisor con vista limitada + jefe/admin completa)
+  // ============================================================
+  {
+    key: 'auditoria',
+    numero: '17',
+    titulo: 'Auditoría — Quién hace qué cambios',
+    icono: '🔍',
+    subtitulo: 'Trazabilidad de cambios en el sistema',
+    color: '#5a4a8a',
+    roles: TODOS_GLOBAL,
+    contenido: [
+      {
+        titulo: '17.1. Acceso',
+        pasos: [
+          'Subjefes y supervisores: Carpeta de Supervisión → 🔍 Auditoría.',
+          'Jefatura y administrador: botón "🔍 Auditoría" directo en el Dashboard o desde la Carpeta.',
+        ],
+      },
+      {
+        titulo: '17.2. Vistas disponibles',
+        pasos: [
+          'Cronológico: timeline de cambios con quién/qué/cuándo. Filtrable por usuario, sección y operación.',
+          'Por usuario: ranking de actividad por colaborador en últimos 30 días.',
+          'Por sección: qué módulos del sistema se editan más (Censo, Control, Recetario, Dietas, etc.).',
+          'Por paciente: buscar un paciente y ver todo su historial de cambios.',
+        ],
+      },
+      {
+        titulo: '17.3. Restricciones por rol',
+        pasos: [
+          'Subjefe y supervisor: ven SOLO los cambios del DÍA ACTUAL y de SU TURNO ACTUAL (M/V/N por hora Mazatlán). Se muestra un banner amarillo informando esta limitación.',
+          'Jefatura (Manuel) y administrador del sistema (Stavros): ven los últimos 30 días completos sin restricción de turno.',
+          'La RLS del backend enforza esto — no es solo UI.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
+  // 18. PARA EL ADMINISTRADOR DEL SISTEMA (Stavros / Manuel)
+  // ============================================================
+  {
+    key: 'admin_sistema',
+    numero: '18',
+    titulo: 'Para el Jefe y el Administrador del Sistema',
+    icono: '🛡️',
+    subtitulo: 'Privilegios exclusivos de jefatura y admin',
+    color: '#000',
+    roles: ['jefe'],
+    soloAdminSistema: true,
+    contenido: [
+      {
+        titulo: '18.1. Lo que SOLO tú puedes ver',
+        pasos: [
+          'Panel "🟢 En línea ahora" en el Dashboard: chips verdes con cada colaborador conectado en ese momento.',
+          'Tablero Maestro con vista Día/Semana/Mes (otros admin globales solo ven Día).',
+          'Auditoría histórica completa (últimos 30 días, todos los turnos).',
+          'Hoja semanal de psicotrópicos + selector de fecha histórica + snapshots manuales.',
+        ],
+      },
+      {
+        titulo: '18.2. Dar de alta nuevos colaboradores',
+        pasos: [
+          'Comparte el link del formulario de alta: https://forms.gle/HrHZYuFYwuPuvb3t7',
+          'Cada colaborador llena el form con: nombre, correo Gmail (será su usuario), matrícula, rol, turno, servicio.',
+          'El subjefe administrador procesa las altas en Supabase y manda el WhatsApp con credenciales.',
+          'Contraseña inicial estándar: CensoSalva2026! (o Salvatierra2026 sin signos si tienen problemas con el celular).',
+        ],
+      },
+      {
+        titulo: '18.3. Resetear contraseña de un colaborador',
+        pasos: [
+          'Si un colaborador olvida la contraseña y no recibe el correo de reset, contacta directamente a Stavros.',
+          'Se le restablece directo en Supabase a una temporal y debe cambiarla al primer ingreso.',
+        ],
+      },
+    ],
+  },
 ];
 
 export function Instructivo() {
   const navigate = useNavigate();
+  const { perfil } = useAuth();
 
+  // Filtra secciones según el rol y la flag es_admin_sistema del usuario.
+  // - Si la sección no declara `roles`, todos la ven.
+  // - Si declara `roles`, el usuario debe estar en esa lista.
+  // - Si además declara `soloAdminSistema=true`, solo lo ven los que cumplen
+  //   esJefeOAdmin(perfil) (jefe O es_admin_sistema).
+  const seccionesFiltradas = useMemo(() => {
+    if (!perfil) return [];
+    return SECCIONES.filter(s => {
+      if (s.roles && !s.roles.includes(perfil.rol)) return false;
+      if (s.soloAdminSistema && !esJefeOAdmin(perfil)) return false;
+      return true;
+    });
+  }, [perfil]);
+
+  // Renumera (las secciones filtradas conservan su número original
+  // del catálogo, pero mostramos también un índice consecutivo).
   return (
     <div style={contenedor} className="instructivo-page">
       {/* HEADER */}
@@ -694,7 +1012,9 @@ export function Instructivo() {
         <button onClick={() => navigate('/')} style={botonVolver}>← Tablero</button>
         <div style={{ flex: 1, textAlign: 'center', minWidth: 220 }}>
           <h1 style={titulo}>📖 Instructivo del Sistema</h1>
-          <div style={subtitulo}>Censo Salvatierra · IMSS-Bienestar BCS</div>
+          <div style={subtitulo}>
+            {perfil ? `Personalizado para ${formatearTitulo(perfil)}` : 'Censo Salvatierra · IMSS-Bienestar BCS'}
+          </div>
         </div>
         <button onClick={() => window.print()} style={botonImprimir}>🖨️ Imprimir</button>
       </header>
@@ -702,14 +1022,21 @@ export function Instructivo() {
       {/* INTRO */}
       <div style={introContenedor} className="no-print">
         <p style={introTexto}>
-          Guía paso a paso para llenar el sistema desde un servicio. Las instrucciones aplican
-          igual para todos los usuarios; los permisos los maneja el sistema automáticamente.
+          {perfil ? (
+            <>
+              Bienvenida/o, <strong>{perfil.nombre_completo}</strong>. Este instructivo está
+              filtrado a las funciones que TÚ puedes usar según tu rol ({formatearTitulo(perfil)}).
+              Otros colaboradores ven instrucciones diferentes según sus privilegios.
+            </>
+          ) : (
+            'Guía paso a paso. Inicia sesión para ver el instructivo personalizado a tu rol.'
+          )}
         </p>
       </div>
 
       {/* SECCIONES */}
       <main style={main}>
-        {SECCIONES.map(seccion => (
+        {seccionesFiltradas.map(seccion => (
           <section key={seccion.key} style={seccionContenedor}>
             <div style={{ ...seccionHeader, background: seccion.color }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
