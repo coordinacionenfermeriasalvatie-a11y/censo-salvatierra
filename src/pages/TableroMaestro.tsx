@@ -11,7 +11,7 @@
 //   - Productividad lookup via Map (O(1) vs O(n) por celda)
 //   - Gestor: scope automático a su servicio asignado
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 // exportarProductividadMensual se carga dinamicamente al hacer click en Exportar
@@ -124,18 +124,22 @@ export function TableroMaestro() {
 
   // ---- Estado de período ----
   // Para roles sin tablero completo arrancamos en 'dia' (su única opción).
-  const [periodo, setPeriodo] = useState<Periodo>('mes');
+  // Si el query param soloDia=1 está presente (acceso desde Supervisión),
+  // también forzamos vista de día independientemente del rol.
+  const [searchParams] = useSearchParams();
+  const soloDia = searchParams.get('soloDia') === '1';
+  const [periodo, setPeriodo] = useState<Periodo>(soloDia ? 'dia' : 'mes');
   const hoy = new Date();
   const [fechaSel, setFechaSel] = useState<string>(fechaHoyISO()); // YYYY-MM-DD
   const [anio, setAnio] = useState(hoy.getFullYear());
   const [mes, setMes]   = useState(hoy.getMonth() + 1);
 
-  // Si el rol no permite Semana/Mes, forzar Día.
+  // Si el rol no permite Semana/Mes (o soloDia=1), forzar Día.
   useEffect(() => {
-    if (perfil && !tieneTableroCompleto && periodo !== 'dia') {
+    if ((soloDia || (perfil && !tieneTableroCompleto)) && periodo !== 'dia') {
       setPeriodo('dia');
     }
-  }, [perfil, tieneTableroCompleto, periodo]);
+  }, [perfil, tieneTableroCompleto, periodo, soloDia]);
 
   // ---- Datos ----
   const [ocupacion, setOcupacion]       = useState<Ocupacion[]>([]);
@@ -547,7 +551,7 @@ export function TableroMaestro() {
         <div style={selectorMes}>
           {/* Tabs Día/Semana/Mes (Semana/Mes solo para jefe/subjefe) */}
           <div style={tabsPeriodo}>
-            {(tieneTableroCompleto ? (['dia','semana','mes'] as Periodo[]) : (['dia'] as Periodo[])).map(p => (
+            {((tieneTableroCompleto && !soloDia) ? (['dia','semana','mes'] as Periodo[]) : (['dia'] as Periodo[])).map(p => (
               <button key={p}
                 onClick={() => setPeriodo(p)}
                 style={{

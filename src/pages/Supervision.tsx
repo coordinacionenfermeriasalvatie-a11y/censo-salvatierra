@@ -38,9 +38,9 @@ const HERRAMIENTAS: Herramienta[] = [
   },
   {
     icono: '📊',
-    titulo: 'Tablero General del Hospital',
-    descripcion: 'Ocupación censable, hemodiálisis/diálisis, ERC, KPIs ejecutivos. Vista del día.',
-    ruta: '/tablero',
+    titulo: 'Tablero Maestro (solo día)',
+    descripcion: 'KPIs ejecutivos, ocupación por servicio, hemodiálisis/diálisis y ERC del día. Vista limitada a hoy — el histórico Semana/Mes lo consulta la jefatura desde el Tablero Maestro directo.',
+    ruta: '/tablero?soloDia=1',
     color: '#2c5fa3',
   },
   {
