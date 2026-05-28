@@ -1,56 +1,57 @@
 // Encabezado oficial reutilizable para vistas de impresión.
-// Logos a los costados (pequeños pero visibles para impresión) + texto
-// institucional centrado en 3 líneas: banda dorada / banda verde / subtítulo.
-//
-// Tamaño compacto para que quepa en oficio horizontal y carta.
+// Logos institucionales a los costados + texto centrado SIN fondo de
+// color. Diseño limpio, compacto y discreto para impresión profesional.
 
 import React from 'react';
 
+// Relación de aspecto real de los archivos (ancho/alto), para que al fijar
+// la ALTURA los logos no se deformen y la columna reserve el ancho exacto.
+const ASPECTO_IZQ = 2034 / 272;   // salud_imss_bienestar.png → 7.48:1 (banner ancho)
+const ASPECTO_DER = 1280 / 280;   // LOGO_HOSPITAL.png        → 4.57:1
+
 interface Props {
-  subtitulo?: string;          // Ej. "COORDINACIÓN DE ENFERMERÍA — FORMATO CONTROL DE PACIENTES"
-  alturaLogos?: number;        // Default 38px
-  margenInferior?: number;     // Default 3
+  subtitulo?: string;          // Ej. "FORMATO CONTROL DE PACIENTES — INTERVENCIONES DE ENFERMERÍA"
+  alturaLogos?: number;        // Altura visible de ambos logos en px (default 34)
+  margenInferior?: number;     // Default 4
 }
 
 export const EncabezadoOficial: React.FC<Props> = ({
   subtitulo,
-  alturaLogos = 38,
-  margenInferior = 3,
+  alturaLogos = 42,
+  margenInferior = 4,
 }) => (
   <header style={{
-    display: 'flex', alignItems: 'center', gap: 8,
-    borderBottom: '1.5px solid #0E6755', paddingBottom: 2,
+    display: 'grid',
+    gridTemplateColumns: `${Math.round(alturaLogos * ASPECTO_IZQ)}px 1fr ${Math.round(alturaLogos * ASPECTO_DER)}px`,
+    alignItems: 'center', gap: 12,
+    borderBottom: '1.2px solid #0E6755', paddingBottom: 4,
     marginBottom: margenInferior,
   }}>
     <img
-      src="/logos/imss_bienestar.png"
-      alt="IMSS-Bienestar"
-      style={{ maxHeight: alturaLogos, maxWidth: alturaLogos * 1.4, width: 'auto', height: 'auto', objectFit: 'contain', flexShrink: 0 }}
+      src="/logos/salud_imss_bienestar.png"
+      alt="SALUD · Servicios de Salud · IMSS-Bienestar"
+      style={{ height: alturaLogos, width: 'auto', objectFit: 'contain' as const, justifySelf: 'start' }}
     />
-    <div style={{ flex: 1, textAlign: 'center' }}>
-      <div style={{
-        background: '#C39C59', color: '#000', fontWeight: 700,
-        fontSize: 8, padding: '2px 0', letterSpacing: 0.3,
-      }}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
-      <div style={{
-        background: '#0E6755', color: '#fff', fontWeight: 700,
-        fontSize: 8, padding: '2px 0',
-      }}>"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
-      <div style={{
-        background: '#7d5b2f', color: '#fff', fontWeight: 700,
-        fontSize: 7.5, padding: '2px 0', letterSpacing: 0.4,
-      }}>COORDINACIÓN DE ENFERMERÍA</div>
+    <div style={{ textAlign: 'center', lineHeight: 1.2 }}>
+      <div style={{ fontSize: 8.5, fontWeight: 700, color: '#0E6755', letterSpacing: 0.3 }}>
+        BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR
+      </div>
+      <div style={{ fontSize: 8.5, fontWeight: 700, color: '#0E6755', marginTop: 1 }}>
+        "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672
+      </div>
+      <div style={{ fontSize: 8, fontWeight: 700, color: '#7d5b2f', marginTop: 1, letterSpacing: 0.4 }}>
+        COORDINACIÓN DE ENFERMERÍA
+      </div>
       {subtitulo && (
-        <div style={{
-          background: '#fff', color: '#0E6755', fontWeight: 700,
-          fontSize: 7.5, padding: '2px 0',
-        }}>{subtitulo}</div>
+        <div style={{ fontSize: 7.5, fontWeight: 600, color: '#444', marginTop: 2, fontStyle: 'italic' }}>
+          {subtitulo}
+        </div>
       )}
     </div>
     <img
       src="/logos/LOGO_HOSPITAL.png"
       alt='Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"'
-      style={{ maxHeight: alturaLogos, maxWidth: alturaLogos * 1.4, width: 'auto', height: 'auto', objectFit: 'contain', flexShrink: 0 }}
+      style={{ height: alturaLogos, width: 'auto', objectFit: 'contain' as const, justifySelf: 'end' }}
     />
   </header>
 );

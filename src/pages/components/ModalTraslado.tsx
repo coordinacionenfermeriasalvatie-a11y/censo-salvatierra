@@ -22,6 +22,7 @@ interface CamaDisponible {
   cama_id: number;
   servicio: string;
   servicio_id: number;
+  servicio_codigo: string;
   subservicio: string;
   subservicio_id: number;
   numero_cama: string;
@@ -30,6 +31,9 @@ interface CamaDisponible {
 interface Props {
   pacienteId: string;
   nombrePaciente: string;
+  edad: number | null;
+  edadUnidad?: string | null;
+  genero: string | null;
   camaActualId: number;
   numeroCamaActual: string;
   subservicioActualId: number;
@@ -40,7 +44,8 @@ interface Props {
 }
 
 export const ModalTraslado: React.FC<Props> = ({
-  pacienteId, nombrePaciente, camaActualId, numeroCamaActual,
+  pacienteId, nombrePaciente, edad, edadUnidad, genero,
+  camaActualId, numeroCamaActual,
   subservicioActualId, servicioActual,
   perfilId, onClose, onGuardado,
 }) => {
@@ -57,7 +62,7 @@ export const ModalTraslado: React.FC<Props> = ({
       // excluyendo las que tienen paciente activo o están bloqueadas.
       const { data, error } = await supabase
         .from('v_camas_estado')
-        .select('cama_id, servicio, servicio_id, subservicio, subservicio_id, numero_cama, paciente_id, cama_bloqueada, es_censable')
+        .select('cama_id, servicio, servicio_id, servicio_codigo, subservicio, subservicio_id, numero_cama, paciente_id, cama_bloqueada, es_censable')
         .order('servicio')
         .order('subservicio')
         .order('numero_cama_sort');
@@ -72,6 +77,7 @@ export const ModalTraslado: React.FC<Props> = ({
           cama_id: c.cama_id,
           servicio: c.servicio,
           servicio_id: c.servicio_id,
+          servicio_codigo: c.servicio_codigo || '',
           subservicio: c.subservicio,
           subservicio_id: c.subservicio_id,
           numero_cama: c.numero_cama,
@@ -101,6 +107,44 @@ export const ModalTraslado: React.FC<Props> = ({
     }
     return Array.from(map.entries());
   }, [camasFiltradas]);
+
+  // ── Restricciones clínicas de traslado (edad / sexo) ───────────────
+  // • Adulto → cama de Pediatría: NO permitido.
+  // • Pediátrico → cama de adultos: NO permitido (solo Pediatría).
+  // • Hombre → cama de Tococirugía: NO permitido.
+  // Pediatría = códigos que contienen "PED" (PED, ONC-PED, UPED).
+  // Tococirugía = código TOC.
+  const esPediatrico = useMemo(() => {
+    const u = (edadUnidad || '').toUpperCase();
+    if (u === 'DIAS' || u === 'MESES') return true;            // neonatos/lactantes
+    if (edad != null && (u === 'AÑOS' || u === '')) return edad < 18;
+    return false;
+  }, [edad, edadUnidad]);
+
+  const esAdulto = useMemo(() => {
+    const u = (edadUnidad || '').toUpperCase();
+    if (u === 'DIAS' || u === 'MESES') return false;
+    if (edad != null && (u === 'AÑOS' || u === '')) return edad >= 18;
+    return false;
+  }, [edad, edadUnidad]);
+
+  const esHombre = useMemo(() => {
+    const g = (genero || '').toUpperCase().trim();
+    return g === 'MASCULINO' || g === 'M' || g === 'H' || g === 'HOMBRE';
+  }, [genero]);
+
+  // Devuelve el motivo por el que una cama destino NO es válida, o null.
+  const bloqueoDe = (c: CamaDisponible): string | null => {
+    const cod = (c.servicio_codigo || '').toUpperCase();
+    const destinoPediatrico = cod.includes('PED');
+    const destinoToco = cod === 'TOC' || cod.startsWith('TOC');
+    if (esHombre && destinoToco) return 'Tococirugía: solo pacientes femeninas';
+    if (esPediatrico && !destinoPediatrico) return 'Paciente pediátrico: solo camas de Pediatría';
+    if (esAdulto && destinoPediatrico) return 'Cama de Pediatría: solo pacientes menores de edad';
+    return null;
+  };
+
+  const hayRestricciones = esPediatrico || esAdulto || esHombre;
 
   const esCambioCama = !!camaSeleccionada && camaSeleccionada.subservicio_id === subservicioActualId;
 
@@ -138,6 +182,14 @@ export const ModalTraslado: React.FC<Props> = ({
 
         {error && <div style={errorBox}>⚠️ {error}</div>}
 
+        {hayRestricciones && (
+          <div style={infoRestriccion}>
+            {esPediatrico && <div>👶 Paciente pediátrico — solo puede trasladarse a camas de Pediatría.</div>}
+            {esAdulto && <div>🧑 Paciente adulto — no puede ocupar camas de Pediatría.</div>}
+            {esHombre && <div>♂ Paciente masculino — no puede ocupar camas de Tococirugía.</div>}
+          </div>
+        )}
+
         <input
           type="text"
           placeholder="🔎 Filtrar por servicio, subservicio o número de cama"
@@ -153,25 +205,40 @@ export const ModalTraslado: React.FC<Props> = ({
           ) : grupos.length === 0 ? (
             <div style={vacio}>No hay camas disponibles que coincidan.</div>
           ) : (
-            grupos.map(([grupo, camas]) => (
-              <div key={grupo} style={grupoBox}>
-                <div style={grupoLabel}>{grupo}</div>
-                <div style={camasGrid}>
-                  {camas.map(c => {
-                    const sel = camaSeleccionada?.cama_id === c.cama_id;
-                    return (
-                      <button
-                        key={c.cama_id}
-                        onClick={() => setCamaSeleccionada(c)}
-                        style={sel ? camaBtnActivo : camaBtn}
-                      >
-                        {c.numero_cama}
-                      </button>
-                    );
-                  })}
+            grupos.map(([grupo, camas]) => {
+              // Las camas de un grupo comparten servicio → mismo motivo de bloqueo.
+              const motivoGrupo = camas.length > 0 ? bloqueoDe(camas[0]) : null;
+              return (
+                <div key={grupo} style={grupoBox}>
+                  <div style={grupoLabel}>
+                    {grupo}
+                    {motivoGrupo && <span style={grupoBloqueoTag}> · 🚫 {motivoGrupo}</span>}
+                  </div>
+                  <div style={camasGrid}>
+                    {camas.map(c => {
+                      const sel = camaSeleccionada?.cama_id === c.cama_id;
+                      const motivo = bloqueoDe(c);
+                      if (motivo) {
+                        return (
+                          <button key={c.cama_id} disabled title={motivo} style={camaBtnBloqueado}>
+                            {c.numero_cama}
+                          </button>
+                        );
+                      }
+                      return (
+                        <button
+                          key={c.cama_id}
+                          onClick={() => setCamaSeleccionada(c)}
+                          style={sel ? camaBtnActivo : camaBtn}
+                        >
+                          {c.numero_cama}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
 
@@ -212,6 +279,9 @@ const grupoLabel: React.CSSProperties = { fontSize: 11, color: '#265C4E', fontWe
 const camasGrid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 4 };
 const camaBtn: React.CSSProperties = { padding: '8px 6px', border: '1px solid #C39C59', background: '#fff', color: '#265C4E', borderRadius: 4, cursor: 'pointer', fontWeight: 700, fontSize: 13, fontFamily: 'inherit' };
 const camaBtnActivo: React.CSSProperties = { ...camaBtn, background: '#0E6755', color: '#fff', borderColor: '#0E6755', boxShadow: '0 0 0 2px rgba(14,103,85,0.3)' };
+const camaBtnBloqueado: React.CSSProperties = { ...camaBtn, background: '#f1f1f1', color: '#bbb', borderColor: '#e0e0e0', cursor: 'not-allowed', textDecoration: 'line-through' };
+const infoRestriccion: React.CSSProperties = { fontSize: 11.5, color: '#7d5b2f', background: '#fff7e0', border: '1px solid #e8d18a', borderRadius: 4, padding: '7px 10px', marginBottom: 10, lineHeight: 1.5, fontWeight: 600 };
+const grupoBloqueoTag: React.CSSProperties = { color: '#A32D2D', fontWeight: 700, textTransform: 'none' };
 const vacio: React.CSSProperties = { padding: 24, textAlign: 'center', color: '#888', fontStyle: 'italic', fontSize: 13 };
 const previewBox: React.CSSProperties = { marginTop: 12, padding: 10, background: '#F5F1E8', border: '1px solid #C39C59', borderRadius: 4 };
 const previewTitulo: React.CSSProperties = { fontSize: 10, color: '#7d5b2f', fontWeight: 700, letterSpacing: 0.3, marginBottom: 2 };

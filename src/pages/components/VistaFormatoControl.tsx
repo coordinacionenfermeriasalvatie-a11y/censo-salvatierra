@@ -131,21 +131,6 @@ const GRUPO_SANGUINEO_OPCIONES: CatalogoItem[] = [
   { codigo: 'DESCONOCIDO', nombre: 'Desconocido' },
 ];
 
-// Escala numérica del dolor (0=sin dolor, 10=máximo).
-const DOLOR_ESCALA_OPCIONES: CatalogoItem[] = [
-  { codigo: '0',  nombre: '0 — Sin dolor' },
-  { codigo: '1',  nombre: '1' },
-  { codigo: '2',  nombre: '2' },
-  { codigo: '3',  nombre: '3 — Leve' },
-  { codigo: '4',  nombre: '4' },
-  { codigo: '5',  nombre: '5 — Moderado' },
-  { codigo: '6',  nombre: '6' },
-  { codigo: '7',  nombre: '7 — Intenso' },
-  { codigo: '8',  nombre: '8' },
-  { codigo: '9',  nombre: '9' },
-  { codigo: '10', nombre: '10 — Extremo' },
-];
-
 export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
   const { perfil } = useAuth();
 
@@ -199,8 +184,8 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
       const { data, error: err } = await supabase
         .from('v_control_servicio')
         .select('*')
-        .eq('servicio_id', servicioId)
-        .order('subservicio')
+        // Orden clínico del subservicio (igual que el censo/PDF), no alfabético.
+        .order('subservicio_orden', { nullsFirst: false })
         .order('numero_cama');
 
       if (err) throw err;
@@ -593,8 +578,8 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                     </div>
 
                     {/* TARJETA DE IDENTIFICACIÓN — datos persistentes que alimentan
-                        /imprimir/ficha/:pacienteId. Grupo y alergias viven en pacientes;
-                        dolor_escala vive en formato_control_paciente con timestamp automático. */}
+                        /imprimir/ficha/:pacienteId. Grupo y alergias viven en pacientes.
+                        La escala del dolor se captura al INGRESO (Censo), no aquí. */}
                     <div style={seccion}>
                       <div style={{ ...seccionTitulo, background: '#5b3a8a' }}>
                         TARJETA DE IDENTIFICACIÓN <span style={infoChip}>alimenta la ficha impresa 🪪</span>
@@ -602,7 +587,6 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                       <div style={camposGrid}>
                         {campoDropdownConColor(r, "grupo_sanguineo", "Grupo y RH", GRUPO_SANGUINEO_OPCIONES, guardarCampoPaciente)}
                         {campoTextoLibre(r, "alergias", "Alergias (NO = vacío)", guardarCampoPaciente, "Ej. Penicilina, AINEs")}
-                        {campoDropdownConColor(r, "dolor_escala", "Escala del dolor (0–10)", DOLOR_ESCALA_OPCIONES)}
                       </div>
                       <div style={{ padding: '0 8px 8px', fontSize: 10, color: '#888' }}>
                         💡 Estos datos se imprimen automáticamente en la Tarjeta de Identificación (🪪).

@@ -355,20 +355,24 @@ export const VistaImpresionRecetario: React.FC = () => {
         <span><b>INDICACIONES:</b> {totalMedicamentos}</span>
       </div>
 
-      {/* Para PEDIATRÍA: una hoja por subservicio (UTIP, UCIN, UTIN, CYD,
-          ESCOLARES, LACTANTES). Cada bloque rompe página. Para los demás
-          servicios se imprime una sola tabla continua como antes. */}
-      {servicio?.codigo === 'PED'
-        ? agruparPorSubservicio(grupos).map((sg, i, arr) => (
-            <RecetarioSeccion
-              key={sg.subservicio_id}
-              titulo={sg.nombre}
-              subtitulo={sg.nombre_completo}
-              grupos={sg.grupos}
-              esUltima={i === arr.length - 1}
-            />
-          ))
-        : <RecetarioSeccion grupos={grupos} esUltima={true} />}
+      {/* Servicios con subservicios (URGENCIAS, TOCO CIRUGÍA, PEDIATRÍA): una
+          sección por subservicio, ordenada por número de cama, con salto de
+          página entre bloques. Los servicios de un solo subservicio se imprimen
+          en una tabla continua. */}
+      {(() => {
+        const secciones = agruparPorSubservicio(grupos);
+        return secciones.length > 1
+          ? secciones.map((sg, i, arr) => (
+              <RecetarioSeccion
+                key={sg.subservicio_id}
+                titulo={sg.nombre}
+                subtitulo={sg.nombre_completo}
+                grupos={sg.grupos}
+                esUltima={i === arr.length - 1}
+              />
+            ))
+          : <RecetarioSeccion grupos={grupos} esUltima={true} />;
+      })()}
 
       {/* Leyenda y pie con 3 firmas clásicas de receta IMSS */}
       <div style={leyendaBox}>

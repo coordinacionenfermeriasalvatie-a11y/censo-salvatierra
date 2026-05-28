@@ -278,15 +278,13 @@ export const VistaImpresionControl: React.FC = () => {
           }
         }
 
-        // Ordenar: en PEDIATRÍA primero por subservicio_orden (UTIP, UCIN…)
-        // y luego por número de cama. En otros servicios solo por cama.
-        const esPED = (svc as any)?.codigo === 'PED';
+        // Ordenar primero por subservicio_orden (UTIP, UCIN…, OBSERVACIÓN,
+        // SALA DE CHOQUE…) y luego por número de cama. En servicios de un solo
+        // subservicio el orden es constante, así que equivale a ordenar por cama.
         norm.sort((a, b) => {
-          if (esPED) {
-            const oa = a.subservicio_orden ?? 9999;
-            const ob = b.subservicio_orden ?? 9999;
-            if (oa !== ob) return oa - ob;
-          }
+          const oa = a.subservicio_orden ?? 9999;
+          const ob = b.subservicio_orden ?? 9999;
+          if (oa !== ob) return oa - ob;
           const na = parseInt(a.numero_cama, 10);
           const nb = parseInt(b.numero_cama, 10);
           if (!isNaN(na) && !isNaN(nb)) return na - nb;
@@ -325,6 +323,9 @@ export const VistaImpresionControl: React.FC = () => {
   const camasOcupadas = pacientes.length;
   const totalCamas = servicio?.total_camas ?? 0;
   const filasVacias = Math.max(0, totalCamas - camasOcupadas);
+  // Servicios con varios subservicios (Urgencias, Toco Cirugía, Pediatría):
+  // se agrupan en secciones con encabezado de subservicio.
+  const haySubservicios = new Set(pacientes.map((p) => p.subservicio).filter(Boolean)).size > 1;
 
   return (
     <div className="hoja-impresion">
@@ -438,12 +439,12 @@ export const VistaImpresionControl: React.FC = () => {
         </thead>
         <tbody>
           {pacientes.map((p, idx) => {
-            // En PEDIATRÍA: insertar encabezado por subservicio antes del primer
-            // paciente de cada grupo. Romper página entre grupos (excepto el 1°).
-            const esPED = servicio?.codigo === 'PED';
+            // En servicios con subservicios: insertar encabezado por subservicio
+            // antes del primer paciente de cada grupo. Romper página entre grupos
+            // (excepto el 1°).
             const subActual = p.subservicio;
             const subAnterior = idx > 0 ? pacientes[idx - 1].subservicio : null;
-            const inicioGrupo = esPED && subActual !== subAnterior;
+            const inicioGrupo = haySubservicios && subActual !== subAnterior;
             const encabezadoSub = inicioGrupo ? (
               <tr
                 key={`sub-${subActual}-${p.id}`}

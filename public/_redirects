@@ -1,0 +1,5 @@
+# SPA fallback (Cloudflare Pages): sirve index.html para las rutas del cliente
+# —deep links como /imprimir/receta-controlada/:id, refrescar en cualquier vista
+# y los iframes de vista previa—. Los archivos estáticos existentes (JS, CSS,
+# /logos, sw.js, manifest) tienen prioridad y se sirven directamente.
+/*    /index.html   200

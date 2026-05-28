@@ -12,12 +12,14 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { formatEdad } from '../../lib/edad';
 import { ModalRecetaControlada } from './ModalRecetaControlada';
+import { ModalRecetarioMayoreo } from './ModalRecetarioMayoreo';
 
 interface RecetarioRow {
   paciente_id: string;
   servicio_id: number;
   servicio_codigo: string;
   subservicio: string;
+  subservicio_orden: number | null;
   numero_cama: string;
   nombre_paciente: string;
   edad: number;
@@ -41,6 +43,7 @@ interface RecetarioRow {
 interface PacienteAgrupado {
   paciente_id: string;
   subservicio: string;
+  subservicio_orden: number | null;
   numero_cama: string;
   nombre_paciente: string;
   edad: number;
@@ -64,10 +67,21 @@ interface MedicamentoFila {
 
 interface Props {
   servicioId: number;
+  servicioNombre: string;
 }
 
+// El recetario "a mayoreo" (solicitud a granel, no por paciente) solo aplica a
+// Urgencias y Tococirugía. Se detecta por NOMBRE (estable) y no por código,
+// porque los códigos de servicio difieren entre el seed y producción.
+const aceptaMayoreo = (nombre: string): boolean => {
+  const n = (nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+  // Urgencias (adultos) — se excluye "URGENCIAS PEDIÁTRICAS" (UPED, ya es servicio aparte).
+  const esUrgencias = n.startsWith('URGENCIAS') && !n.includes('PEDIATR');
+  return esUrgencias || n.includes('TOCO');
+};
+
 const VIAS_COMUNES = ['IV', 'IM', 'SC', 'VO', 'SL', 'INH', 'TOP', 'OFT', 'OTICO', 'RECTAL'];
-const CANTIDADES_RECETARIO = [0, 1, 2, 3, 4, 5, 6];
+const CANTIDADES_RECETARIO = Array.from({ length: 21 }, (_, i) => i); // 0 … 20
 const FRECUENCIAS_COMUNES = [
   'CADA 1 HR',
   'CADA 2 HRS',
@@ -80,12 +94,15 @@ const FRECUENCIAS_COMUNES = [
   'CADA 72 HRS',
 ];
 
-export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
+export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) => {
   const { perfil } = useAuth();
   // Enfermeria de piso solo tiene acceso de LECTURA al recetario
   const soloLectura = perfil?.rol === 'enfermera';
   const puedeRecetaControlada = perfil != null && perfil.rol !== 'enfermera';
+  // Recetario "a mayoreo": mismos roles que la receta controlada, pero solo en Urgencias/Tococirugía.
+  const puedeMayoreo = puedeRecetaControlada && aceptaMayoreo(servicioNombre);
   const [modalRcAbierto, setModalRcAbierto] = useState<string | null>(null); // paciente_id pre-seleccionado o '' para vacío
+  const [modalMayoreoAbierto, setModalMayoreoAbierto] = useState(false);
 
   const [pacientes, setPacientes] = useState<PacienteAgrupado[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -102,6 +119,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
         mapa.set(r.paciente_id, {
           paciente_id: r.paciente_id,
           subservicio: r.subservicio,
+          subservicio_orden: r.subservicio_orden,
           numero_cama: r.numero_cama,
           nombre_paciente: r.nombre_paciente,
           edad: r.edad,
@@ -128,7 +146,13 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
     for (const p of mapa.values()) {
       p.medicamentos.sort((a, b) => a.orden - b.orden);
     }
+    // Ordenar por el orden clínico del subservicio (igual que el censo/PDF),
+    // luego por número de cama. El orden del subservicio (no alfabético) hace
+    // que Urgencias → Toco → Pediatría salgan en el mismo orden que la hoja.
     return Array.from(mapa.values()).sort((a, b) => {
+      const oa = a.subservicio_orden ?? 9999;
+      const ob = b.subservicio_orden ?? 9999;
+      if (oa !== ob) return oa - ob;
       if (a.subservicio !== b.subservicio) return a.subservicio.localeCompare(b.subservicio);
       return (a.numero_cama || '').localeCompare(b.numero_cama || '', undefined, { numeric: true });
     });
@@ -391,6 +415,15 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
             💊 Receta controlada
           </button>
         )}
+        {puedeMayoreo && (
+          <button
+            onClick={() => setModalMayoreoAbierto(true)}
+            title="Solicitar medicamentos a granel (a mayoreo), sin necesidad de capturar por paciente"
+            style={{ background: '#C39C59', color: '#fff', border: 'none', borderRadius: 4, padding: '4px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            📦 A mayoreo
+          </button>
+        )}
         <button
           onClick={() => window.open(`/imprimir/recetario/${servicioId}?auto=0`, '_blank', 'noopener,noreferrer')}
           title="Abrir vista de impresión del recetario completo (Oficio horizontal)"
@@ -416,6 +449,14 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId }) => {
           }))}
           pacienteInicialId={modalRcAbierto || undefined}
           onCerrar={() => setModalRcAbierto(null)}
+        />
+      )}
+
+      {modalMayoreoAbierto && (
+        <ModalRecetarioMayoreo
+          servicioId={servicioId}
+          servicioNombre={servicioNombre}
+          onCerrar={() => setModalMayoreoAbierto(false)}
         />
       )}
       {soloLectura && (

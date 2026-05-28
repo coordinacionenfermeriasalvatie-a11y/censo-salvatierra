@@ -788,7 +788,7 @@ export function VistaServicio() {
       )}
 
       {pestana === 'dietas'    && <VistaDietas    servicioId={servicio.id} />}
-      {pestana === 'recetario' && <VistaRecetario servicioId={servicio.id} />}
+      {pestana === 'recetario' && <VistaRecetario servicioId={servicio.id} servicioNombre={servicio.nombre} />}
       {pestana === 'control'   && <VistaFormatoControl servicioId={servicio.id} />}
       {pestana === 'productividad' && (
         <VistaProductividad
@@ -809,6 +809,9 @@ export function VistaServicio() {
         <ModalTraslado
           pacienteId={modalTraslado.paciente_id!}
           nombrePaciente={modalTraslado.nombre_paciente || ''}
+          edad={modalTraslado.edad}
+          edadUnidad={modalTraslado.edad_unidad}
+          genero={modalTraslado.genero}
           camaActualId={modalTraslado.cama_id}
           numeroCamaActual={modalTraslado.numero_cama}
           subservicioActualId={modalTraslado.subservicio_id}

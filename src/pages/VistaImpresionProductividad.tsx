@@ -151,12 +151,16 @@ export const VistaImpresionProductividad: React.FC = () => {
       )}
 
       <div className="hoja">
-        {/* ENCABEZADO INSTITUCIONAL */}
-        <div className="encabezado">
-          <div className="banda-dorada">BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
-          <div className="banda-verde">"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
-          <div className="banda-coordinacion">COORDINACIÓN DE ENFERMERÍA</div>
-          <div className="subtitulo">PRODUCTIVIDAD MENSUAL CONSOLIDADA — REPORTE EJECUTIVO</div>
+        {/* ENCABEZADO INSTITUCIONAL CON LOGOS — SIN FONDO DE COLOR */}
+        <div className="encabezado-flex">
+          <img src="/logos/salud_imss_bienestar.png" alt="SALUD · Servicios de Salud · IMSS-Bienestar" className="logo-encabezado logo-izq" />
+          <div className="encabezado">
+            <div className="linea-titulo-1">BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
+            <div className="linea-titulo-2">"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
+            <div className="linea-coordinacion">COORDINACIÓN DE ENFERMERÍA</div>
+            <div className="linea-subtitulo">PRODUCTIVIDAD MENSUAL CONSOLIDADA — REPORTE EJECUTIVO</div>
+          </div>
+          <img src="/logos/LOGO_HOSPITAL.png" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado logo-der" />
         </div>
 
         <div className="sub-encabezado">
@@ -249,7 +253,7 @@ body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; backgro
 @media print {
   body { background: #fff; }
   .no-print { display: none !important; }
-  .hoja { margin: 0 !important; box-shadow: none !important; padding: 0 !important; }
+  .hoja { margin: 0 !important; box-shadow: none !important; padding: 0 !important; min-height: auto !important; }
 }
 .barra-accion {
   position: sticky; top: 0; z-index: 100;
@@ -261,11 +265,23 @@ body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; backgro
 .btn-cerrar { background: transparent; color: #fff; border: 1px solid #fff; border-radius: 4px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
 .vista-info { color: rgba(255,255,255,0.85); font-size: 12px; margin-left: 8px; }
 .hoja { width: 190mm; min-height: 273mm; margin: 12px auto; padding: 8mm; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
-.encabezado { border: 2px solid #0E6755; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
-.banda-dorada { background: #C39C59; color: #fff; padding: 4px 10px; font-size: 10pt; font-weight: 700; text-align: center; }
-.banda-verde { background: #0E6755; color: #fff; padding: 4px 10px; font-size: 10pt; font-weight: 700; text-align: center; }
-.banda-coordinacion { background: #7d5b2f; color: #fff; padding: 3px 10px; font-size: 9pt; font-weight: 700; text-align: center; letter-spacing: 0.4px; }
-.subtitulo { background: #fff; color: #0E6755; padding: 5px 10px; font-size: 10pt; font-weight: 700; text-align: center; border-top: 1px solid #C39C59; }
+.encabezado-flex {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+  border-bottom: 1.2px solid #0E6755;
+  padding-bottom: 4px;
+}
+.logo-encabezado { height: 42px; width: auto; object-fit: contain; }
+.logo-izq { justify-self: start; }
+.logo-der { justify-self: end; }
+.encabezado { text-align: center; line-height: 1.2; }
+.linea-titulo-1 { font-size: 9pt; font-weight: 700; color: #0E6755; letter-spacing: 0.3px; }
+.linea-titulo-2 { font-size: 9pt; font-weight: 700; color: #0E6755; margin-top: 1px; }
+.linea-coordinacion { font-size: 8.5pt; font-weight: 700; color: #7d5b2f; margin-top: 2px; letter-spacing: 0.4px; }
+.linea-subtitulo { font-size: 8pt; font-weight: 600; color: #444; margin-top: 2px; font-style: italic; }
 .sub-encabezado { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #0E6755; margin-bottom: 8px; font-size: 9pt; color: #265C4E; }
 .tabla { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 10px; }
 .tabla th { background: #0E6755; color: #fff; border: 1px solid #C39C59; padding: 5px 4px; text-align: center; font-weight: 700; font-size: 7.5pt; letter-spacing: 0.3px; }

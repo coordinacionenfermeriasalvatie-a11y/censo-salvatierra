@@ -55,7 +55,7 @@ export default defineConfig({
           },
         ],
       },
-      includeAssets: ['logos/imss_bienestar.png', 'logos/LOGO_HOSPITAL.jpg'],
+      includeAssets: ['logos/imss_bienestar.png', 'logos/LOGO_HOSPITAL.png'],
       manifest: {
         name: 'Censo Hospitalario Salvatierra',
         short_name: 'Censo Salvatierra',
@@ -66,14 +66,14 @@ export default defineConfig({
         lang: 'es-MX',
         icons: [
           {
-            src: '/logos/LOGO_HOSPITAL.jpg',
+            src: '/logos/LOGO_HOSPITAL.png',
             sizes: '192x192',
-            type: 'image/jpeg'
+            type: 'image/png'
           },
           {
-            src: '/logos/LOGO_HOSPITAL.jpg',
+            src: '/logos/LOGO_HOSPITAL.png',
             sizes: '512x512',
-            type: 'image/jpeg'
+            type: 'image/png'
           }
         ]
       }

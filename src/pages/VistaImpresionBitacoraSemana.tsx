@@ -340,10 +340,10 @@ const btnImp: React.CSSProperties = { background: '#0E6755', color: '#fff', bord
 const btnCer: React.CSSProperties = { background: '#888', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: 4, cursor: 'pointer', fontFamily: 'sans-serif' };
 
 const headerOfi: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, borderBottom: '2px double #0E6755', paddingBottom: 4, marginBottom: 4 };
-const logo: React.CSSProperties = { maxHeight: 38, maxWidth: 50, height: 'auto', width: 'auto', objectFit: 'contain' as const, flexShrink: 0 };
+const logo: React.CSSProperties = { height: 42, width: 'auto', objectFit: 'contain' as const, flexShrink: 0 };
 const titMayor: React.CSSProperties = { fontSize: 9, fontWeight: 700, color: '#0E6755' };
 const titMenor: React.CSSProperties = { fontSize: 7, color: '#7d5b2f', fontStyle: 'italic' as const };
-const tituloDoc: React.CSSProperties = { background: '#0E6755', color: '#fff', textAlign: 'center' as const, fontWeight: 700, padding: '3px 0', marginBottom: 4, fontSize: 10, letterSpacing: 0.5 };
+const tituloDoc: React.CSSProperties = { background: 'transparent', color: '#0E6755', textAlign: 'center' as const, fontWeight: 700, padding: '3px 0', marginBottom: 4, fontSize: 10, letterSpacing: 0.5, border: '1px solid #0E6755', borderRadius: 3 };
 
 const metaFila: React.CSSProperties = { display: 'flex', gap: 14, padding: '3px 6px', background: '#f5f5f5', border: '1px solid #ccc', marginBottom: 4, fontSize: 7.5 };
 const folioCss: React.CSSProperties = { fontFamily: 'monospace', background: '#fff', padding: '0 4px', border: '1px solid #ccc' };
@@ -360,7 +360,7 @@ const tdMini: React.CSSProperties = { padding: '2px 1px', textAlign: 'center' as
 
 const firmaRecepcion: React.CSSProperties = { padding: '4px 0', fontSize: 8, marginBottom: 6, marginTop: 2 };
 
-const subTitulo: React.CSSProperties = { background: '#7d5b2f', color: '#fff', textAlign: 'center' as const, padding: '3px 0', marginBottom: 2, fontWeight: 700, fontSize: 9, letterSpacing: 0.3 };
+const subTitulo: React.CSSProperties = { background: 'transparent', color: '#7d5b2f', textAlign: 'center' as const, padding: '3px 0', marginBottom: 2, fontWeight: 700, fontSize: 9, letterSpacing: 0.3, borderTop: '1px solid #7d5b2f', borderBottom: '1px solid #7d5b2f' };
 const tablaDet: React.CSSProperties = { width: '100%', borderCollapse: 'collapse' as const, fontSize: 7 };
 const thDet: React.CSSProperties = { background: '#f5f1e8', color: '#7d5b2f', padding: '2px 3px', textAlign: 'center' as const, fontWeight: 700, fontSize: 7, border: '0.8px solid #888' };
 const tdDet: React.CSSProperties = { padding: '2px 3px', border: '0.5px solid #ccc', fontSize: 7, verticalAlign: 'top' as const };

@@ -51,6 +51,9 @@ export const ModalIngreso: React.FC<Props> = ({
   const [tipoIdent, setTipoIdent] = useState<'fnac' | 'curp'>('fnac');
   const [fnac, setFnac] = useState(''); // yyyy-mm-dd del input type=date
   const [curp, setCurp] = useState('');
+  // Número de expediente: campo INDEPENDIENTE de la fecha de nac / CURP.
+  // Se guarda en pacientes.expediente y se imprime en la ficha por separado.
+  const [expediente, setExpediente] = useState('');
   const [dx, setDx] = useState('');
   const [especialidadId, setEspecialidadId] = useState<number | null>(null);
   const [fecha, setFecha] = useState(hoyISO);
@@ -66,6 +69,9 @@ export const ModalIngreso: React.FC<Props> = ({
   // puede reevaluar desde la pestaña Control.
   const [riesgoCaidas, setRiesgoCaidas] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
   const [riesgoUpp, setRiesgoUpp] = useState<'' | 'ALTO' | 'MEDIANO' | 'BAJO'>('');
+  // Escala del dolor (0–10) capturada al ingreso. Se traza a
+  // formato_control_paciente.dolor_escala y se imprime en la ficha.
+  const [dolorEscala, setDolorEscala] = useState<string>('');
   // Aislamiento (universal): se captura aquí y se crea un evento
   // precaucion_aislamiento que aparece en Control, suma a K03 en
   // Productividad, y se muestra como chip en Dietas.
@@ -188,6 +194,7 @@ export const ModalIngreso: React.FC<Props> = ({
           edad_unidad: edadUnidad,
           genero,
           nss_curp: identGuardar,
+          expediente: expediente.trim().toUpperCase() || null,
           diagnostico_ingreso: dx.trim().toUpperCase(),
           especialidad_id: especialidadId,
           fecha_ingreso: fecha,
@@ -228,10 +235,14 @@ export const ModalIngreso: React.FC<Props> = ({
       // 2) Si se capturó riesgo de caídas o UPP en el censo, los propagamos
       //    al formato de control. Esto es la trazabilidad que arranca en el
       //    censo y corre automáticamente a control.
-      if (nuevoPaciente && (riesgoCaidas || riesgoUpp)) {
+      if (nuevoPaciente && (riesgoCaidas || riesgoUpp || dolorEscala !== '')) {
         const updateRiesgos: any = { actualizado_por: capturadoPor };
         if (riesgoCaidas) updateRiesgos.riesgo_caidas = riesgoCaidas;
         if (riesgoUpp)    updateRiesgos.riesgo_upp = riesgoUpp;
+        if (dolorEscala !== '') {
+          updateRiesgos.dolor_escala = parseInt(dolorEscala, 10);
+          updateRiesgos.dolor_evaluado_en = new Date().toISOString();
+        }
         const { error: errR } = await supabase
           .from('formato_control_paciente')
           .update(updateRiesgos)
@@ -321,6 +332,18 @@ export const ModalIngreso: React.FC<Props> = ({
               <option value="MASCULINO">MASCULINO</option>
               <option value="FEMENINO">FEMENINO</option>
             </select>
+          </div>
+
+          {/* Número de expediente — INDEPENDIENTE de la fecha de nacimiento
+              y de la CURP. Se imprime por separado en la ficha. */}
+          <div style={{ ...campo, gridColumn: 'span 2' }}>
+            <label style={label}>NÚMERO DE EXPEDIENTE</label>
+            <input
+              value={expediente}
+              onChange={e => setExpediente(e.target.value.toUpperCase())}
+              style={input}
+              placeholder="Independiente de CURP / fecha de nacimiento"
+            />
           </div>
 
           {/* Identidad. En HDL: AMBOS campos obligatorios (CURP + fecha nac)
@@ -491,6 +514,20 @@ export const ModalIngreso: React.FC<Props> = ({
               <option value="ALTO">🔴 ALTO</option>
               <option value="MEDIANO">🟡 MEDIANO</option>
               <option value="BAJO">🟢 BAJO</option>
+            </select>
+          </div>
+
+          {/* Escala del dolor (0–10). Se traza a formato_control_paciente y
+              se imprime en la Tarjeta de Identificación. */}
+          <div style={{ ...campo, gridColumn: 'span 2' }}>
+            <label style={label}>ESCALA DEL DOLOR (0–10)</label>
+            <select value={dolorEscala} onChange={e => setDolorEscala(e.target.value)} style={input}>
+              <option value="">-- Sin evaluar --</option>
+              {Array.from({ length: 11 }, (_, n) => (
+                <option key={n} value={n}>
+                  {n === 0 ? '0 — Sin dolor' : n === 10 ? '10 — Máximo dolor' : String(n)}
+                </option>
+              ))}
             </select>
           </div>
 

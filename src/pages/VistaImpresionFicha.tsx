@@ -26,6 +26,8 @@ interface FichaPaciente {
   edad: number | null;
   genero: string | null;
   nss_curp: string | null;
+  expediente: string | null;
+  fecha_nacimiento: string | null;
   diagnostico_ingreso: string | null;
   fecha_ingreso: string;
   hora_ingreso: string | null;
@@ -50,7 +52,7 @@ export function VistaImpresionFicha() {
       const { data, error } = await supabase
         .from('pacientes')
         .select(`
-          id, nombre_paciente, edad, genero, nss_curp, diagnostico_ingreso,
+          id, nombre_paciente, edad, genero, nss_curp, expediente, fecha_nacimiento, diagnostico_ingreso,
           fecha_ingreso, hora_ingreso, grupo_sanguineo, alergias,
           camas ( numero_cama ),
           formato_control_paciente ( riesgo_upp, riesgo_caidas, dolor_escala, dolor_evaluado_en )
@@ -71,6 +73,8 @@ export function VistaImpresionFicha() {
         edad: data.edad,
         genero: data.genero,
         nss_curp: data.nss_curp,
+        expediente: data.expediente || null,
+        fecha_nacimiento: data.fecha_nacimiento,
         diagnostico_ingreso: data.diagnostico_ingreso,
         fecha_ingreso: data.fecha_ingreso,
         hora_ingreso: data.hora_ingreso,
@@ -103,34 +107,42 @@ export function VistaImpresionFicha() {
     );
   }
 
-  // Parsear NSS / fecha de nacimiento
-  // - Si NSS tiene formato "DD/MM/YYYY" lo usamos como fecha de nacimiento
-  // - Si NSS es número (6 dígitos) lo dejamos como expediente y calculamos
-  //   fecha aproximada con la edad
+  // Fecha de nacimiento y expediente/CURP
+  // - Fecha de nacimiento: columna real `fecha_nacimiento`. Si no está
+  //   capturada pero el campo NSS/CURP contiene una CURP válida, la derivamos
+  //   de la CURP (posiciones 5-10 = AAMMDD; el carácter 17 indica el siglo:
+  //   dígito → 1900s, letra → 2000s).
+  // - Expediente / CURP: el campo `nss_curp` guarda el identificador que
+  //   capturó el gestor (NSS, CURP o número de expediente).
+  const MESES_LARGOS = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
+    'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
   let fnacDD = '____';
   let fnacMM = '__________';
   let fnacAAAA = '______';
-  let expediente = '______________';
-  const MESES_LARGOS = ['ENERO', 'FEBRERO', 'MARZO', 'ABRIL', 'MAYO', 'JUNIO',
-    'JULIO', 'AGOSTO', 'SEPTIEMBRE', 'OCTUBRE', 'NOVIEMBRE', 'DICIEMBRE'];
-  if (paciente.nss_curp) {
-    const m = paciente.nss_curp.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (m) {
-      const d = parseInt(m[1], 10);
-      const mo = parseInt(m[2], 10);
-      const y = parseInt(m[3], 10);
-      fnacDD = String(d).padStart(2, '0');
-      fnacMM = MESES_LARGOS[mo - 1] || '__________';
-      fnacAAAA = String(y);
-    } else {
-      // Es número de expediente
-      expediente = paciente.nss_curp;
-      // Calcular año de nacimiento aproximado
-      if (paciente.edad != null) {
-        fnacAAAA = String(2026 - paciente.edad);
-      }
-    }
+  const aplicarFnac = (y: number, mo: number, d: number) => {
+    if (d >= 1 && d <= 31) fnacDD = String(d).padStart(2, '0');
+    if (mo >= 1 && mo <= 12) fnacMM = MESES_LARGOS[mo - 1];
+    if (y > 0) fnacAAAA = String(y);
+  };
+
+  const idPaciente = (paciente.nss_curp || '').trim();
+  const curp = idPaciente.toUpperCase();
+  const esCurp = /^[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d$/.test(curp);
+
+  if (paciente.fecha_nacimiento) {
+    const [y, mo, d] = paciente.fecha_nacimiento.split('-').map((n) => parseInt(n, 10));
+    aplicarFnac(y, mo, d);
+  } else if (esCurp) {
+    const siglo = /[A-Z]/.test(curp[16]) ? 2000 : 1900;
+    aplicarFnac(
+      siglo + parseInt(curp.substring(4, 6), 10),
+      parseInt(curp.substring(6, 8), 10),
+      parseInt(curp.substring(8, 10), 10),
+    );
   }
+
+  // Expediente: columna dedicada, INDEPENDIENTE de la CURP / fecha de nac.
+  const expediente = (paciente.expediente || '').trim() || '______________';
 
   // Fecha y hora de ingreso
   const ingreso = new Date(paciente.fecha_ingreso + 'T00:00:00');
@@ -226,12 +238,22 @@ export function VistaImpresionFicha() {
             <span style={{ ...cajaSexo, background: sexo === 'M' ? '#FFF5C2' : 'transparent' }}>M</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            NÚMERO EXPEDIENTE: <span style={subrayado}>{expediente}</span>
+            EXPEDIENTE: <span style={subrayado}>{expediente}</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             GRUPO Y RH: <span style={subrayadoCorto}>{grupoRh || '_________'}</span>
           </div>
         </div>
+
+        {/* CURP — solo si el identificador capturado es una CURP válida.
+            Va en su propia línea, independiente del expediente. */}
+        {esCurp && (
+          <div style={{ ...filaDatos, marginTop: 4 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              CURP: <span style={subrayado}>{curp}</span>
+            </div>
+          </div>
+        )}
 
         {/* Alergias */}
         <div style={filaAlergias}>

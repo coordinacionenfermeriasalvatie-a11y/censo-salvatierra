@@ -80,7 +80,17 @@ export const VistaImpresionDietas: React.FC = () => {
         if (servError) throw servError;
         setServicio(servData as ServicioInfo);
 
-        // 2. Dietas del servicio (vista pre-armada con JOINs)
+        // 2. Orden de los subservicios del servicio (UTIP, UCIN…, OBSERVACIÓN,
+        //    SALA DE CHOQUE…). Permite agrupar y ordenar igual que el censo.
+        const { data: subsData } = await supabase
+          .from('subservicios')
+          .select('nombre, orden')
+          .eq('servicio_id', sid);
+        const ordenSub = new Map<string, number>(
+          (subsData || []).map((s: any) => [s.nombre, s.orden])
+        );
+
+        // 3. Dietas del servicio (vista pre-armada con JOINs)
         const { data: dietasData, error: dietasError } = await supabase
           .from('v_dietas_servicio')
           .select('paciente_id, subservicio, numero_cama, nombre_paciente, edad, genero, nss_curp, tipo_dieta, consistencia, restricciones, observaciones')
@@ -88,11 +98,14 @@ export const VistaImpresionDietas: React.FC = () => {
 
         if (dietasError) throw dietasError;
 
-        // 3. Ordenar por número de cama
+        // 4. Ordenar por subservicio (según su orden) y luego por número de cama.
         const unidas: DietaImpresion[] = (dietasData || []) as DietaImpresion[];
-        unidas.sort((a, b) =>
-          (a.numero_cama || '').localeCompare(b.numero_cama || '', undefined, { numeric: true })
-        );
+        unidas.sort((a, b) => {
+          const oa = ordenSub.get(a.subservicio) ?? 9999;
+          const ob = ordenSub.get(b.subservicio) ?? 9999;
+          if (oa !== ob) return oa - ob;
+          return (a.numero_cama || '').localeCompare(b.numero_cama || '', undefined, { numeric: true });
+        });
 
         setDietas(unidas);
       } catch (e: any) {
@@ -166,6 +179,9 @@ export const VistaImpresionDietas: React.FC = () => {
   // RENDER
   // =====================================================================
   const dietasActivas = dietas.filter(d => d.tipo_dieta || d.consistencia).length;
+  // Servicios con varios subservicios (Urgencias, Toco Cirugía, Pediatría):
+  // se agrupan en secciones con encabezado de subservicio y salto de página.
+  const haySubservicios = new Set(dietas.map(d => d.subservicio).filter(Boolean)).size > 1;
 
   return (
     <>
@@ -187,24 +203,24 @@ export const VistaImpresionDietas: React.FC = () => {
       )}
 
       <div className="hoja">
-        {/* ENCABEZADO INSTITUCIONAL CON LOGOS */}
+        {/* ENCABEZADO INSTITUCIONAL CON LOGOS — SIN FONDO DE COLOR */}
         <div className="encabezado-flex">
-          <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" className="logo-encabezado" />
+          <img src="/logos/salud_imss_bienestar.png" alt="SALUD · Servicios de Salud · IMSS-Bienestar" className="logo-encabezado logo-izq" />
           <div className="encabezado">
-            <div className="banda-dorada">
+            <div className="linea-titulo-1">
               BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR
             </div>
-            <div className="banda-verde">
+            <div className="linea-titulo-2">
               "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672
             </div>
-            <div className="banda-coordinacion">
+            <div className="linea-coordinacion">
               COORDINACIÓN DE ENFERMERÍA
             </div>
-            <div className="subtitulo">
+            <div className="linea-subtitulo">
               SOLICITUD DE DIETAS — SERVICIO DE NUTRICIÓN Y DIETOLOGÍA
             </div>
           </div>
-          <img src="/logos/LOGO_HOSPITAL.png" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado" />
+          <img src="/logos/LOGO_HOSPITAL.png" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado logo-der" />
         </div>
 
         {/* SUB-ENCABEZADO DE SERVICIO */}
@@ -228,21 +244,35 @@ export const VistaImpresionDietas: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {dietas.map((d, idx) => (
-              <tr key={d.paciente_id} className={idx % 2 === 0 ? 'fila-par' : 'fila-impar'}>
-                <td className="c-cama">{d.numero_cama}</td>
-                <td className="c-paciente">
-                  <div className="p-nombre">{d.nombre_paciente}</div>
-                  <div className="p-sub">{d.edad} {generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
-                </td>
-                <td className="c-tipo"><strong>{d.tipo_dieta || '—'}</strong></td>
-                <td className="c-cons">{d.consistencia || '—'}</td>
-                <td className="c-restr">{d.restricciones || '—'}</td>
-                <td className="c-obs">{d.observaciones || ''}</td>
-              </tr>
-            ))}
-            {/* Filas vacías para completar el total de camas del servicio */}
-            {servicio && Array.from({ length: Math.max(0, servicio.total_camas - dietas.length) }).map((_, idx) => (
+            {dietas.map((d, idx) => {
+              // En servicios con subservicios: encabezado antes del primer
+              // paciente de cada grupo, con salto de página (excepto el 1°).
+              const subAnterior = idx > 0 ? dietas[idx - 1].subservicio : null;
+              const inicioGrupo = haySubservicios && d.subservicio !== subAnterior;
+              return (
+                <React.Fragment key={d.paciente_id}>
+                  {inicioGrupo && (
+                    <tr className={idx === 0 ? 'sub-grupo primera' : 'sub-grupo'}>
+                      <td colSpan={6}>{d.subservicio}</td>
+                    </tr>
+                  )}
+                  <tr className={idx % 2 === 0 ? 'fila-par' : 'fila-impar'}>
+                    <td className="c-cama">{d.numero_cama}</td>
+                    <td className="c-paciente">
+                      <div className="p-nombre">{d.nombre_paciente}</div>
+                      <div className="p-sub">{d.edad} {generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
+                    </td>
+                    <td className="c-tipo"><strong>{d.tipo_dieta || '—'}</strong></td>
+                    <td className="c-cons">{d.consistencia || '—'}</td>
+                    <td className="c-restr">{d.restricciones || '—'}</td>
+                    <td className="c-obs">{d.observaciones || ''}</td>
+                  </tr>
+                </React.Fragment>
+              );
+            })}
+            {/* Filas vacías para completar el total de camas (solo en servicios
+                de un solo subservicio; al agrupar no aplica). */}
+            {!haySubservicios && servicio && Array.from({ length: Math.max(0, servicio.total_camas - dietas.length) }).map((_, idx) => (
               <tr key={`vacia-${idx}`} className="fila-vacia">
                 <td className="c-cama">&nbsp;</td>
                 <td colSpan={5}>&nbsp;</td>
@@ -304,6 +334,7 @@ body {
     margin: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
+    min-height: auto !important;  /* evita 2ª hoja casi en blanco: el alto lo da el contenido */
   }
 }
 
@@ -355,58 +386,68 @@ body {
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-/* ENCABEZADO */
+/* ENCABEZADO — logos a la misma ALTURA (28px), columnas al ancho real
+   según la relación de aspecto (salud 7.48:1, hospital 4.57:1). */
 .encabezado-flex {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 12px;
+  margin-bottom: 6px;
+  border-bottom: 1.2px solid #0E6755;
+  padding-bottom: 4px;
 }
 .logo-encabezado {
-  max-height: 64px;
-  max-width: 78px;
-  height: auto;
+  height: 42px;
   width: auto;
   object-fit: contain;
-  flex-shrink: 0;
 }
+.logo-izq { justify-self: start; }
+.logo-der { justify-self: end; }
 .encabezado {
-  border: 1px solid #0E6755;
-  border-radius: 3px;
-  overflow: hidden;
-  flex: 1;
+  text-align: center;
+  line-height: 1.2;
 }
 
-.banda-dorada {
-  background: #C39C59;
-  color: #fff;
-  padding: 2px 10px;
+.linea-titulo-1 {
+  font-size: 9pt;
+  font-weight: 700;
+  color: #0E6755;
+  letter-spacing: 0.3px;
+}
+
+.linea-titulo-2 {
+  font-size: 9pt;
+  font-weight: 700;
+  color: #0E6755;
+  margin-top: 1px;
+}
+
+.linea-coordinacion {
   font-size: 8.5pt;
   font-weight: 700;
-  text-align: center;
-  letter-spacing: 0.3px;
-  line-height: 1.25;
-}
-
-.banda-verde {
-  background: #0E6755;
-  color: #fff;
-  padding: 2px 10px;
-  font-size: 8.5pt;
-  font-weight: 700;
-  text-align: center;
-  letter-spacing: 0.3px;
-  line-height: 1.25;
-}
-
-.banda-coordinacion {
-  background: #7d5b2f;
-  color: #fff;
-  padding: 2px 10px;
-  font-size: 8pt;
-  font-weight: 700;
-  text-align: center;
+  color: #7d5b2f;
+  margin-top: 2px;
   letter-spacing: 0.4px;
+}
+
+.linea-subtitulo {
+  font-size: 8pt;
+  font-weight: 600;
+  color: #444;
+  margin-top: 2px;
+  font-style: italic;
+}
+
+/* Compatibilidad con clases viejas — sin fondo */
+.banda-dorada, .banda-verde, .banda-coordinacion {
+  background: transparent;
+  color: #0E6755;
+  padding: 1px 10px;
+  font-size: 8.5pt;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.3px;
   line-height: 1.25;
 }
 
@@ -469,6 +510,19 @@ body {
 .fila-par { background: #fff; }
 .fila-impar { background: #f5f1e8; }
 .fila-vacia td { background: #fff; height: 28px; }
+
+/* Encabezado de subservicio (Urgencias, Toco, Pediatría) */
+.sub-grupo td {
+  background: #DCEFE9;
+  color: #0E6755;
+  font-weight: 700;
+  font-size: 9pt;
+  letter-spacing: 0.4px;
+  text-align: left;
+  padding: 4px 8px;
+  height: auto;
+}
+.sub-grupo:not(.primera) td { page-break-before: always; }
 
 .c-cama {
   width: 36px;

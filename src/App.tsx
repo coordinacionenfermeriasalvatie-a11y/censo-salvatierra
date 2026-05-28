@@ -20,6 +20,7 @@ const VistaImpresionProductividad = lazy(() => import('./pages/VistaImpresionPro
 const TableroMaestro             = lazy(() => import('./pages/TableroMaestro').then(m => ({ default: m.TableroMaestro })))
 const Auditoria                  = lazy(() => import('./pages/Auditoria').then(m => ({ default: m.Auditoria })))
 const VistaImpresionRecetaControlada = lazy(() => import('./pages/VistaImpresionRecetaControlada').then(m => ({ default: m.VistaImpresionRecetaControlada })))
+const VistaImpresionRecetarioMayoreo = lazy(() => import('./pages/VistaImpresionRecetarioMayoreo').then(m => ({ default: m.VistaImpresionRecetarioMayoreo })))
 const BitacoraSupervision        = lazy(() => import('./pages/BitacoraSupervision').then(m => ({ default: m.BitacoraSupervision })))
 const BitacoraPsicotropicos      = lazy(() => import('./pages/BitacoraPsicotropicos').then(m => ({ default: m.BitacoraPsicotropicos })))
 const VistaImpresionBitacoraSemana = lazy(() => import('./pages/VistaImpresionBitacoraSemana').then(m => ({ default: m.VistaImpresionBitacoraSemana })))
@@ -96,6 +97,7 @@ export function App() {
               <Route path="/tablero" element={<TableroMaestro />} />
               <Route path="/auditoria" element={<Auditoria />} />
               <Route path="/imprimir/receta-controlada/:id" element={<VistaImpresionRecetaControlada />} />
+              <Route path="/imprimir/recetario-mayoreo/:id" element={<VistaImpresionRecetarioMayoreo />} />
               <Route path="/bitacora-supervision" element={<BitacoraSupervision />} />
               <Route path="/bitacora-psicotropicos" element={<BitacoraPsicotropicos />} />
               <Route path="/imprimir/bitacora-semana" element={<VistaImpresionBitacoraSemana />} />

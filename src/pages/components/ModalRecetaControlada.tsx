@@ -59,6 +59,7 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
   const [medicoEspecialidad, setMedicoEspecialidad] = useState('');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [exito, setExito] = useState<{ id: string; folio: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -139,10 +140,64 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
     setGuardando(false);
     if (err) { setError(err.message); return; }
 
-    // Abrir vista de impresión y cerrar modal
-    window.open(`/imprimir/receta-controlada/${data.id}`, '_blank', 'noopener,noreferrer');
-    onCerrar();
+    // Mostrar pantalla de confirmación con VISTA PREVIA del documento guardado
+    // (para que el gestor se cerciore de que la solicitud se guardó bien) y el
+    // aviso de acudir a Supervisión para el canje, el vale y las firmas. La
+    // impresión se hace desde ahí o en la Jefatura de Supervisión de Enfermería.
+    setExito({ id: data.id, folio: data.folio });
   };
+
+  // Pantalla de confirmación con VISTA PREVIA del documento: el gestor ve la
+  // solicitud tal como se imprimirá (se cerciora de que se guardó bien) y recibe
+  // el aviso de acudir a Supervisión para el canje, el vale y las firmas.
+  if (exito) {
+    return (
+      <div style={overlay} onClick={onCerrar}>
+        <div style={{ ...modal, maxWidth: 880 }} onClick={e => e.stopPropagation()}>
+          <div style={headerExito}>
+            <div style={tituloChip}>✓ SOLICITUD GUARDADA</div>
+          </div>
+          <div style={{ ...body, gap: 14 }}>
+            <div style={exitoCheck}>
+              <div style={exitoIcono}>✓</div>
+              <div>
+                <div style={exitoTitulo}>La solicitud de medicamento controlado se guardó correctamente.</div>
+                <div style={exitoFolio}>Folio: <strong>{exito.folio}</strong></div>
+              </div>
+            </div>
+
+            {/* VISTA PREVIA — el documento real tal como se imprimirá */}
+            <div style={previewWrap}>
+              <div style={previewLabel}>👁 Vista previa — así se imprimirá la solicitud (desplázate para ver ambas boletas)</div>
+              <iframe
+                src={`/imprimir/receta-controlada/${exito.id}?preview=1`}
+                title="Vista previa de la solicitud de medicamento controlado"
+                style={previewFrame}
+              />
+            </div>
+
+            <div style={avisoBox}>
+              <div style={avisoTit}>⚠️ Acción pendiente del gestor del cuidado</div>
+              <div style={avisoTexto}>
+                Acude a <strong>Supervisión de Enfermería</strong> para el <strong>canje del medicamento</strong>,
+                la <strong>recaudación del vale</strong> de la receta controlada y la <strong>impresión</strong>,
+                donde se recabarán las <strong>firmas correspondientes</strong>.
+              </div>
+            </div>
+          </div>
+          <div style={footer}>
+            <button
+              onClick={() => window.open(`/imprimir/receta-controlada/${exito.id}`, '_blank', 'noopener,noreferrer')}
+              style={btnSecundario}
+            >
+              🖨️ Imprimir
+            </button>
+            <button onClick={onCerrar} style={btnPrincipal}>Entendido</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={overlay} onClick={onCerrar}>
@@ -327,4 +382,35 @@ const btnSecundario: React.CSSProperties = {
 };
 const btnPrincipal: React.CSSProperties = {
   padding: '8px 16px', background: '#A32D2D', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 700,
+};
+const headerExito: React.CSSProperties = {
+  background: '#0E6755', color: '#fff', padding: '12px 18px', borderRadius: '8px 8px 0 0',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+};
+const exitoCheck: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 12,
+};
+const exitoIcono: React.CSSProperties = {
+  flexShrink: 0, width: 44, height: 44, borderRadius: '50%', background: '#0E6755', color: '#fff',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, fontWeight: 700,
+};
+const exitoTitulo: React.CSSProperties = { fontSize: 14, fontWeight: 700, color: '#0E6755' };
+const exitoFolio: React.CSSProperties = { fontSize: 13, color: '#444', marginTop: 2 };
+const avisoBox: React.CSSProperties = {
+  background: '#fff7e0', border: '1.5px solid #C39C59', borderRadius: 6, padding: 12,
+};
+const avisoTit: React.CSSProperties = {
+  fontSize: 13, fontWeight: 700, color: '#7d5b2f', marginBottom: 6,
+};
+const avisoTexto: React.CSSProperties = { fontSize: 13, lineHeight: 1.55, color: '#3a3a3a' };
+const previewWrap: React.CSSProperties = {
+  border: '1px solid #C39C59', borderRadius: 6, overflow: 'hidden', background: '#e9e9e9',
+};
+const previewLabel: React.CSSProperties = {
+  background: '#0E6755', color: '#fff', fontSize: 11, fontWeight: 700, padding: '4px 10px', letterSpacing: 0.3,
+};
+// Documento carta-vertical (~816px de ancho). El iframe lo muestra a tamaño real
+// con scroll vertical para alcanzar ambas boletas (original + copia).
+const previewFrame: React.CSSProperties = {
+  width: '100%', height: 440, border: 'none', display: 'block', background: '#fff',
 };

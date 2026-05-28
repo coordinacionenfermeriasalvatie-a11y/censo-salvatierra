@@ -6,7 +6,7 @@
 // Entre ambas, línea de corte punteada.
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { formatearRol } from '../types';
 
@@ -49,6 +49,10 @@ const GRUPO_LABEL: Record<string, string> = {
 
 export const VistaImpresionRecetaControlada: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  // ?preview=1 → modo vista previa embebida (iframe en el modal): NO imprime
+  // automáticamente y oculta la barra de acciones flotante.
+  const [searchParams] = useSearchParams();
+  const preview = searchParams.get('preview') === '1';
   const [receta, setReceta] = useState<Receta | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,8 +70,8 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
   }, [id]);
 
   useEffect(() => {
-    if (receta) setTimeout(() => window.print(), 300);
-  }, [receta]);
+    if (receta && !preview) setTimeout(() => window.print(), 300);
+  }, [receta, preview]);
 
   if (error) return <div style={{ padding: 40, color: '#A32D2D' }}>Error: {error}</div>;
   if (!receta) return <div style={{ padding: 40 }}>Cargando receta...</div>;
@@ -83,10 +87,12 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
         @media screen { body { background: #ccc; } }
       `}</style>
 
-      <div className="no-print" style={barraSuperior}>
-        <button onClick={() => window.print()} style={btnImprimir}>🖨️ Imprimir</button>
-        <button onClick={() => window.close()} style={btnCerrar}>✕ Cerrar</button>
-      </div>
+      {!preview && (
+        <div className="no-print" style={barraSuperior}>
+          <button onClick={() => window.print()} style={btnImprimir}>🖨️ Imprimir</button>
+          <button onClick={() => window.close()} style={btnCerrar}>✕ Cerrar</button>
+        </div>
+      )}
 
       <Boleta receta={receta} tipo="original" />
       <LineaCorte />
@@ -109,17 +115,16 @@ const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ rece
 
   return (
     <div style={boleta}>
-      {/* HEADER OFICIAL CON LOGOS */}
+      {/* HEADER OFICIAL CON LOGOS — SIN FONDOS DE COLOR */}
       <div style={headerOficial}>
-        <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" style={logoIzq} />
+        <img src="/logos/salud_imss_bienestar.png" alt="SALUD · Servicios de Salud · IMSS-Bienestar" style={logoIzq} />
         <div style={headerTexto}>
-          <div style={instituciones}>SECRETARÍA DE SALUD · IMSS-BIENESTAR</div>
           <div style={hospitalNombre}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
           <div style={hospitalSubNombre}>"JUAN MARÍA DE SALVATIERRA"</div>
           <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
           <div style={coordinacion}>COORDINACIÓN DE ENFERMERÍA</div>
         </div>
-        <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
+        <img src="/logos/LOGO_HOSPITAL.png" alt='Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"' style={logoDer} />
       </div>
 
       {/* TÍTULO Y BADGE */}
@@ -230,23 +235,26 @@ const boleta: React.CSSProperties = {
 };
 
 const headerOficial: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: '48px 1fr 48px', alignItems: 'center', gap: 10,
-  borderBottom: '2px double #0E6755', paddingBottom: 4, marginBottom: 6,
+  // Columnas 'auto' = se ajustan al ancho natural de cada logo; el centro (1fr)
+  // toma el resto. Así los logos crecen sin recortarse ni invadir el texto.
+  display: 'grid', gridTemplateColumns: 'auto 1fr auto', alignItems: 'center', gap: 10,
+  borderBottom: '1.2px solid #0E6755', paddingBottom: 5, marginBottom: 6,
 };
-const headerTexto: React.CSSProperties = { textAlign: 'center', minWidth: 0 };
+const headerTexto: React.CSSProperties = { textAlign: 'center', minWidth: 0, lineHeight: 1.2 };
+// Logos a la misma ALTURA (38px, más grandes); el ancho lo da la relación de
+// aspecto real (salud 7.48:1, hospital 4.57:1) para que no se deformen.
 const logoIzq: React.CSSProperties = {
-  maxHeight: 42, maxWidth: 48, width: 'auto', height: 'auto',
-  objectFit: 'contain' as const, display: 'block',
+  height: 38, width: 'auto',
+  objectFit: 'contain' as const, display: 'block', justifySelf: 'start' as const,
 };
 const logoDer: React.CSSProperties = {
-  maxHeight: 42, maxWidth: 48, width: 'auto', height: 'auto',
-  objectFit: 'contain' as const, display: 'block', marginLeft: 'auto',
+  height: 38, width: 'auto',
+  objectFit: 'contain' as const, display: 'block', justifySelf: 'end' as const,
 };
-const instituciones: React.CSSProperties = { fontSize: 8.5, color: '#444', letterSpacing: 0.8 };
-const hospitalNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755', marginTop: 2 };
-const hospitalSubNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755' };
-const clues: React.CSSProperties = { fontSize: 8.5, color: '#7d5b2f', marginTop: 2, fontStyle: 'italic' };
-const coordinacion: React.CSSProperties = { fontSize: 9, fontWeight: 700, color: '#7d5b2f', marginTop: 2, letterSpacing: 0.5 };
+const hospitalNombre: React.CSSProperties = { fontSize: 9, fontWeight: 700, color: '#0E6755', letterSpacing: 0.3 };
+const hospitalSubNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755', marginTop: 1 };
+const clues: React.CSSProperties = { fontSize: 7.5, color: '#555', marginTop: 1, fontStyle: 'italic' };
+const coordinacion: React.CSSProperties = { fontSize: 8.5, fontWeight: 700, color: '#7d5b2f', marginTop: 2, letterSpacing: 0.4 };
 
 const tituloFila: React.CSSProperties = {
   display: 'flex', gap: 6, alignItems: 'stretch', marginBottom: 6,
