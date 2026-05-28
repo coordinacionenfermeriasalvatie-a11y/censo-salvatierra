@@ -9,6 +9,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { formatearRol } from '../types';
 
 type Sub = 'timeline' | 'usuario' | 'seccion' | 'paciente';
 
@@ -214,7 +215,7 @@ const Timeline: React.FC = () => {
                 <div style={styles.timelineMid}>
                   <div style={styles.timelineUsuario}>
                     {f.usuario_nombre}
-                    {f.usuario_rol && <span style={styles.rol}> · {f.usuario_rol}</span>}
+                    {f.usuario_rol && <span style={styles.rol}> · {formatearRol(f.usuario_rol)}</span>}
                     {f.usuario_servicio_codigo && <span style={styles.servicio}> · {f.usuario_servicio_codigo}</span>}
                   </div>
                   <div style={styles.timelineDetalle}>
@@ -283,7 +284,7 @@ const RankingUsuario: React.FC = () => {
           <tr key={f.usuario_id} style={i % 2 === 0 ? styles.trAlt : undefined}>
             <td style={styles.td}>{i + 1}</td>
             <td style={styles.td}><strong>{f.usuario_nombre}</strong></td>
-            <td style={styles.td}>{f.usuario_rol}</td>
+            <td style={styles.td}>{formatearRol(f.usuario_rol)}</td>
             <td style={styles.td}>{f.usuario_servicio_codigo || '—'}</td>
             <td style={{ ...styles.td, textAlign: 'right', color: '#0E6755' }}>{f.inserts}</td>
             <td style={{ ...styles.td, textAlign: 'right', color: '#7d5b2f' }}>{f.updates}</td>

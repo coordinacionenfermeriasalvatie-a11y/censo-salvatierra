@@ -8,6 +8,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { formatearRol } from '../types';
 
 interface Receta {
   id: string;
@@ -178,7 +179,7 @@ const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ rece
         <div style={firmaCol}>
           <div style={firmaLinea} />
           <div style={firmaNombre}>{receta.enfermera_nombre}</div>
-          <div style={firmaDetalle}>Matrícula: {receta.enfermera_matricula ?? '—'}{receta.enfermera_rol ? ` · ${receta.enfermera_rol.toUpperCase()}` : ''}</div>
+          <div style={firmaDetalle}>Matrícula: {receta.enfermera_matricula ?? '—'}{receta.enfermera_rol ? ` · ${formatearRol(receta.enfermera_rol)}` : ''}</div>
           <div style={firmaRol}>ENFERMERA QUE SOLICITA</div>
         </div>
 

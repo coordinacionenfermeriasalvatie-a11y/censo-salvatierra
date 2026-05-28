@@ -38,10 +38,17 @@ export interface Perfil {
   es_admin_sistema?: boolean
 }
 
-/** Devuelve el título visible: `titulo_display` si está definido, sino rol.toUpperCase(). */
+/** Capitaliza la primera letra de un rol. Ej: 'gestor' → 'Gestor'. */
+export function formatearRol(rol: Rol | string | null | undefined): string {
+  if (!rol) return ''
+  const s = String(rol)
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+}
+
+/** Devuelve el título visible: `titulo_display` si está definido, sino rol capitalizado. */
 export function formatearTitulo(p: Pick<Perfil, 'rol' | 'titulo_display'> | null | undefined): string {
   if (!p) return ''
-  return p.titulo_display || p.rol.toUpperCase()
+  return p.titulo_display || formatearRol(p.rol)
 }
 
 /** TRUE si el perfil es jefe o tiene la flag es_admin_sistema.

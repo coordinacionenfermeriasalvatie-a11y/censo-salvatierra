@@ -8,6 +8,7 @@ import {
   esAdminGlobal,
   tieneScopeDeServicio,
   formatearTitulo,
+  formatearRol,
   esJefeOAdmin,
 } from '../types'
 import { usePresence } from '../contexts/PresenceContext'
@@ -170,7 +171,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
                   <span key={u.id} style={styles.onlineChip}>
                     <span style={styles.onlineDot} />
                     {u.nombre}
-                    <span style={styles.onlineRol}>· {u.rol}</span>
+                    <span style={styles.onlineRol}>· {formatearRol(u.rol)}</span>
                   </span>
                 ))}
               </div>

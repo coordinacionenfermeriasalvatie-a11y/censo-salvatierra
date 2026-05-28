@@ -7,6 +7,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { formatearTitulo } from '../../types';
 
 interface Paciente {
   paciente_id: string;
@@ -251,7 +252,7 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
             <div style={seccion}>
               <div style={seccionTit}>4. Personal de enfermería (auto)</div>
               <div style={pacienteCard}>
-                <div><strong>{perfil.nombre_completo}</strong> · Matrícula {perfil.matricula} · {perfil.rol.toUpperCase()}</div>
+                <div><strong>{perfil.nombre_completo}</strong> · Matrícula {perfil.matricula} · {formatearTitulo(perfil)}</div>
                 <div style={{ fontSize: 11, color: '#666' }}>Este registro queda asociado a tu sesión y se guarda en la bitácora de auditoría.</div>
               </div>
             </div>

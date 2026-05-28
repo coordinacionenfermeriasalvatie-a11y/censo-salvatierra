@@ -21,6 +21,8 @@ import {
   ROLES_TABLERO_COMPLETO,
   esAdminGlobal,
   esJefeOAdmin,
+  formatearRol,
+  formatearTitulo,
 } from '../types';
 
 type Periodo = 'dia' | 'semana' | 'mes';
@@ -477,7 +479,7 @@ export function TableroMaestro() {
           <h2 style={{ margin: 0, color: '#A32D2D' }}>🔒 Acceso restringido</h2>
           <p>Esta vista es exclusiva del Jefe, Subjefe, Supervisores y Gestores de servicio.</p>
           <p style={{ fontSize: 12, color: '#888' }}>
-            Tu rol actual: <strong>{perfil.rol}</strong>
+            Tu rol actual: <strong>{formatearRol(perfil.rol)}</strong>
           </p>
           <button onClick={() => navigate('/')} style={botonVolver}>← Volver al tablero</button>
         </div>
@@ -803,7 +805,7 @@ export function TableroMaestro() {
 
           <div style={{ marginTop: 32, marginBottom: 32, fontSize: 11, color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
             Tablero generado · Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra" · CLUES BSIMB000672
-            <br />Subjefe responsable: {perfil.nombre_completo} ({perfil.rol})
+            <br />Responsable: {perfil.nombre_completo} ({formatearTitulo(perfil)})
           </div>
         </>
       )}
