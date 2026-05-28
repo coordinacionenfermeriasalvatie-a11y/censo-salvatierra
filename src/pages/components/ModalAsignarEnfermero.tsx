@@ -1,7 +1,7 @@
 // src/pages/components/ModalAsignarEnfermero.tsx
 // BLOQUE 8 — Modal para asignar enfermero operativo a paciente por turno
 // Acceso restringido: solo perfiles con rol IN ('subjefe', 'supervisor', 'gestor')
-// Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"
+// Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"
 import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 

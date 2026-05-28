@@ -1,6 +1,6 @@
 // src/pages/TableroMaestro.tsx
 // BLOQUE 6 — Tablero Maestro (Jefe/Subjefe/Supervisor/Gestor según rol)
-// Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"
+// Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"
 //
 // Características:
 //   - Selector de PERIODO: Día / Semana / Mes (Semana/Mes solo jefe/subjefe)
@@ -530,7 +530,7 @@ export function TableroMaestro() {
         <button onClick={() => navigate('/')} style={botonVolver}>← Tablero</button>
         <div style={{ flex: 1, textAlign: 'center' }}>
           <h1 style={titulo}>📊 TABLERO MAESTRO</h1>
-          <div style={subtitulo}>Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"</div>
+          <div style={subtitulo}>Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"</div>
         </div>
         {perfil != null && esAdminGlobal(perfil.rol) && (
           <button
@@ -810,7 +810,7 @@ export function TableroMaestro() {
           </div>
 
           <div style={{ marginTop: 32, marginBottom: 32, fontSize: 11, color: '#888', textAlign: 'center', fontStyle: 'italic' }}>
-            Tablero generado · Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra" · CLUES BSIMB000672
+            Tablero generado · Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra" · CLUES BSIMB000672
             <br />Responsable: {perfil.nombre_completo} ({formatearTitulo(perfil)})
           </div>
         </>

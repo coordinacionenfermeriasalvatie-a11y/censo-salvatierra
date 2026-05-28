@@ -65,7 +65,7 @@ export async function exportarBitacoraDia(
   portada.addRow(['BITÁCORA DE SUPERVISIÓN DE ENFERMERÍA']);
   portada.addRow(['Medicamentos Controlados (Grupos I-V LGS)']);
   portada.addRow([]);
-  portada.addRow(['Hospital', 'Benemérito Hospital General con Especialidades del IMSS-Bienestar']);
+  portada.addRow(['Hospital', 'Benemérito Hospital General con Especialidades IMSS-Bienestar']);
   portada.addRow(['', '"Juan María de Salvatierra"']);
   portada.addRow(['CLUES', 'BSIMB000672']);
   portada.addRow(['Ciudad', 'La Paz, Baja California Sur']);
@@ -107,7 +107,7 @@ export async function exportarBitacoraDia(
     ws.getRow(1).height = 26;
 
     ws.mergeCells('A2:X2');
-    ws.getCell('A2').value = 'Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra" · CLUES BSIMB000672';
+    ws.getCell('A2').value = 'Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra" · CLUES BSIMB000672';
     ws.getCell('A2').font = { italic: true, size: 10, color: { argb: 'FF7D5B2F' } };
     ws.getCell('A2').alignment = { horizontal: 'center' };
 

@@ -114,11 +114,12 @@ const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ rece
         <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" style={logoIzq} />
         <div style={headerTexto}>
           <div style={instituciones}>SECRETARÍA DE SALUD · IMSS-BIENESTAR</div>
-          <div style={hospitalNombre}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR</div>
+          <div style={hospitalNombre}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
           <div style={hospitalSubNombre}>"JUAN MARÍA DE SALVATIERRA"</div>
           <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
+          <div style={coordinacion}>COORDINACIÓN DE ENFERMERÍA</div>
         </div>
-        <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
+        <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
       </div>
 
       {/* TÍTULO Y BADGE */}
@@ -245,6 +246,7 @@ const instituciones: React.CSSProperties = { fontSize: 8.5, color: '#444', lette
 const hospitalNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755', marginTop: 2 };
 const hospitalSubNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755' };
 const clues: React.CSSProperties = { fontSize: 8.5, color: '#7d5b2f', marginTop: 2, fontStyle: 'italic' };
+const coordinacion: React.CSSProperties = { fontSize: 9, fontWeight: 700, color: '#7d5b2f', marginTop: 2, letterSpacing: 0.5 };
 
 const tituloFila: React.CSSProperties = {
   display: 'flex', gap: 6, alignItems: 'stretch', marginBottom: 6,

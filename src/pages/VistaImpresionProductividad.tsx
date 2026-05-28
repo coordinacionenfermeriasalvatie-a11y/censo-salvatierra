@@ -2,7 +2,7 @@
 // =====================================================================
 // BLOQUE 7 — Impresión de Productividad Mensual a PDF
 // =====================================================================
-// Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"
+// Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"
 // CLUES BSIMB000672
 //
 // Formato: Carta vertical, una sección por servicio. Cada servicio muestra
@@ -153,8 +153,9 @@ export const VistaImpresionProductividad: React.FC = () => {
       <div className="hoja">
         {/* ENCABEZADO INSTITUCIONAL */}
         <div className="encabezado">
-          <div className="banda-dorada">BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR</div>
+          <div className="banda-dorada">BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
           <div className="banda-verde">"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
+          <div className="banda-coordinacion">COORDINACIÓN DE ENFERMERÍA</div>
           <div className="subtitulo">PRODUCTIVIDAD MENSUAL CONSOLIDADA — REPORTE EJECUTIVO</div>
         </div>
 
@@ -210,7 +211,7 @@ export const VistaImpresionProductividad: React.FC = () => {
 
         <div className="leyenda">
           <em>
-            Reporte ejecutivo de productividad mensual del Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra" — IMSS-Bienestar.
+            Reporte ejecutivo de productividad mensual del Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra" — IMSS-Bienestar.
             Los valores corresponden a la suma mensual por proceso oficial de captura de productividad de enfermería.
             Para el detalle indicador por indicador (73 indicadores oficiales × turno M/V/N) consultar el archivo Excel
             consolidado entregado en conjunto con este reporte.
@@ -263,6 +264,7 @@ body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; backgro
 .encabezado { border: 2px solid #0E6755; border-radius: 4px; overflow: hidden; margin-bottom: 8px; }
 .banda-dorada { background: #C39C59; color: #fff; padding: 4px 10px; font-size: 10pt; font-weight: 700; text-align: center; }
 .banda-verde { background: #0E6755; color: #fff; padding: 4px 10px; font-size: 10pt; font-weight: 700; text-align: center; }
+.banda-coordinacion { background: #7d5b2f; color: #fff; padding: 3px 10px; font-size: 9pt; font-weight: 700; text-align: center; letter-spacing: 0.4px; }
 .subtitulo { background: #fff; color: #0E6755; padding: 5px 10px; font-size: 10pt; font-weight: 700; text-align: center; border-top: 1px solid #C39C59; }
 .sub-encabezado { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #0E6755; margin-bottom: 8px; font-size: 9pt; color: #265C4E; }
 .tabla { width: 100%; border-collapse: collapse; font-size: 8pt; margin-bottom: 10px; }

@@ -89,7 +89,7 @@ export function ResetPassword() {
     <div style={styles.contenedor}>
       <header style={styles.header}>
         <img src="/logos/imss_bienestar.png" alt="IMSS Bienestar" style={styles.logo} />
-        <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra" style={styles.logo} />
+        <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades IMSS-Bienestar Juan María de Salvatierra" style={styles.logo} />
       </header>
 
       <main style={styles.main}>

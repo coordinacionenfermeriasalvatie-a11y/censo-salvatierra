@@ -338,7 +338,7 @@ export const VistaImpresionControl: React.FC = () => {
       </div>
 
       {/* Encabezado institucional con logos */}
-      <EncabezadoOficial subtitulo="COORDINACIÓN DE ENFERMERÍA — FORMATO CONTROL DE PACIENTES" />
+      <EncabezadoOficial subtitulo="FORMATO CONTROL DE PACIENTES — INTERVENCIONES DE ENFERMERÍA" />
 
       {/* Sub-encabezado */}
       <div style={subHeaderBox}>

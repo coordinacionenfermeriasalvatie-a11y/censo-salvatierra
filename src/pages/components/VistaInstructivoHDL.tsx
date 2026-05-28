@@ -224,7 +224,7 @@ export const VistaInstructivoHDL: React.FC = () => {
       <div style={pie}>
         <strong>Cualquier duda</strong> contacta a la Subjefatura de Enfermería.
         <br />
-        Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra" — IMSS-Bienestar
+        Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra" — IMSS-Bienestar
       </div>
     </div>
   );

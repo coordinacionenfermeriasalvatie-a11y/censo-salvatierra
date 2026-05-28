@@ -2,7 +2,7 @@
 // =====================================================================
 // IMPRESIÓN — SOLICITUD DE DIETAS (Servicio de Nutrición y Dietología)
 // =====================================================================
-// Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"
+// Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"
 // CLUES BSIMB000672
 //
 // Formato: Carta VERTICAL (8.5" × 11"), una sola hoja con todos los
@@ -192,10 +192,13 @@ export const VistaImpresionDietas: React.FC = () => {
           <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" className="logo-encabezado" />
           <div className="encabezado">
             <div className="banda-dorada">
-              BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR
+              BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR
             </div>
             <div className="banda-verde">
               "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672
+            </div>
+            <div className="banda-coordinacion">
+              COORDINACIÓN DE ENFERMERÍA
             </div>
             <div className="subtitulo">
               SOLICITUD DE DIETAS — SERVICIO DE NUTRICIÓN Y DIETOLOGÍA
@@ -393,6 +396,17 @@ body {
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.3px;
+  line-height: 1.25;
+}
+
+.banda-coordinacion {
+  background: #7d5b2f;
+  color: #fff;
+  padding: 2px 10px;
+  font-size: 8pt;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.4px;
   line-height: 1.25;
 }
 

@@ -180,7 +180,7 @@ export function VistaImpresionFicha() {
         <div style={cabeza}>
           <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" style={logoIzq} />
           <div style={titulo}>TARJETA DE IDENTIFICACIÓN</div>
-          <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
+          <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
         </div>
 
         {/* Nombre + Cama */}

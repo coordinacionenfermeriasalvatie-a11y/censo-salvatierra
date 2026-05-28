@@ -119,7 +119,7 @@ function insertarEncabezadoInstitucional(
   // Fila 1 — Banda dorada
   sheet.mergeCells(1, 1, 1, anchoColumnas);
   const c1 = sheet.getCell(1, 1);
-  c1.value = 'BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR';
+  c1.value = 'BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR';
   c1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_DORADO } };
   c1.font = { name: 'Calibri', size: 13, bold: true, color: { argb: COLOR_BLANCO } };
   c1.alignment = { horizontal: 'center', vertical: 'middle' };
@@ -279,7 +279,7 @@ export async function exportarProductividadMensual(
   // =====================================================================
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Censo Salvatierra';
-  workbook.company = 'Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra · CLUES BSIMB000672';
+  workbook.company = 'Benemérito Hospital General con Especialidades IMSS-Bienestar Juan María de Salvatierra · CLUES BSIMB000672';
   workbook.created = new Date();
 
   const periodoTexto = `PERIODO: ${MESES_TEXTO[mes - 1]} ${anio}`;
@@ -640,7 +640,7 @@ export async function exportarProductividadMensual(
       `Periodo:          ${MESES_TEXTO[mes - 1]} ${anio}`,
       `Generado:         ${new Date().toLocaleString('es-MX', { timeZone: 'America/Mazatlan' })}`,
       `Sistema:          Censo Salvatierra v1.0`,
-      `Hospital:         Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"`,
+      `Hospital:         Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"`,
       `CLUES:            BSIMB000672`,
       `Firmante:         ${nombreFirmante} (${rolFirmante})`,
     ];

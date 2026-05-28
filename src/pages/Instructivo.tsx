@@ -173,7 +173,7 @@ const SECCIONES: Seccion[] = [
         titulo: '2.7. Imprimir la Tarjeta de Identificación 🪪 del paciente',
         pasos: [
           'En cualquier tarjeta de paciente ocupado, busca el chip 🪪 en la fila de chips junto a 🍽️ 💊 📋.',
-          'Tócalo. Se abre una nueva pestaña con la Tarjeta de Identificación impresa al estilo del Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra".',
+          'Tócalo. Se abre una nueva pestaña con la Tarjeta de Identificación impresa al estilo del Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra".',
           'Contenido auto-llenado desde BD:',
           '   • Nombre del paciente (letra grande)',
           '   • Cama (badge verde junto al nombre)',
@@ -1066,7 +1066,7 @@ export function Instructivo() {
       </main>
 
       <footer style={footer}>
-        <p>Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra" · IMSS-Bienestar Baja California Sur</p>
+        <p>Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra" · IMSS-Bienestar Baja California Sur</p>
         <p style={{ fontSize: 11, marginTop: 4 }}>
           Dudas, sugerencias o problemas técnicos → contacta al subjefe de enfermería.
         </p>

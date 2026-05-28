@@ -164,7 +164,7 @@ export const VistaImpresionBitacoraSemana: React.FC = () => {
         <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" style={logo} />
         <div style={{ flex: 1, textAlign: 'center' }}>
           <div style={titMenor}>Servicios Públicos de Salud · IMSS-BIENESTAR</div>
-          <div style={titMayor}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR</div>
+          <div style={titMayor}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
           <div style={titMayor}>"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
           <div style={titMenor}>Unidad de Atención a la Salud · Coordinación de Enfermería</div>
         </div>
