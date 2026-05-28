@@ -1,6 +1,9 @@
 // Vista de impresión de receta de medicamento controlado.
 // Ruta: /imprimir/receta-controlada/:id
-// Header oficial IMSS-Bienestar + CLUES. Tamaño carta vertical.
+// Carta vertical con 2 boletas idénticas por hoja:
+//   - Superior: Original · Jefatura de Enfermería (badge guinda)
+//   - Inferior: Copia · Supervisión de Enfermería (badge dorado)
+// Entre ambas, línea de corte punteada.
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
@@ -68,21 +71,15 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
   if (error) return <div style={{ padding: 40, color: '#A32D2D' }}>Error: {error}</div>;
   if (!receta) return <div style={{ padding: 40 }}>Cargando receta...</div>;
 
-  const fecha = new Date(receta.creado_en);
-  const fechaStr = fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
-  const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-
   return (
     <div style={pagina}>
       <style>{`
         @media print {
-          @page { size: letter portrait; margin: 12mm; }
+          @page { size: letter portrait; margin: 8mm; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .no-print { display: none !important; }
         }
-        @media screen {
-          body { background: #ccc; }
-        }
+        @media screen { body { background: #ccc; } }
       `}</style>
 
       <div className="no-print" style={barraSuperior}>
@@ -90,6 +87,27 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
         <button onClick={() => window.close()} style={btnCerrar}>✕ Cerrar</button>
       </div>
 
+      <Boleta receta={receta} tipo="original" />
+      <LineaCorte />
+      <Boleta receta={receta} tipo="copia" />
+    </div>
+  );
+};
+
+// ============================================================
+// BOLETA INDIVIDUAL
+// ============================================================
+const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ receta, tipo }) => {
+  const fecha = new Date(receta.creado_en);
+  const fechaStr = fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
+  const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+
+  const badge = tipo === 'original'
+    ? { texto: 'ORIGINAL · JEFATURA DE ENFERMERÍA', color: '#7d0a2e', fg: '#fff' }
+    : { texto: 'COPIA · SUPERVISIÓN DE ENFERMERÍA', color: '#C39C59', fg: '#fff' };
+
+  return (
+    <div style={boleta}>
       {/* HEADER OFICIAL */}
       <div style={headerOficial}>
         <div style={instituciones}>SECRETARÍA DE SALUD · IMSS-BIENESTAR</div>
@@ -98,10 +116,13 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
         <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
       </div>
 
-      {/* TÍTULO DE LA RECETA */}
-      <div style={tituloRecuadro}>
-        <div style={tituloPrincipal}>RECETA DE MEDICAMENTO CONTROLADO</div>
-        <div style={tituloGrupo}>{GRUPO_LABEL[receta.medicamento_grupo] || `GRUPO ${receta.medicamento_grupo}`}</div>
+      {/* TÍTULO Y BADGE */}
+      <div style={tituloFila}>
+        <div style={tituloRecuadro}>
+          <div style={tituloPrincipal}>SOLICITUD DE MEDICAMENTO CONTROLADO</div>
+          <div style={tituloGrupo}>{GRUPO_LABEL[receta.medicamento_grupo] || `GRUPO ${receta.medicamento_grupo}`}</div>
+        </div>
+        <div style={{ ...badgeStyle, background: badge.color, color: badge.fg }}>{badge.texto}</div>
       </div>
 
       {/* FOLIO Y FECHA */}
@@ -117,26 +138,26 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
           <Campo label="Nombre completo" valor={receta.paciente_nombre} spanFull />
           <Campo label="Edad" valor={`${receta.paciente_edad ?? '—'} ${receta.paciente_edad_unidad ?? ''}`} />
           <Campo label="Sexo" valor={receta.paciente_genero ?? '—'} />
-          <Campo label="NSS / Expediente" valor={receta.paciente_nss_curp ?? '—'} />
+          <Campo label="NSS / Exp" valor={receta.paciente_nss_curp ?? '—'} />
           <Campo label="Servicio" valor={receta.paciente_subservicio ?? '—'} />
           <Campo label="Cama" valor={receta.paciente_cama ?? '—'} />
-          <Campo label="Diagnóstico de ingreso" valor={receta.paciente_diagnostico ?? '—'} spanFull />
+          <Campo label="Diagnóstico" valor={receta.paciente_diagnostico ?? '—'} spanFull />
         </div>
       </div>
 
       {/* MEDICAMENTO */}
       <div style={bloque}>
-        <div style={bloqueHeader}>MEDICAMENTO PRESCRITO</div>
+        <div style={bloqueHeader}>MEDICAMENTO</div>
         <div style={bloqueGrid}>
           <Campo label="Medicamento" valor={receta.medicamento_nombre} spanFull />
           <Campo label="Dosis" valor={receta.dosis ?? '—'} />
           <Campo label="Vía" valor={receta.via ?? '—'} />
           <Campo label="Frecuencia" valor={receta.frecuencia ?? '—'} />
           <Campo label="Duración" valor={receta.duracion ?? '—'} />
-          <Campo label="Cantidad (número)" valor={receta.cantidad_numero ?? '—'} />
-          <Campo label="Cantidad (letra)" valor={receta.cantidad_letra ?? '—'} />
+          <Campo label="Cantidad N°" valor={receta.cantidad_numero ?? '—'} />
+          <Campo label="Cantidad letra" valor={receta.cantidad_letra ?? '—'} />
           {receta.indicaciones && (
-            <Campo label="Indicaciones adicionales" valor={receta.indicaciones} spanFull />
+            <Campo label="Indicaciones" valor={receta.indicaciones} spanFull />
           )}
         </div>
       </div>
@@ -146,33 +167,35 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
         <div style={firmaCol}>
           <div style={firmaLinea} />
           <div style={firmaNombre}>{receta.medico_nombre ?? '—'}</div>
-          <div style={firmaDetalle}>Cédula profesional: {receta.medico_cedula ?? '—'}</div>
-          {receta.medico_especialidad && (
-            <div style={firmaDetalle}>{receta.medico_especialidad}</div>
-          )}
+          <div style={firmaDetalle}>Céd. prof.: {receta.medico_cedula ?? '—'}{receta.medico_especialidad ? ` · ${receta.medico_especialidad}` : ''}</div>
           <div style={firmaRol}>MÉDICO PRESCRIPTOR</div>
         </div>
 
         <div style={firmaCol}>
           <div style={firmaLinea} />
           <div style={firmaNombre}>{receta.enfermera_nombre}</div>
-          <div style={firmaDetalle}>Matrícula: {receta.enfermera_matricula ?? '—'}</div>
-          {receta.enfermera_rol && (
-            <div style={firmaDetalle}>{receta.enfermera_rol.toUpperCase()}</div>
-          )}
-          <div style={firmaRol}>PERSONAL DE ENFERMERÍA</div>
+          <div style={firmaDetalle}>Matrícula: {receta.enfermera_matricula ?? '—'}{receta.enfermera_rol ? ` · ${receta.enfermera_rol.toUpperCase()}` : ''}</div>
+          <div style={firmaRol}>ENFERMERA QUE SOLICITA</div>
         </div>
-      </div>
 
-      {/* PIE */}
-      <div style={piePagina}>
-        Receta válida únicamente con folio, firma y sello. Registro electrónico en el Sistema de Censo Hospitalario.
-        <br />
-        Documento generado el {fechaStr} {horaStr} · Folio {receta.folio} · CLUES BSIMB000672
+        <div style={firmaCol}>
+          <div style={firmaLinea} />
+          <div style={firmaNombre}>&nbsp;</div>
+          <div style={firmaDetalle}>Nombre y matrícula</div>
+          <div style={firmaRol}>SUPERVISORA QUE ENTREGA</div>
+        </div>
       </div>
     </div>
   );
 };
+
+const LineaCorte: React.FC = () => (
+  <div style={lineaCorteContenedor}>
+    <span style={lineaCorteIzq} />
+    <span style={lineaCorteTexto}>✂ Línea de corte — Ambas copias deben llenarse con los MISMOS datos y firmas para canje de medicamento</span>
+    <span style={lineaCorteDer} />
+  </div>
+);
 
 const Campo: React.FC<{ label: string; valor: string; spanFull?: boolean }> = ({ label, valor, spanFull }) => (
   <div style={{ ...campoBox, gridColumn: spanFull ? '1 / -1' : undefined }}>
@@ -183,8 +206,8 @@ const Campo: React.FC<{ label: string; valor: string; spanFull?: boolean }> = ({
 
 // ============================================================
 const pagina: React.CSSProperties = {
-  width: '210mm', minHeight: '275mm', margin: '0 auto', background: '#fff', padding: '12mm',
-  boxSizing: 'border-box', fontFamily: '"Times New Roman", Georgia, serif', color: '#000', fontSize: 11,
+  width: '216mm', minHeight: '279mm', margin: '0 auto', background: '#fff', padding: '8mm',
+  boxSizing: 'border-box', fontFamily: '"Times New Roman", Georgia, serif', color: '#000', fontSize: 9.5,
 };
 const barraSuperior: React.CSSProperties = {
   position: 'fixed', top: 8, right: 8, display: 'flex', gap: 8, zIndex: 10,
@@ -195,46 +218,68 @@ const btnImprimir: React.CSSProperties = {
 const btnCerrar: React.CSSProperties = {
   background: '#888', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer', fontFamily: 'sans-serif',
 };
-const headerOficial: React.CSSProperties = {
-  textAlign: 'center', borderBottom: '3px double #0E6755', paddingBottom: 8, marginBottom: 10,
-};
-const instituciones: React.CSSProperties = { fontSize: 10, color: '#444', letterSpacing: 1 };
-const hospitalNombre: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#0E6755', marginTop: 4 };
-const hospitalSubNombre: React.CSSProperties = { fontSize: 13, fontWeight: 700, color: '#0E6755' };
-const clues: React.CSSProperties = { fontSize: 10, color: '#7d5b2f', marginTop: 4, fontStyle: 'italic' };
 
-const tituloRecuadro: React.CSSProperties = {
-  background: '#A32D2D', color: '#fff', textAlign: 'center', padding: '8px 0', marginBottom: 10, borderRadius: 4,
+const boleta: React.CSSProperties = {
+  border: '1px solid #999', borderRadius: 4, padding: '6mm', background: '#fff',
 };
-const tituloPrincipal: React.CSSProperties = { fontSize: 14, fontWeight: 700, letterSpacing: 1 };
-const tituloGrupo: React.CSSProperties = { fontSize: 11, fontWeight: 600, marginTop: 2, letterSpacing: 0.5 };
+
+const headerOficial: React.CSSProperties = {
+  textAlign: 'center', borderBottom: '2px double #0E6755', paddingBottom: 4, marginBottom: 6,
+};
+const instituciones: React.CSSProperties = { fontSize: 8.5, color: '#444', letterSpacing: 0.8 };
+const hospitalNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755', marginTop: 2 };
+const hospitalSubNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755' };
+const clues: React.CSSProperties = { fontSize: 8.5, color: '#7d5b2f', marginTop: 2, fontStyle: 'italic' };
+
+const tituloFila: React.CSSProperties = {
+  display: 'flex', gap: 6, alignItems: 'stretch', marginBottom: 6,
+};
+const tituloRecuadro: React.CSSProperties = {
+  background: '#A32D2D', color: '#fff', textAlign: 'center', padding: '4px 6px', borderRadius: 3, flex: 1,
+};
+const tituloPrincipal: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: 0.5 };
+const tituloGrupo: React.CSSProperties = { fontSize: 9, fontWeight: 600, marginTop: 1 };
+const badgeStyle: React.CSSProperties = {
+  padding: '6px 10px', borderRadius: 3, fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
+  display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', maxWidth: 130,
+  lineHeight: 1.2,
+};
 
 const folioFila: React.CSSProperties = {
-  display: 'flex', justifyContent: 'space-between', padding: '6px 12px', background: '#f5f5f5',
-  border: '1px solid #ccc', borderRadius: 4, fontSize: 11, marginBottom: 10,
+  display: 'flex', justifyContent: 'space-between', padding: '3px 8px', background: '#f5f5f5',
+  border: '1px solid #ccc', borderRadius: 3, fontSize: 9.5, marginBottom: 6,
 };
-const folioVal: React.CSSProperties = { fontFamily: 'monospace', background: '#fff', padding: '1px 6px', border: '1px solid #ccc', borderRadius: 3 };
+const folioVal: React.CSSProperties = { fontFamily: 'monospace', background: '#fff', padding: '0 4px', border: '1px solid #ccc', borderRadius: 2 };
 
-const bloque: React.CSSProperties = { border: '1.5px solid #0E6755', borderRadius: 4, marginBottom: 10 };
+const bloque: React.CSSProperties = { border: '1px solid #0E6755', borderRadius: 3, marginBottom: 6 };
 const bloqueHeader: React.CSSProperties = {
-  background: '#0E6755', color: '#fff', padding: '5px 10px', fontWeight: 700, fontSize: 11, letterSpacing: 0.5,
+  background: '#0E6755', color: '#fff', padding: '3px 8px', fontWeight: 700, fontSize: 9.5, letterSpacing: 0.5,
 };
 const bloqueGrid: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, padding: 8,
+  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', padding: 4,
 };
-const campoBox: React.CSSProperties = { padding: '4px 6px', borderBottom: '1px dashed #eee' };
-const campoLbl: React.CSSProperties = { fontSize: 9, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 };
-const campoVal: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: '#000', marginTop: 1 };
+const campoBox: React.CSSProperties = { padding: '2px 4px', borderBottom: '1px dashed #eee' };
+const campoLbl: React.CSSProperties = { fontSize: 7.5, color: '#666', textTransform: 'uppercase', letterSpacing: 0.5 };
+const campoVal: React.CSSProperties = { fontSize: 10, fontWeight: 600, color: '#000' };
 
 const firmasFila: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 30, marginTop: 30, marginBottom: 20,
+  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginTop: 18, marginBottom: 4,
 };
 const firmaCol: React.CSSProperties = { textAlign: 'center' };
-const firmaLinea: React.CSSProperties = { borderTop: '1px solid #000', marginBottom: 6 };
-const firmaNombre: React.CSSProperties = { fontWeight: 700, fontSize: 11, textTransform: 'uppercase' };
-const firmaDetalle: React.CSSProperties = { fontSize: 10, color: '#444', marginTop: 2 };
-const firmaRol: React.CSSProperties = { fontSize: 9, color: '#7d5b2f', marginTop: 4, letterSpacing: 1, fontWeight: 600 };
+const firmaLinea: React.CSSProperties = { borderTop: '1px solid #000', marginBottom: 3 };
+const firmaNombre: React.CSSProperties = { fontWeight: 700, fontSize: 9.5, textTransform: 'uppercase', minHeight: 12 };
+const firmaDetalle: React.CSSProperties = { fontSize: 8.5, color: '#444', marginTop: 1 };
+const firmaRol: React.CSSProperties = { fontSize: 8, color: '#7d5b2f', marginTop: 2, letterSpacing: 0.8, fontWeight: 600 };
 
-const piePagina: React.CSSProperties = {
-  borderTop: '1px solid #ccc', paddingTop: 6, marginTop: 16, fontSize: 9, color: '#666', textAlign: 'center', lineHeight: 1.4,
+const lineaCorteContenedor: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 6, margin: '8px 0',
+};
+const lineaCorteIzq: React.CSSProperties = {
+  flex: 1, height: 0, borderTop: '1.5px dashed #888',
+};
+const lineaCorteDer: React.CSSProperties = {
+  flex: 1, height: 0, borderTop: '1.5px dashed #888',
+};
+const lineaCorteTexto: React.CSSProperties = {
+  fontSize: 8.5, color: '#666', fontStyle: 'italic' as const, padding: '0 8px', whiteSpace: 'nowrap' as const, fontFamily: 'sans-serif',
 };
