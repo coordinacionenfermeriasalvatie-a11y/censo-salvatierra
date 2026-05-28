@@ -346,7 +346,7 @@ export const VistaImpresionRecetario: React.FC = () => {
       {/* Encabezado institucional */}
       <header style={headerBox}>
         <div style={headerLinea1}>
-          BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR
+          BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR
         </div>
         <div style={headerLinea2}>
           "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672

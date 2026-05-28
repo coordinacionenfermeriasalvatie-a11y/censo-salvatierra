@@ -60,7 +60,7 @@ export function Login() {
         />
         <img
           src="/logos/LOGO_HOSPITAL.jpg"
-          alt="Hospital General con Especialidades Juan María de Salvatierra"
+          alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra"
           style={styles.logoDerecha}
         />
       </header>

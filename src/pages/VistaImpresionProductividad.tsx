@@ -2,7 +2,7 @@
 // =====================================================================
 // BLOQUE 7 — Impresión de Productividad Mensual a PDF
 // =====================================================================
-// Hospital General IMSS-Bienestar "Juan María de Salvatierra"
+// Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"
 // CLUES BSIMB000672
 //
 // Formato: Carta vertical, una sección por servicio. Cada servicio muestra
@@ -153,7 +153,7 @@ export const VistaImpresionProductividad: React.FC = () => {
       <div className="hoja">
         {/* ENCABEZADO INSTITUCIONAL */}
         <div className="encabezado">
-          <div className="banda-dorada">BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
+          <div className="banda-dorada">BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR</div>
           <div className="banda-verde">"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
           <div className="subtitulo">PRODUCTIVIDAD MENSUAL CONSOLIDADA — REPORTE EJECUTIVO</div>
         </div>
@@ -210,7 +210,7 @@ export const VistaImpresionProductividad: React.FC = () => {
 
         <div className="leyenda">
           <em>
-            Reporte ejecutivo de productividad mensual del Hospital General "Juan María de Salvatierra" — IMSS-Bienestar.
+            Reporte ejecutivo de productividad mensual del Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra" — IMSS-Bienestar.
             Los valores corresponden a la suma mensual por proceso oficial de captura de productividad de enfermería.
             Para el detalle indicador por indicador (73 indicadores oficiales × turno M/V/N) consultar el archivo Excel
             consolidado entregado en conjunto con este reporte.

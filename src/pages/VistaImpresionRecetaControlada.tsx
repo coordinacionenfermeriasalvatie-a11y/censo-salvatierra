@@ -108,12 +108,16 @@ const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ rece
 
   return (
     <div style={boleta}>
-      {/* HEADER OFICIAL */}
+      {/* HEADER OFICIAL CON LOGOS */}
       <div style={headerOficial}>
-        <div style={instituciones}>SECRETARÍA DE SALUD · IMSS-BIENESTAR</div>
-        <div style={hospitalNombre}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES</div>
-        <div style={hospitalSubNombre}>"JUAN MARÍA DE SALVATIERRA"</div>
-        <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
+        <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" style={logoIzq} />
+        <div style={headerTexto}>
+          <div style={instituciones}>SECRETARÍA DE SALUD · IMSS-BIENESTAR</div>
+          <div style={hospitalNombre}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR</div>
+          <div style={hospitalSubNombre}>"JUAN MARÍA DE SALVATIERRA"</div>
+          <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
+        </div>
+        <img src="/logos/LOGO_HOSPITAL.jpg" alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
       </div>
 
       {/* TÍTULO Y BADGE */}
@@ -224,8 +228,12 @@ const boleta: React.CSSProperties = {
 };
 
 const headerOficial: React.CSSProperties = {
-  textAlign: 'center', borderBottom: '2px double #0E6755', paddingBottom: 4, marginBottom: 6,
+  display: 'grid', gridTemplateColumns: '60px 1fr 60px', alignItems: 'center', gap: 6,
+  borderBottom: '2px double #0E6755', paddingBottom: 4, marginBottom: 6,
 };
+const headerTexto: React.CSSProperties = { textAlign: 'center' };
+const logoIzq: React.CSSProperties = { height: 50, width: 'auto', objectFit: 'contain' };
+const logoDer: React.CSSProperties = { height: 50, width: 'auto', objectFit: 'contain' };
 const instituciones: React.CSSProperties = { fontSize: 8.5, color: '#444', letterSpacing: 0.8 };
 const hospitalNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755', marginTop: 2 };
 const hospitalSubNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#0E6755' };
