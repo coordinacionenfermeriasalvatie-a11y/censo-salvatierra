@@ -6,7 +6,7 @@
 // a rol='jefe' — sin defensa adicional en cliente.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { formatearRol } from '../types';
@@ -88,6 +88,8 @@ const fmt = (iso: string) => {
 export const Auditoria: React.FC = () => {
   const { perfil } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const forzarLimitada = searchParams.get('soloDiaTurno') === '1';
   const [sub, setSub] = useState<Sub>('timeline');
 
   if (!perfil || !['jefe','subjefe','supervisor'].includes(perfil.rol)) {
@@ -99,7 +101,9 @@ export const Auditoria: React.FC = () => {
     );
   }
 
-  const accesoCompleto = perfil.rol === 'jefe' || perfil.es_admin_sistema === true;
+  // Si la URL trae ?soloDiaTurno=1, forzar vista limitada incluso para
+  // jefe/admin (usado al entrar desde Supervisión → Tablero Maestro → Auditoría).
+  const accesoCompleto = (perfil.rol === 'jefe' || perfil.es_admin_sistema === true) && !forzarLimitada;
 
   return (
     <div style={styles.pagina}>
@@ -137,7 +141,7 @@ export const Auditoria: React.FC = () => {
       </div>
 
       <div style={styles.contenido}>
-        {sub === 'timeline'  && <Timeline />}
+        {sub === 'timeline'  && <Timeline accesoCompleto={accesoCompleto} />}
         {sub === 'usuario'   && <RankingUsuario />}
         {sub === 'seccion'   && <RankingSeccion />}
         {sub === 'paciente'  && <PorPaciente />}
@@ -149,7 +153,50 @@ export const Auditoria: React.FC = () => {
 // ============================================================
 // Sub 1: Timeline cronológico
 // ============================================================
-const Timeline: React.FC = () => {
+// Calcula el rango UTC [inicio, fin) del día+turno actual en Mazatlán.
+// Turnos: M=07-13, V=14-19, N=20-06.
+function rangoDiaTurnoActual(): { ini: string; fin: string } {
+  const ahora = new Date();
+  // Hora local Mazatlán
+  const horaMaza = parseInt(
+    ahora.toLocaleString('en-US', { timeZone: 'America/Mazatlan', hour: '2-digit', hour12: false }),
+    10
+  );
+  const fechaMaza = ahora.toLocaleString('en-CA', {
+    timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit',
+  });
+
+  let horaIni: number, horaFin: number, diaIni = fechaMaza, diaFin = fechaMaza;
+  if (horaMaza >= 7 && horaMaza <= 13) {
+    horaIni = 7; horaFin = 14;
+  } else if (horaMaza >= 14 && horaMaza <= 19) {
+    horaIni = 14; horaFin = 20;
+  } else {
+    horaIni = 20; horaFin = 7;
+    if (horaMaza < 7) {
+      // Estamos en la madrugada, el turno empezó ayer a las 20.
+      const ayer = new Date(ahora.getTime() - 86400000);
+      diaIni = ayer.toLocaleString('en-CA', {
+        timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+    } else {
+      // Estamos en la noche, el turno termina mañana a las 7.
+      const manana = new Date(ahora.getTime() + 86400000);
+      diaFin = manana.toLocaleString('en-CA', {
+        timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit',
+      });
+    }
+  }
+
+  // Mazatlán es UTC-7. Convertimos sumando 7 horas para obtener UTC.
+  const toUtcIso = (fecha: string, hora: number) => {
+    const d = new Date(`${fecha}T${String(hora).padStart(2, '0')}:00:00-07:00`);
+    return d.toISOString();
+  };
+  return { ini: toUtcIso(diaIni, horaIni), fin: toUtcIso(diaFin, horaFin) };
+}
+
+const Timeline: React.FC<{ accesoCompleto: boolean }> = ({ accesoCompleto }) => {
   const [filas, setFilas] = useState<FilaTimeline[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -168,11 +215,18 @@ const Timeline: React.FC = () => {
     if (filtroSeccion) q = q.eq('seccion', filtroSeccion);
     if (filtroOper) q = q.eq('operacion', filtroOper);
     if (filtroUsuario) q = q.ilike('usuario_nombre', `%${filtroUsuario}%`);
+    // Vista limitada: filtrar al día+turno actual en cliente.
+    // Para subjefes/supervisores la RLS ya lo enforza; este filtro es
+    // por si el usuario es jefe/admin entrando con ?soloDiaTurno=1.
+    if (!accesoCompleto) {
+      const { ini, fin } = rangoDiaTurnoActual();
+      q = q.gte('registrado_en', ini).lt('registrado_en', fin);
+    }
     const { data, error: err } = await q;
     if (err) setError(err.message);
     else setFilas((data || []) as FilaTimeline[]);
     setCargando(false);
-  }, [filtroUsuario, filtroSeccion, filtroOper, limite]);
+  }, [filtroUsuario, filtroSeccion, filtroOper, limite, accesoCompleto]);
 
   useEffect(() => { cargar(); }, [cargar]);
 

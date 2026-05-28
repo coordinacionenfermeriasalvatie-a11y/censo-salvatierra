@@ -532,9 +532,9 @@ export function TableroMaestro() {
           <h1 style={titulo}>📊 TABLERO MAESTRO</h1>
           <div style={subtitulo}>Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"</div>
         </div>
-        {esJefeOAdmin(perfil) && (
+        {perfil != null && esAdminGlobal(perfil.rol) && (
           <button
-            onClick={() => navigate('/auditoria')}
+            onClick={() => navigate(soloDia ? '/auditoria?soloDiaTurno=1' : '/auditoria')}
             style={{
               ...botonVolver,
               background: '#5a4a8a',
@@ -543,7 +543,9 @@ export function TableroMaestro() {
               marginRight: 8,
               whiteSpace: 'nowrap',
             }}
-            title="Quién hace qué cambios en el sistema (últimos 30 días)"
+            title={soloDia
+              ? 'Auditoría limitada al día y turno actual'
+              : 'Quién hace qué cambios en el sistema (últimos 30 días)'}
           >
             🔍 Auditoría
           </button>

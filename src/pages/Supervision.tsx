@@ -39,16 +39,9 @@ const HERRAMIENTAS: Herramienta[] = [
   {
     icono: '📊',
     titulo: 'Tablero Maestro (solo día)',
-    descripcion: 'KPIs ejecutivos, ocupación por servicio, hemodiálisis/diálisis y ERC del día. Vista limitada a hoy — el histórico Semana/Mes lo consulta la jefatura desde el Tablero Maestro directo.',
+    descripcion: 'KPIs ejecutivos, ocupación por servicio, hemodiálisis/diálisis y ERC del día. Adentro incluye acceso a Auditoría del día y turno en curso.',
     ruta: '/tablero?soloDia=1',
     color: '#2c5fa3',
-  },
-  {
-    icono: '🔍',
-    titulo: 'Auditoría',
-    descripcion: 'Quién hace qué cambios en el sistema. Vista limitada al día y turno actual (subjefe/supervisor); histórica completa para jefatura y administrador.',
-    ruta: '/auditoria',
-    color: '#7d5b2f',
   },
 ];
 
