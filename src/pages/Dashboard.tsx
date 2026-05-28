@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import type { OcupacionServicio, Perfil } from '../types'
 import {
   ROLES_VEN_TABLERO,
+  ROLES_ADMIN_GLOBAL,
   esAdminGlobal,
   tieneScopeDeServicio,
 } from '../types'
@@ -76,7 +77,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           />
           <img
             src="/logos/LOGO_HOSPITAL.jpg"
-            alt="Hospital Juan Maria de Salvatierra"
+            alt="Benemérito Hospital General con Especialidades del IMSS-Bienestar Juan María de Salvatierra"
             style={styles.logoChico}
           />
         </div>
@@ -96,6 +97,11 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           {perfil.rol === 'jefe' && (
             <button onClick={() => navigate('/auditoria')} style={styles.botonTablero}>
               🔍 Auditoría
+            </button>
+          )}
+          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && (
+            <button onClick={() => navigate('/bitacora-supervision')} style={styles.botonTablero}>
+              📋 Bitácora Supervisión
             </button>
           )}
           <button onClick={() => navigate('/instructivo')} style={styles.botonInstructivo}>
