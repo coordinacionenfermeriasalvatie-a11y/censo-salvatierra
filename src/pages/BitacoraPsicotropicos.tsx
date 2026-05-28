@@ -46,6 +46,26 @@ interface InventarioRow {
   fondo_fijo: number;
 }
 
+interface DetalleRow {
+  receta_id: string;
+  folio: string;
+  folio_salida: string | null;
+  turno: 'M' | 'V' | 'N';
+  paciente_cama: string | null;
+  paciente_nombre: string;
+  paciente_genero: string | null;
+  no_expediente: string | null;
+  paciente_diagnostico: string | null;
+  servicio_codigo: string | null;
+  medicamento_nombre: string;
+  cantidad_numero: string | null;
+  medico_nombre: string | null;
+  enfermero_solicita: string;
+  supervisora: string | null;
+  observaciones: string | null;
+  estado_aprobacion: string;
+}
+
 const hoyMazatlan = (): string => {
   const opts: Intl.DateTimeFormatOptions = { timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit' };
   const parts = new Intl.DateTimeFormat('en-CA', opts).formatToParts(new Date());
@@ -71,6 +91,9 @@ export const BitacoraPsicotropicos: React.FC = () => {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [registrandoEn, setRegistrandoEn] = useState<{ inv: InventarioRow; tipo: 'recibido' | 'surtido' } | null>(null);
+  const [detalle, setDetalle] = useState<DetalleRow[]>([]);
+  const [guardandoSnapshot, setGuardandoSnapshot] = useState(false);
+  const [snapshotMsg, setSnapshotMsg] = useState<string | null>(null);
 
   const esHoy = fecha === hoyMazatlan();
   const puedeRegistrar = perfil != null && ROLES_ADMIN_GLOBAL.includes(perfil.rol);
@@ -79,6 +102,12 @@ export const BitacoraPsicotropicos: React.FC = () => {
     setCargando(true);
     setError(null);
     try {
+      // Detalle de vales del día (siempre)
+      const { data: det } = await supabase.from('v_bitacora_psicotropicos_detalle')
+        .select('*').eq('fecha_dia', fecha)
+        .order('canjeado_en', { nullsFirst: false });
+      setDetalle((det || []) as DetalleRow[]);
+
       if (esHoy) {
         const { data, error: err } = await supabase.from('v_stock_psicotropicos_hoy').select('*');
         if (err) throw err;
@@ -130,6 +159,30 @@ export const BitacoraPsicotropicos: React.FC = () => {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Auto-snapshot al cargar la fecha (idempotente). Asegura archivo histórico.
+  useEffect(() => {
+    if (!perfil) return;
+    supabase.rpc('fn_generar_snapshot_bitacora', { _fecha: fecha }).then(() => {});
+  }, [fecha, perfil]);
+
+  const guardarSnapshot = async () => {
+    setGuardandoSnapshot(true);
+    setSnapshotMsg(null);
+    const { error } = await supabase.rpc('fn_generar_snapshot_bitacora', { _fecha: fecha });
+    setGuardandoSnapshot(false);
+    if (error) setSnapshotMsg(`⚠️ Error: ${error.message}`);
+    else setSnapshotMsg(`✅ Histórico del ${fecha} guardado correctamente.`);
+    setTimeout(() => setSnapshotMsg(null), 4000);
+  };
+
+  const lunesDeSemana = (iso: string): string => {
+    const d = new Date(iso + 'T12:00:00');
+    const dow = d.getDay();
+    const diff = dow === 0 ? -6 : 1 - dow;
+    d.setDate(d.getDate() + diff);
+    return d.toISOString().slice(0, 10);
+  };
+
   const datos = esHoy ? filas : filasHistorico;
 
   const totales = useMemo(() => ({
@@ -157,11 +210,17 @@ export const BitacoraPsicotropicos: React.FC = () => {
           <h1 style={titulo}>💊 Bitácora · Control de Medicamentos Psicotrópicos</h1>
           <p style={subt}>Stock con fondo fijo · entradas y salidas por turno · CLUES BSIMB000672</p>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => window.print()} style={btnImprimir}>🖨️ Imprimir hoja del día</button>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+          <button onClick={() => window.print()} style={btnImprimir}>🖨️ Hoja del día</button>
+          <button onClick={() => window.open(`/imprimir/bitacora-semana?desde=${lunesDeSemana(fecha)}`, '_blank')} style={btnImprimir}>📅 Imprimir Semana</button>
+          <button onClick={guardarSnapshot} disabled={guardandoSnapshot} style={btnSnapshot}>
+            {guardandoSnapshot ? 'Guardando...' : '💾 Guardar histórico'}
+          </button>
           <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>
         </div>
       </div>
+
+      {snapshotMsg && <div style={snapshotBanner}>{snapshotMsg}</div>}
 
       <div style={controles}>
         <div>
@@ -246,6 +305,65 @@ export const BitacoraPsicotropicos: React.FC = () => {
         <strong>Utilizado:</strong> generado automáticamente cuando un vale se marca como <em>canjeada</em> en la Bitácora de Supervisión. ·
         <strong> Vales:</strong> conteo de vales aprobados pendientes de canje. ·
         <strong> Recibido / Surtido:</strong> entradas y salidas manuales (botones a la derecha de cada renglón).
+      </div>
+
+      {/* DETALLE DE VALES DEL DÍA (autollenado) */}
+      <div style={subSeccion}>
+        <div style={subSeccionTit}>📋 Detalle de vales del día — {fecha}</div>
+        {detalle.length === 0 ? (
+          <div style={vacioDetalle}>Aún no hay vales aprobados o canjeados para esta fecha.</div>
+        ) : (
+          <div style={tablaWrap}>
+            <table style={tabla}>
+              <thead>
+                <tr style={trHeader}>
+                  <th style={thSm}>Folio entrada</th>
+                  <th style={thSm}>Folio salida</th>
+                  <th style={thSm}>Turno</th>
+                  <th style={thSm}>Cama</th>
+                  <th style={{ ...thSm, textAlign: 'left' as const }}>Paciente</th>
+                  <th style={thSm}>Género</th>
+                  <th style={thSm}>No. Exp</th>
+                  <th style={{ ...thSm, textAlign: 'left' as const }}>Diagnóstico</th>
+                  <th style={thSm}>Servicio</th>
+                  <th style={{ ...thSm, textAlign: 'left' as const }}>Medicamento</th>
+                  <th style={thSm}>Cantidad</th>
+                  <th style={thSm}>Médico</th>
+                  <th style={thSm}>Enfermero solicita</th>
+                  <th style={thSm}>Supervisora</th>
+                  <th style={thSm}>Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detalle.map((d, i) => (
+                  <tr key={d.receta_id} style={i % 2 === 0 ? trAlt : undefined}>
+                    <td style={tdC}><strong>{d.folio}</strong></td>
+                    <td style={tdC}>{d.folio_salida || '—'}</td>
+                    <td style={tdC}>{d.turno}</td>
+                    <td style={tdC}>{d.paciente_cama}</td>
+                    <td style={tdNombre}>{d.paciente_nombre}</td>
+                    <td style={tdC}>{d.paciente_genero}</td>
+                    <td style={tdC}>{d.no_expediente || '—'}</td>
+                    <td style={tdNombre}>{d.paciente_diagnostico}</td>
+                    <td style={tdC}>{d.servicio_codigo}</td>
+                    <td style={tdNombre}>{d.medicamento_nombre}</td>
+                    <td style={tdC}>{d.cantidad_numero}</td>
+                    <td style={tdC}>{d.medico_nombre}</td>
+                    <td style={tdC}>{d.enfermero_solicita}</td>
+                    <td style={tdC}>{d.supervisora || '—'}</td>
+                    <td style={tdC}>
+                      <span style={{
+                        background: d.estado_aprobacion === 'canjeada' ? '#dff5e6' : '#fff7e0',
+                        color: d.estado_aprobacion === 'canjeada' ? '#0E6755' : '#7d5b2f',
+                        padding: '1px 6px', borderRadius: 10, fontSize: 10, fontWeight: 700,
+                      }}>{d.estado_aprobacion}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {registrandoEn && (
@@ -361,6 +479,12 @@ const errBanner: React.CSSProperties = { background: '#fbeaea', border: '1px sol
 const cargandoStyle: React.CSSProperties = { padding: 40, textAlign: 'center' as const, color: '#888', fontStyle: 'italic' as const };
 const bloqueado: React.CSSProperties = { padding: 40, textAlign: 'center' as const, color: '#A32D2D', fontSize: 16 };
 const notaPie: React.CSSProperties = { marginTop: 10, padding: 8, fontSize: 11, color: '#666', lineHeight: 1.5, background: '#fafafa', borderRadius: 4 };
+const btnSnapshot: React.CSSProperties = { background: '#7d5b2f', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer', fontWeight: 700 };
+const snapshotBanner: React.CSSProperties = { background: '#dff5e6', border: '1px solid #0E6755', color: '#0E6755', padding: '8px 12px', borderRadius: 4, marginBottom: 8, fontSize: 12 };
+const subSeccion: React.CSSProperties = { marginTop: 16, background: '#fff', border: '1px solid #C39C59', borderRadius: 6, overflow: 'hidden' as const };
+const subSeccionTit: React.CSSProperties = { background: '#7d5b2f', color: '#fff', padding: '8px 14px', fontWeight: 700, fontSize: 13 };
+const vacioDetalle: React.CSSProperties = { padding: 16, textAlign: 'center' as const, color: '#888', fontStyle: 'italic' as const, fontSize: 12 };
+const thSm2: React.CSSProperties = { padding: '5px 8px', fontSize: 10, fontWeight: 700, textAlign: 'center' as const, background: '#f5f1e8', color: '#7d5b2f', borderBottom: '1px solid #C39C59' };
 
 const overlay: React.CSSProperties = { position: 'fixed' as const, top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 };
 const modal: React.CSSProperties = { background: '#fff', borderRadius: 8, width: '100%', maxWidth: 420 };
