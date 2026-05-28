@@ -15,7 +15,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { ROLES_ADMIN_GLOBAL } from '../types';
+import { ROLES_ADMIN_GLOBAL, esJefeOAdmin } from '../types';
 
 interface StockRow {
   id: number;
@@ -97,6 +97,7 @@ export const BitacoraPsicotropicos: React.FC = () => {
 
   const esHoy = fecha === hoyMazatlan();
   const puedeRegistrar = perfil != null && ROLES_ADMIN_GLOBAL.includes(perfil.rol);
+  const puedeHistoricoYSemanal = esJefeOAdmin(perfil);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -212,10 +213,14 @@ export const BitacoraPsicotropicos: React.FC = () => {
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
           <button onClick={() => window.print()} style={btnImprimir}>🖨️ Hoja del día</button>
-          <button onClick={() => window.open(`/imprimir/bitacora-semana?desde=${lunesDeSemana(fecha)}`, '_blank')} style={btnImprimir}>📅 Imprimir Semana</button>
-          <button onClick={guardarSnapshot} disabled={guardandoSnapshot} style={btnSnapshot}>
-            {guardandoSnapshot ? 'Guardando...' : '💾 Guardar histórico'}
-          </button>
+          {puedeHistoricoYSemanal && (
+            <>
+              <button onClick={() => window.open(`/imprimir/bitacora-semana?desde=${lunesDeSemana(fecha)}`, '_blank')} style={btnImprimir}>📅 Imprimir Semana</button>
+              <button onClick={guardarSnapshot} disabled={guardandoSnapshot} style={btnSnapshot}>
+                {guardandoSnapshot ? 'Guardando...' : '💾 Guardar histórico'}
+              </button>
+            </>
+          )}
           <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>
         </div>
       </div>
@@ -223,10 +228,16 @@ export const BitacoraPsicotropicos: React.FC = () => {
       {snapshotMsg && <div style={snapshotBanner}>{snapshotMsg}</div>}
 
       <div style={controles}>
-        <div>
-          <label style={lbl}>Fecha</label>
-          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} max={hoyMazatlan()} style={input} />
-        </div>
+        {puedeHistoricoYSemanal ? (
+          <div>
+            <label style={lbl}>Fecha</label>
+            <input type="date" value={fecha} onChange={e => setFecha(e.target.value)} max={hoyMazatlan()} style={input} />
+          </div>
+        ) : (
+          <div style={{ fontSize: 13, color: '#7d5b2f' }}>
+            <strong>Fecha:</strong> {hoyMazatlan()} <span style={{ color: '#888', fontSize: 11 }}>(solo hoy — el histórico lo consulta la jefatura)</span>
+          </div>
+        )}
         <div style={{ marginLeft: 'auto', fontSize: 12, color: '#7d5b2f', alignSelf: 'center' }}>
           {esHoy ? <span style={{ background: '#dff5e6', color: '#0E6755', padding: '4px 10px', borderRadius: 10, fontWeight: 700 }}>📍 HOY · Turno actual: {turnoActual()}</span>
                  : <span style={{ background: '#fff7e0', color: '#7d5b2f', padding: '4px 10px', borderRadius: 10, fontWeight: 700 }}>📚 Histórico · {fecha}</span>}

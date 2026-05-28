@@ -9,6 +9,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { esJefeOAdmin } from '../types';
 
 interface MedSemana {
   inventario_id: number;
@@ -77,10 +79,23 @@ const rangoSemana = (lunesIso: string): string[] => {
 };
 
 export const VistaImpresionBitacoraSemana: React.FC = () => {
+  const { perfil } = useAuth();
   const [params] = useSearchParams();
   const desdeParam = params.get('desde');
   const lunes = desdeParam || lunesDeSemana(new Date().toISOString().slice(0, 10));
   const domingo = domingoDeSemana(lunes);
+
+  // Solo jefe o admin del sistema pueden ver hoja semanal/histórica
+  if (perfil && !esJefeOAdmin(perfil)) {
+    return (
+      <div style={{ padding: 40, textAlign: 'center', color: '#A32D2D', fontSize: 16 }}>
+        🚫 La hoja semanal y el histórico son exclusivos de la jefatura de enfermería y el administrador del sistema.
+        <div style={{ marginTop: 16 }}>
+          <button onClick={() => window.close()} style={{ background: '#888', color: '#fff', border: 'none', padding: '8px 14px', borderRadius: 4, cursor: 'pointer' }}>✕ Cerrar</button>
+        </div>
+      </div>
+    );
+  }
 
   const [medsSemana, setMedsSemana] = useState<MedSemana[]>([]);
   const [detalle, setDetalle] = useState<DetalleRow[]>([]);
