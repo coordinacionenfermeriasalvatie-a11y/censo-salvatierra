@@ -20,6 +20,7 @@ import {
   ROLES_VEN_TABLERO,
   ROLES_TABLERO_COMPLETO,
   esAdminGlobal,
+  esJefeOAdmin,
 } from '../types';
 
 type Periodo = 'dia' | 'semana' | 'mes';
@@ -525,6 +526,22 @@ export function TableroMaestro() {
           <h1 style={titulo}>📊 TABLERO MAESTRO</h1>
           <div style={subtitulo}>Benemérito Hospital General con Especialidades del IMSS-Bienestar "Juan María de Salvatierra"</div>
         </div>
+        {esJefeOAdmin(perfil) && (
+          <button
+            onClick={() => navigate('/supervision')}
+            style={{
+              ...botonVolver,
+              background: '#7d5b2f',
+              color: '#fff',
+              border: 'none',
+              marginRight: 8,
+              whiteSpace: 'nowrap',
+            }}
+            title="Acceder a las herramientas de supervisión (bitácoras, stock, auditoría)"
+          >
+            🗂️ Supervisión
+          </button>
+        )}
         <div style={selectorMes}>
           {/* Tabs Día/Semana/Mes (Semana/Mes solo para jefe/subjefe) */}
           <div style={tabsPeriodo}>

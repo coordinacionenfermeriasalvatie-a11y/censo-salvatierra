@@ -101,7 +101,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
               🔍 Auditoría
             </button>
           )}
-          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && (
+          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && !esJefeOAdmin(perfil) && (
             <button onClick={() => navigate('/supervision')} style={styles.botonTablero}>
               🗂️ Supervisión
             </button>
