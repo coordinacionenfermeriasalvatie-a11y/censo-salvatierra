@@ -12,6 +12,7 @@ import {
   esJefeOAdmin,
 } from '../types'
 import { usePresence } from '../contexts/PresenceContext'
+import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate'
 
 interface Props {
   perfil: Perfil
@@ -25,6 +26,9 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
 
   // Presencia en tiempo real (vía Supabase Realtime, sin polling)
   const usuariosOnline = usePresence()
+
+  // Detección automática de versión nueva del Service Worker
+  const { hayActualizacion, actualizar } = useServiceWorkerUpdate()
 
   useEffect(() => {
     cargarOcupacion()
@@ -108,11 +112,27 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           <button onClick={() => navigate('/cambiar-contrasena')} style={styles.botonInstructivo}>
             🔑 Contrasena
           </button>
+          <button
+            onClick={() => { window.location.href = '/reset.html' }}
+            style={styles.botonInstructivo}
+            title="Limpia caché y descarga la última versión de la app"
+          >
+            🔧 Actualizar
+          </button>
           <button onClick={onCerrarSesion} style={styles.botonSalir}>
             Cerrar sesión
           </button>
         </div>
       </header>
+
+      {hayActualizacion && (
+        <div style={styles.bannerActualizacion} role="alert">
+          🔄 Hay una versión nueva del Censo disponible.
+          <button onClick={actualizar} style={styles.botonActualizar}>
+            Aplicar ahora
+          </button>
+        </div>
+      )}
 
       <main style={styles.main}>
         <h2 style={styles.tituloPagina}>
@@ -273,6 +293,33 @@ const styles: Record<string, React.CSSProperties> = {
   contenedor: {
     minHeight: '100vh',
     background: COLOR_FONDO
+  },
+  bannerActualizacion: {
+    background: '#fff7e0',
+    border: '1px solid #C39C59',
+    borderLeft: '4px solid #0E6755',
+    color: '#7d5b2f',
+    padding: '10px 16px',
+    margin: '0 16px',
+    marginTop: 10,
+    borderRadius: 4,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    fontSize: 13,
+    fontWeight: 500,
+  },
+  botonActualizar: {
+    background: '#0E6755',
+    color: '#fff',
+    border: 'none',
+    padding: '8px 16px',
+    borderRadius: 4,
+    fontWeight: 700,
+    fontSize: 13,
+    cursor: 'pointer',
+    flexShrink: 0,
   },
   header: {
     background: '#FFFFFF',
