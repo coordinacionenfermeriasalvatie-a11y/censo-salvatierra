@@ -106,6 +106,11 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
               📋 Bitácora Supervisión
             </button>
           )}
+          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && (
+            <button onClick={() => navigate('/bitacora-psicotropicos')} style={styles.botonTablero}>
+              💊 Stock Psicotrópicos
+            </button>
+          )}
           <button onClick={() => navigate('/instructivo')} style={styles.botonInstructivo}>
             📖 Instructivo
           </button>
