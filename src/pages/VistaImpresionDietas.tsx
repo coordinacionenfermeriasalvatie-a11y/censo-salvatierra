@@ -187,17 +187,21 @@ export const VistaImpresionDietas: React.FC = () => {
       )}
 
       <div className="hoja">
-        {/* ENCABEZADO INSTITUCIONAL */}
-        <div className="encabezado">
-          <div className="banda-dorada">
-            BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR
+        {/* ENCABEZADO INSTITUCIONAL CON LOGOS */}
+        <div className="encabezado-flex">
+          <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" className="logo-encabezado" />
+          <div className="encabezado">
+            <div className="banda-dorada">
+              BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR
+            </div>
+            <div className="banda-verde">
+              "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672
+            </div>
+            <div className="subtitulo">
+              SOLICITUD DE DIETAS — SERVICIO DE NUTRICIÓN Y DIETOLOGÍA
+            </div>
           </div>
-          <div className="banda-verde">
-            "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672
-          </div>
-          <div className="subtitulo">
-            SOLICITUD DE DIETAS — SERVICIO DE NUTRICIÓN Y DIETOLOGÍA
-          </div>
+          <img src="/logos/LOGO_HOSPITAL.jpg" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado" />
         </div>
 
         {/* SUB-ENCABEZADO DE SERVICIO */}
@@ -349,11 +353,23 @@ body {
 }
 
 /* ENCABEZADO */
+.encabezado-flex {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.logo-encabezado {
+  height: 50px;
+  width: auto;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 .encabezado {
   border: 2px solid #0E6755;
   border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 8px;
+  flex: 1;
 }
 
 .banda-dorada {

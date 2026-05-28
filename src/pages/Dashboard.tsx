@@ -7,6 +7,8 @@ import {
   ROLES_ADMIN_GLOBAL,
   esAdminGlobal,
   tieneScopeDeServicio,
+  formatearTitulo,
+  esJefeOAdmin,
 } from '../types'
 import { usePresence } from '../contexts/PresenceContext'
 
@@ -86,7 +88,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           <div style={{ textAlign: 'right' }}>
             <p style={styles.nombreUsuario}>{perfil.nombre_completo}</p>
             <p style={styles.matricula}>
-              Matrícula {perfil.matricula} - {perfil.rol.toUpperCase()}
+              Matrícula {perfil.matricula} — {formatearTitulo(perfil)}
             </p>
           </div>
           {ROLES_VEN_TABLERO.includes(perfil.rol) && (
@@ -94,7 +96,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
               📊 Tablero Maestro
             </button>
           )}
-          {perfil.rol === 'jefe' && (
+          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && (
             <button onClick={() => navigate('/auditoria')} style={styles.botonTablero}>
               🔍 Auditoría
             </button>
@@ -151,7 +153,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           )}
         </div>
 
-        {perfil.rol === 'jefe' && (() => {
+        {esJefeOAdmin(perfil) && (() => {
           // Defense in depth: dedup adicional en el Dashboard por id, por si el
           // contexto regresa duplicados (varias pestañas del mismo usuario).
           const unicos = Array.from(

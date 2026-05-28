@@ -34,6 +34,21 @@ export interface Perfil {
   servicio_id: number | null
   turno_principal: string | null
   activo: boolean
+  titulo_display?: string | null
+  es_admin_sistema?: boolean
+}
+
+/** Devuelve el título visible: `titulo_display` si está definido, sino rol.toUpperCase(). */
+export function formatearTitulo(p: Pick<Perfil, 'rol' | 'titulo_display'> | null | undefined): string {
+  if (!p) return ''
+  return p.titulo_display || p.rol.toUpperCase()
+}
+
+/** TRUE si el perfil es jefe o tiene la flag es_admin_sistema.
+ *  Da acceso a 'En línea ahora' + Auditoría histórica completa. */
+export function esJefeOAdmin(p: Pick<Perfil, 'rol' | 'es_admin_sistema'> | null | undefined): boolean {
+  if (!p) return false
+  return p.rol === 'jefe' || p.es_admin_sistema === true
 }
 
 export interface Servicio {

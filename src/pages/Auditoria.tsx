@@ -89,24 +89,36 @@ export const Auditoria: React.FC = () => {
   const navigate = useNavigate();
   const [sub, setSub] = useState<Sub>('timeline');
 
-  if (!perfil || perfil.rol !== 'jefe') {
+  if (!perfil || !['jefe','subjefe','supervisor'].includes(perfil.rol)) {
     return (
       <div style={styles.bloqueado}>
-        🚫 Solo el jefe de enfermería puede ver este tablero.
+        🚫 Solo administradores globales pueden ver este tablero.
         <button onClick={() => navigate('/')} style={styles.btnVolver}>Volver al inicio</button>
       </div>
     );
   }
+
+  const accesoCompleto = perfil.rol === 'jefe' || perfil.es_admin_sistema === true;
 
   return (
     <div style={styles.pagina}>
       <div style={styles.header}>
         <div>
           <h1 style={styles.titulo}>🔍 Tablero de Auditoría</h1>
-          <p style={styles.subtitulo}>Quién hace qué cambios en el sistema · últimos 30 días</p>
+          <p style={styles.subtitulo}>
+            {accesoCompleto
+              ? 'Quién hace qué cambios en el sistema · últimos 30 días'
+              : 'Vista limitada: hoy y solo tu turno actual. La vista histórica completa la ve la jefatura y administrador del sistema.'}
+          </p>
         </div>
         <button onClick={() => navigate('/')} style={styles.btnVolver}>← Dashboard</button>
       </div>
+
+      {!accesoCompleto && (
+        <div style={styles.avisoLimitado}>
+          ⚠️ Estás viendo solo los movimientos de tu turno actual de hoy. Para auditoría histórica completa contacta a la jefatura de enfermería.
+        </div>
+      )}
 
       <div style={styles.tabs}>
         {([
@@ -469,6 +481,7 @@ const styles: Record<string, React.CSSProperties> = {
   error: { background: '#fbeaea', border: '1px solid #A32D2D', color: '#A32D2D', padding: 8, borderRadius: 4, marginBottom: 8 },
   vacio: { padding: 24, textAlign: 'center' as const, color: '#888', fontStyle: 'italic' },
   bloqueado: { padding: 40, textAlign: 'center' as const, color: '#A32D2D', fontSize: 16 },
+  avisoLimitado: { background: '#fff7e0', border: '1px solid #C39C59', color: '#7d5b2f', padding: 10, borderRadius: 6, marginBottom: 12, fontSize: 13 },
   timeline: { display: 'flex', flexDirection: 'column' as const, gap: 6 },
   timelineFila: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: 8, borderBottom: '1px solid #eee', fontSize: 12 },
   chip: { color: '#fff', padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' as const, minWidth: 80, textAlign: 'center' as const },

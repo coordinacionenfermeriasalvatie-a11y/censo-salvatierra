@@ -22,6 +22,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Evento, TipoEvento } from '../hooks/useEventosApoyo';
+import { EncabezadoOficial } from './components/EncabezadoOficial';
 
 // ---------- Tipos ----------
 interface Servicio {
@@ -336,18 +337,8 @@ export const VistaImpresionControl: React.FC = () => {
         </span>
       </div>
 
-      {/* Encabezado institucional */}
-      <header style={headerBox}>
-        <div style={headerLinea1}>
-          BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES DEL IMSS-BIENESTAR
-        </div>
-        <div style={headerLinea2}>
-          "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672
-        </div>
-        <div style={headerLinea3}>
-          COORDINACIÓN DE ENFERMERÍA — FORMATO CONTROL DE PACIENTES
-        </div>
-      </header>
+      {/* Encabezado institucional con logos */}
+      <EncabezadoOficial subtitulo="COORDINACIÓN DE ENFERMERÍA — FORMATO CONTROL DE PACIENTES" />
 
       {/* Sub-encabezado */}
       <div style={subHeaderBox}>
