@@ -16,6 +16,7 @@ import {
 import { usePresence } from '../contexts/PresenceContext'
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate'
 import { ChatPanel } from './components/ChatPanel'
+import { BuscadorGlobal } from './components/BuscadorGlobal'
 
 interface Props {
   perfil: Perfil
@@ -26,6 +27,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
   const navigate = useNavigate()
   const [servicios, setServicios] = useState<OcupacionServicio[]>([])
   const [cargando, setCargando] = useState(true)
+  const [buscadorAbierto, setBuscadorAbierto] = useState(false)
 
   // Presencia en tiempo real (vía Supabase Realtime, sin polling)
   const usuariosOnline = usePresence()
@@ -110,6 +112,13 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
               Matrícula {perfil.matricula} — {formatearTitulo(perfil)}
             </p>
           </div>
+          <button
+            onClick={() => setBuscadorAbierto(true)}
+            style={styles.botonBuscar}
+            title="Buscar paciente o servicio"
+          >
+            🔍 Buscar
+          </button>
           {ROLES_VEN_TABLERO.includes(perfil.rol) && (
             <button onClick={() => navigate('/tablero')} style={styles.botonTablero}>
               📊 Tablero Maestro
@@ -271,6 +280,13 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
         )}
       </main>
 
+      {buscadorAbierto && (
+        <BuscadorGlobal
+          servicios={serviciosVisibles.map(s => ({ id: s.servicio_id, nombre: s.servicio, codigo: s.codigo }))}
+          onClose={() => setBuscadorAbierto(false)}
+        />
+      )}
+
       {/* Chat flotante del tablero: canal global + todos los servicios
           visibles. El icono se ilumina con cualquier mensaje nuevo. */}
       <ChatPanel
@@ -389,6 +405,18 @@ const styles: Record<string, React.CSSProperties> = {
   botonTablero: {
     background: '#C39C59',
     border: '1px solid #C39C59',
+    color: '#fff',
+    padding: '6px 12px',
+    fontSize: 12,
+    fontWeight: 600,
+    borderRadius: 4,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+    marginRight: 8
+  },
+  botonBuscar: {
+    background: '#0E6755',
+    border: '1px solid #0E6755',
     color: '#fff',
     padding: '6px 12px',
     fontSize: 12,

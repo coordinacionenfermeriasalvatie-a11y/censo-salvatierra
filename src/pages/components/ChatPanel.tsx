@@ -230,15 +230,15 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre, servici
       {/* keyframes del glow: no se pueden expresar como estilo inline */}
       <style>{`
         @keyframes chatGlowPulse {
-          0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.3); background-color: #0E6755; }
-          50% { box-shadow: 0 0 0 5px rgba(46,212,168,0.5), 0 0 26px 10px rgba(46,212,168,0.95); background-color: #15a37a; }
+          0%, 45% { box-shadow: 0 0 0 6px rgba(163,45,45,0.55), 0 0 30px 12px rgba(163,45,45,0.95); background-color: #A32D2D; }
+          55%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.3); background-color: #0E6755; }
         }
       `}</style>
 
       {/* Botón flotante */}
       <button
         onClick={() => setAbierto(o => !o)}
-        style={{ ...botonFlotante, ...(glow ? { animation: 'chatGlowPulse 1.1s ease-in-out infinite' } : {}) }}
+        style={{ ...botonFlotante, ...(glow ? { animation: 'chatGlowPulse 0.85s ease-in-out infinite' } : {}) }}
         title={glow ? 'Tienes mensajes nuevos' : 'Chat de servicios'}
       >
         💬

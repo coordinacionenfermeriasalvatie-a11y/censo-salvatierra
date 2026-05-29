@@ -78,15 +78,17 @@ export const EventCardGroup: React.FC<Props> = ({
     return [...activos.sort(byFecha), ...cancelados.sort(byFecha)];
   }, [eventos]);
 
+  // 'Retirada' y 'Cancelada' son terminales: el evento ya no está activo, así
+  // que no cuenta para el cupo (maxEventos) ni bloquea reinstalar el código.
+  // Ej.: retiras un CVP y puedes instalar uno nuevo del mismo tipo; retiras la
+  // ventilación (cupo 1) y el botón "+ Nuevo evento" vuelve a aparecer.
+  const esTerminal = (e: Evento) => e.estado === 'Cancelada' || e.estado === 'Retirada';
+
   const realizados = ordenados.filter(e => e.estado === 'Realizada').length;
-  const activosCount = ordenados.filter(e => e.estado !== 'Cancelada').length;
+  const activosCount = ordenados.filter(e => !esTerminal(e)).length;
   const lleno = maxEventos != null && activosCount >= maxEventos;
 
-  // 'Retirada' y 'Cancelada' son terminales: liberan el codigo para reinstalar
-  // (ej. retiras un CVP y puedes instalar uno nuevo del mismo tipo).
-  const codigosUsados = new Set(
-    eventos.filter(e => e.estado !== 'Cancelada' && e.estado !== 'Retirada').map(e => e.codigo)
-  );
+  const codigosUsados = new Set(eventos.filter(e => !esTerminal(e)).map(e => e.codigo));
   const opcionesDisponibles = permitirDuplicados ? opciones : opciones.filter(o => !codigosUsados.has(o.codigo));
 
   const confirmarCrear = async () => {
