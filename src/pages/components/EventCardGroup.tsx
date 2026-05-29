@@ -82,7 +82,11 @@ export const EventCardGroup: React.FC<Props> = ({
   const activosCount = ordenados.filter(e => e.estado !== 'Cancelada').length;
   const lleno = maxEventos != null && activosCount >= maxEventos;
 
-  const codigosUsados = new Set(eventos.filter(e => e.estado !== 'Cancelada').map(e => e.codigo));
+  // 'Retirada' y 'Cancelada' son terminales: liberan el codigo para reinstalar
+  // (ej. retiras un CVP y puedes instalar uno nuevo del mismo tipo).
+  const codigosUsados = new Set(
+    eventos.filter(e => e.estado !== 'Cancelada' && e.estado !== 'Retirada').map(e => e.codigo)
+  );
   const opcionesDisponibles = permitirDuplicados ? opciones : opciones.filter(o => !codigosUsados.has(o.codigo));
 
   const confirmarCrear = async () => {

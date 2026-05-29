@@ -18,6 +18,9 @@ interface Indicador {
   etiqueta: string;
   origen: 'AUTO_ING' | 'AUTO_TURNO' | 'AUTO_EVENTO' | 'AUTO_CONTINUIDAD' | 'MANUAL';
   orden: number;
+  // Indicadores neonatales (CVP neonatos, catéter umbilical, etc.): solo se
+  // muestran en servicios de Pediatría (código PED). Se ocultan en los demás.
+  solo_pediatria?: boolean;
 }
 
 interface Captura {
@@ -33,6 +36,7 @@ interface Captura {
 interface Props {
   servicioId: number;
   servicioNombre: string;
+  servicioCodigo: string;
 }
 
 const TURNOS: Array<'M' | 'V' | 'N'> = ['M', 'V', 'N'];
@@ -64,7 +68,11 @@ function lunesDeSemana(ref: Date): Date {
 
 interface DiaSemana { fecha: Date; anio: number; mes: number; dia: number; }
 
-export function VistaProductividad({ servicioId, servicioNombre }: Props) {
+export function VistaProductividad({ servicioId, servicioNombre, servicioCodigo }: Props) {
+  // Pediatría (incluye ONC-PED, UPED): único servicio donde se muestran los
+  // indicadores neonatales. En el resto se ocultan (solo_pediatria=true).
+  const esPediatria = (servicioCodigo || '').includes('PED');
+
   const [semanaInicio, setSemanaInicio] = useState<Date>(() => lunesDeSemana(new Date()));
 
   const [indicadores, setIndicadores] = useState<Indicador[]>([]);
@@ -109,7 +117,11 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
         .eq('activo', true)
         .order('orden', { ascending: true });
       if (e1) throw e1;
-      setIndicadores((cat || []) as Indicador[]);
+      // Fuera de Pediatría ocultamos los indicadores neonatales del catálogo.
+      const catFiltrado = (cat || []).filter(
+        (i: any) => esPediatria || i.solo_pediatria !== true
+      );
+      setIndicadores(catFiltrado as Indicador[]);
 
       // 2. Capturas de la semana. La semana puede abarcar 1 o 2 pares (anio,mes);
       //    se piden ambos meses completos y se filtran por día al renderizar.
@@ -137,7 +149,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
     } finally {
       setCargando(false);
     }
-  }, [servicioId, dias]);
+  }, [servicioId, dias, esPediatria]);
 
   useEffect(() => { cargar(); }, [cargar]);
 

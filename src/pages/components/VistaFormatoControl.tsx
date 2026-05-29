@@ -56,7 +56,7 @@ interface CatalogoItem {
 
 interface Especialidad { id: number; nombre: string; }
 
-interface Props { servicioId: number; }
+interface Props { servicioId: number; servicioCodigo: string; }
 
 const FALLBACK_RIESGO: CatalogoItem[] = [
   { codigo: 'ALTO',    nombre: '🔴 ALTO',    color: '#A32D2D' },
@@ -131,8 +131,18 @@ const GRUPO_SANGUINEO_OPCIONES: CatalogoItem[] = [
   { codigo: 'DESCONOCIDO', nombre: 'Desconocido' },
 ];
 
-export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
+export const VistaFormatoControl: React.FC<Props> = ({ servicioId, servicioCodigo }) => {
   const { perfil } = useAuth();
+
+  // Pediatría (incluye ONC-PED, UPED): único servicio con opciones neonatales.
+  // Fuera de Pediatría ocultamos el catéter umbilical (V25, exclusivo neonatos).
+  const esPediatria = (servicioCodigo || '').includes('PED');
+  const accesoVascularOpciones = useMemo(
+    () => esPediatria
+      ? ACCESO_VASCULAR_OPCIONES
+      : ACCESO_VASCULAR_OPCIONES.filter(o => o.codigo !== 'UMBILICAL'),
+    [esPediatria]
+  );
 
   const [renglones, setRenglones] = useState<ControlRenglon[]>([]);
   const [riesgos, setRiesgos] = useState<CatalogoItem[]>(FALLBACK_RIESGO);
@@ -444,7 +454,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                           estadosPermitidos={[...PERFIL_CONTINUIDAD.estadosPermitidos]}
                           etiquetasEstado={{ ...PERFIL_CONTINUIDAD.etiquetasEstado }}
                           label="Accesos vasculares"
-                          opciones={ACCESO_VASCULAR_OPCIONES}
+                          opciones={accesoVascularOpciones}
                         />
                         <EventCardGroup
                           {...grupoProps(r.paciente_id, 'dispositivo')}
@@ -487,6 +497,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                           {...PERFIL_DONE_CON_OBS}
                           label="Curaciones"
                           opciones={CURACION_OPCIONES}
+                          permitirDuplicados
                         />
                       </div>
                     </div>
@@ -563,6 +574,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
                           {...PERFIL_DONE_MINIMAL}
                           label="Higiene"
                           opciones={higienes}
+                          permitirDuplicados
                         />
                         <EventCardGroup
                           {...grupoProps(r.paciente_id, 'glucemia')}

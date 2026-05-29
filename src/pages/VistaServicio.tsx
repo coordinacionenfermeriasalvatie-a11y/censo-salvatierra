@@ -789,11 +789,12 @@ export function VistaServicio() {
 
       {pestana === 'dietas'    && <VistaDietas    servicioId={servicio.id} />}
       {pestana === 'recetario' && <VistaRecetario servicioId={servicio.id} servicioNombre={servicio.nombre} />}
-      {pestana === 'control'   && <VistaFormatoControl servicioId={servicio.id} />}
+      {pestana === 'control'   && <VistaFormatoControl servicioId={servicio.id} servicioCodigo={servicio.codigo} />}
       {pestana === 'productividad' && (
         <VistaProductividad
           servicioId={servicio.id}
           servicioNombre={servicio.nombre}
+          servicioCodigo={servicio.codigo}
         />
       )}
       {pestana === 'erc' && <VistaERC />}
