@@ -210,7 +210,7 @@ const hospitalSubNombre: React.CSSProperties = { fontSize: 11, fontWeight: 700, 
 const clues: React.CSSProperties = { fontSize: 7.5, color: '#555', marginTop: 1, fontStyle: 'italic' };
 const coordinacion: React.CSSProperties = { fontSize: 8.5, fontWeight: 700, color: '#7d5b2f', marginTop: 2, letterSpacing: 0.4 };
 
-const tituloRecuadro: React.CSSProperties = { background: '#0E6755', color: '#fff', textAlign: 'center', padding: '5px 6px', borderRadius: 3, marginBottom: 6 };
+const tituloRecuadro: React.CSSProperties = { background: '#fff', color: '#0E6755', textAlign: 'center', padding: '5px 6px', border: '1.2px solid #0E6755', borderRadius: 3, marginBottom: 6 };
 const tituloPrincipal: React.CSSProperties = { fontSize: 12, fontWeight: 700, letterSpacing: 0.5 };
 const tituloSub: React.CSSProperties = { fontSize: 9, fontWeight: 600, marginTop: 1, opacity: 0.95 };
 
@@ -226,14 +226,14 @@ const metaLbl: React.CSSProperties = { fontSize: 7.5, color: '#666', textTransfo
 const metaVal: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#000' };
 
 const tabla: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', fontSize: 10, marginBottom: 6 };
-const th: React.CSSProperties = { background: '#0E6755', color: '#fff', padding: '4px 5px', fontWeight: 700, fontSize: 9, border: '1px solid #0b513f', textAlign: 'center', letterSpacing: 0.3 };
+const th: React.CSSProperties = { background: '#fff', color: '#0E6755', padding: '4px 5px', fontWeight: 700, fontSize: 9, border: '1px solid #0E6755', textAlign: 'center', letterSpacing: 0.3 };
 const td: React.CSSProperties = { padding: '4px 6px', border: '1px solid #c9c9c9', fontSize: 10, height: 18 };
 const tdC: React.CSSProperties = { ...td, textAlign: 'center' };
 const rowPar: React.CSSProperties = { background: '#fff' };
-const rowImpar: React.CSSProperties = { background: '#f4f7f5' };
+const rowImpar: React.CSSProperties = { background: '#f5f5f5' };
 
 const obsBox: React.CSSProperties = { border: '1px solid #0E6755', borderRadius: 3, marginBottom: 14, minHeight: 36 };
-const obsLbl: React.CSSProperties = { background: '#0E6755', color: '#fff', padding: '2px 8px', fontWeight: 700, fontSize: 9, letterSpacing: 0.5 };
+const obsLbl: React.CSSProperties = { background: '#fff', color: '#0E6755', padding: '2px 8px', fontWeight: 700, fontSize: 9, letterSpacing: 0.5, borderBottom: '1px solid #0E6755' };
 const obsVal: React.CSSProperties = { padding: '4px 8px', fontSize: 10, whiteSpace: 'pre-wrap' };
 
 const firmasFila: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginTop: 22 };

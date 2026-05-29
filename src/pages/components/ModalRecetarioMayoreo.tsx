@@ -43,6 +43,8 @@ export const ModalRecetarioMayoreo: React.FC<Props> = ({ servicioId, servicioNom
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<{ id: string; folio: string } | null>(null);
+  // Nº de medicamentos precargados desde las recetas guardadas de los pacientes.
+  const [precargados, setPrecargados] = useState(0);
 
   useEffect(() => {
     (async () => {
@@ -53,6 +55,53 @@ export const ModalRecetarioMayoreo: React.FC<Props> = ({ servicioId, servicioNom
       setCatalogo((data || []) as { id: number; nombre: string }[]);
     })();
   }, []);
+
+  // Precargar los medicamentos YA guardados en las recetas por paciente de este
+  // servicio ("preguardados"), agrupados y sumando cantidades. NO borra nada de
+  // las recetas por paciente: solo arma el borrador de la solicitud a granel para
+  // que el gestor quite lo que ya tiene y deje únicamente los faltantes.
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('v_recetario_servicio')
+        .select('medicamento, dosis, via, frecuencia, solicitada')
+        .eq('servicio_id', servicioId);
+
+      const filas = (data || []).filter((r: any) => (r.medicamento || '').trim());
+      if (filas.length === 0) return; // sin preguardados → se queda el renglón vacío
+
+      const mapa = new Map<string, { medicamento: string; dosis: string; via: string; frecuencia: string; cantidad: number }>();
+      for (const r of filas as any[]) {
+        const medicamento = (r.medicamento || '').trim();
+        const dosis = (r.dosis || '').trim();
+        const via = (r.via || '').trim();
+        const frecuencia = (r.frecuencia || '').trim();
+        const key = `${medicamento.toUpperCase()}|${dosis.toUpperCase()}|${via.toUpperCase()}|${frecuencia.toUpperCase()}`;
+        const prev = mapa.get(key);
+        const cant = Number(r.solicitada) || 0;
+        if (prev) prev.cantidad += cant;
+        else mapa.set(key, { medicamento, dosis, via, frecuencia, cantidad: cant });
+      }
+
+      const pre: ItemForm[] = Array.from(mapa.values())
+        .sort((a, b) => a.medicamento.localeCompare(b.medicamento, 'es'))
+        .map(v => ({
+          key: ++_seq,
+          medicamento: v.medicamento,
+          dosis: v.dosis,
+          via: v.via,
+          frecuencia: v.frecuencia,
+          // El dropdown llega hasta 20; si la suma lo excede se deja en blanco
+          // para que el gestor capture la cantidad a granel manualmente.
+          cantidad: v.cantidad > 0 && v.cantidad <= 20 ? String(v.cantidad) : '',
+        }));
+
+      if (pre.length > 0) {
+        setItems(pre);
+        setPrecargados(pre.length);
+      }
+    })();
+  }, [servicioId]);
 
   // Resolver medicamento_id por nombre exacto (case-insensitive).
   const idPorNombre = useMemo(() => {
@@ -188,6 +237,13 @@ export const ModalRecetarioMayoreo: React.FC<Props> = ({ servicioId, servicioNom
           {/* MEDICAMENTOS */}
           <div style={seccion}>
             <div style={seccionTit}>2. Medicamentos solicitados</div>
+            {precargados > 0 && (
+              <div style={hintPreguardados}>
+                💊 Se precargaron <strong>{precargados}</strong> medicamento(s) tomados de las recetas
+                ya guardadas de los pacientes de {servicioNombre}. No se borra nada de esas recetas:
+                quita con <strong>✕</strong> lo que ya tengas en existencia y deja solo los <strong>faltantes</strong> por surtir.
+              </div>
+            )}
             <table style={tablaItems}>
               <thead>
                 <tr>
@@ -316,6 +372,10 @@ const btnCerrar: React.CSSProperties = {
 const body: React.CSSProperties = { flex: 1, overflowY: 'auto', padding: 16, display: 'flex', flexDirection: 'column', gap: 14 };
 const seccion: React.CSSProperties = { border: '1px solid #eee', borderRadius: 6, padding: 12 };
 const seccionTit: React.CSSProperties = { fontWeight: 700, color: '#0E6755', fontSize: 13, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid #eee' };
+const hintPreguardados: React.CSSProperties = {
+  background: '#eef7f3', border: '1px solid #0E6755', borderRadius: 4,
+  padding: '8px 10px', fontSize: 12, lineHeight: 1.5, color: '#235', marginBottom: 10,
+};
 const input: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '6px 10px',
   border: '1px solid #C39C59', borderRadius: 4, fontSize: 13, fontFamily: 'inherit', background: '#fff',
