@@ -10,7 +10,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { ROLES_ADMIN_GLOBAL, formatearTitulo } from '../types';
+import { ROLES_ADMIN_GLOBAL, formatearTitulo, supervisionDeScope } from '../types';
 
 interface Herramienta {
   icono: string;
@@ -31,8 +31,8 @@ const HERRAMIENTAS: Herramienta[] = [
   },
   {
     icono: '💊',
-    titulo: 'Stock de Psicotrópicos',
-    descripcion: 'Inventario con fondo fijo institucional. Stock actualizado en tiempo real con cada vale canjeado. Bitácora diaria y semanal con archivo histórico.',
+    titulo: 'Fondo Fijo de Psicotrópicos',
+    descripcion: 'Inventario con fondo fijo institucional. Existencias actualizadas en tiempo real con cada vale canjeado. Bitácora diaria y semanal con archivo histórico.',
     ruta: '/bitacora-psicotropicos',
     color: '#A32D2D',
   },
@@ -51,6 +51,8 @@ export const Supervision: React.FC = () => {
 
   if (!perfil) return <div style={cargando}>Verificando perfil...</div>;
 
+  const grupoSup = supervisionDeScope(perfil);
+
   if (!ROLES_ADMIN_GLOBAL.includes(perfil.rol)) {
     return (
       <div style={bloqueado}>
@@ -64,9 +66,12 @@ export const Supervision: React.FC = () => {
     <div style={pagina}>
       <div style={header}>
         <div>
-          <h1 style={titulo}>🗂️ Carpeta de Supervisión</h1>
+          <h1 style={titulo}>
+            🗂️ Carpeta de Supervisión{grupoSup ? ` ${grupoSup}` : ''}
+          </h1>
           <p style={subt}>
-            Herramientas exclusivas para {formatearTitulo(perfil)} · Hospital General Salvatierra
+            Herramientas exclusivas para {formatearTitulo(perfil)}
+            {grupoSup ? ` · Supervisión ${grupoSup} (sus servicios)` : ''} · Hospital General Salvatierra
           </p>
         </div>
         <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>

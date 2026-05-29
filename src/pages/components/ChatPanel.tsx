@@ -1,14 +1,17 @@
 // src/pages/components/ChatPanel.tsx
-// Panel flotante de chat dentro de cada vista de servicio. Permite
-// chatear con el equipo del propio servicio y con todos los servicios
-// + jefatura (canal global).
+// Panel flotante de chat. Funciona en dos modos:
+//   - Modo servicio (se pasa servicioId/servicioNombre): canales = el
+//     propio servicio + global. Es el comportamiento de las vistas de
+//     servicio.
+//   - Modo tablero (se pasa la lista `servicios`): canales = global +
+//     todos los servicios visibles. El icono del tablero se ilumina con
+//     cualquier mensaje nuevo (global o de cualquier servicio).
 //
-// 2 canales:
-//   - 'servicio:N' → solo personal del servicio + admins globales
-//   - 'global'     → todos los autenticados (jefatura visible aquí)
+// El botón flotante se "ilumina" (glow pulsante) cuando hay mensajes sin
+// leer en cualquiera de sus canales, igual en ambos modos.
 //
 // Realtime: usa supabase.channel() con postgres_changes para recibir
-// mensajes nuevos sin polling.
+// mensajes nuevos sin polling. RLS ya limita qué canales recibe cada rol.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -24,28 +27,68 @@ interface Mensaje {
   remitente_rol?: string;
 }
 
-interface Props {
-  servicioId: number;
-  servicioNombre: string;
+interface ServicioChat {
+  id: number;
+  nombre: string;
 }
 
-type Tab = 'servicio' | 'global';
+interface Props {
+  // Modo servicio:
+  servicioId?: number;
+  servicioNombre?: string;
+  // Modo tablero: lista de servicios visibles para el usuario.
+  servicios?: ServicioChat[];
+}
 
-export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
+interface Canal {
+  canal: string;
+  etiqueta: string;
+  icono: string;
+}
+
+export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre, servicios }) => {
   const { perfil } = useAuth();
+  const esTablero = Array.isArray(servicios);
+
+  // Lista de canales según el modo.
+  const canales = useMemo<Canal[]>(() => {
+    if (esTablero) {
+      return [
+        { canal: 'global', etiqueta: 'Global / Jefatura', icono: '🌐' },
+        ...(servicios as ServicioChat[]).map(s => ({
+          canal: `servicio:${s.id}`, etiqueta: s.nombre, icono: '🏥',
+        })),
+      ];
+    }
+    return [
+      { canal: `servicio:${servicioId}`, etiqueta: servicioNombre || 'Mi servicio', icono: '🏥' },
+      { canal: 'global', etiqueta: 'Global / Jefatura', icono: '🌐' },
+    ];
+  }, [esTablero, servicios, servicioId, servicioNombre]);
+
+  const canalesSet = useMemo(() => new Set(canales.map(c => c.canal)), [canales]);
+
   const [abierto, setAbierto] = useState(false);
-  const [tab, setTab] = useState<Tab>('servicio');
+  const [canalActivo, setCanalActivo] = useState<string>(canales[0]?.canal ?? 'global');
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
   const [perfiles, setPerfiles] = useState<Record<string, { nombre: string; rol: string }>>({});
   const [borrador, setBorrador] = useState('');
   const [enviando, setEnviando] = useState(false);
-  const [unreadServicio, setUnreadServicio] = useState(0);
-  const [unreadGlobal, setUnreadGlobal] = useState(0);
+  const [unread, setUnread] = useState<Record<string, number>>({});
   const listaRef = useRef<HTMLDivElement>(null);
 
-  const canalActivo = tab === 'servicio' ? `servicio:${servicioId}` : 'global';
+  // Si los canales llegan tarde (p.ej. el tablero carga servicios async) y
+  // el canal activo dejó de existir, lo reseteamos al primero disponible.
+  useEffect(() => {
+    if (!canalesSet.has(canalActivo)) {
+      setCanalActivo(canales[0]?.canal ?? 'global');
+    }
+  }, [canalesSet, canalActivo, canales]);
 
-  // Cargar mensajes del canal activo
+  const etiquetaActiva = canales.find(c => c.canal === canalActivo)?.etiqueta || '';
+  const esCanalGlobal = canalActivo === 'global';
+
+  // Cargar mensajes del canal activo.
   useEffect(() => {
     if (!abierto) return;
     (async () => {
@@ -59,14 +102,14 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
       if (!error && data) {
         setMensajes(data as Mensaje[]);
         await hidratarRemitentes(data as Mensaje[]);
-        if (tab === 'servicio') setUnreadServicio(0); else setUnreadGlobal(0);
+        setUnread(u => ({ ...u, [canalActivo]: 0 }));
       }
     })();
   }, [abierto, canalActivo]);
 
-  // Realtime: recibir mensajes nuevos. Solo nos suscribimos cuando el
-  // perfil está listo. El nombre del canal incluye perfilId para evitar
-  // que múltiples instancias compartan el mismo y stackeen listeners.
+  // Realtime: recibir mensajes nuevos. El nombre del canal de Supabase
+  // incluye perfilId para evitar que múltiples instancias compartan el
+  // mismo y stackeen listeners.
   useEffect(() => {
     if (!perfil) return;
     let scrollTimer: ReturnType<typeof setTimeout> | null = null;
@@ -82,9 +125,8 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
             scrollTimer = setTimeout(() => {
               listaRef.current?.scrollTo({ top: 999999, behavior: 'smooth' });
             }, 50);
-          } else if (m.remitente !== perfil.id) {
-            if (m.canal === `servicio:${servicioId}`) setUnreadServicio(c => c + 1);
-            else if (m.canal === 'global') setUnreadGlobal(c => c + 1);
+          } else if (m.remitente !== perfil.id && canalesSet.has(m.canal)) {
+            setUnread(u => ({ ...u, [m.canal]: (u[m.canal] || 0) + 1 }));
           }
         }
       )
@@ -93,10 +135,10 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
       if (scrollTimer) clearTimeout(scrollTimer);
       supabase.removeChannel(ch);
     };
-  }, [perfil, canalActivo, abierto, servicioId]);
+  }, [perfil, canalActivo, abierto, canalesSet]);
 
-  // Batch lookup de perfiles que aún no están en cache. SI el componente
-  // hidrata 100 mensajes nuevos, hace UNA query con IN, no 100.
+  // Batch lookup de perfiles que aún no están en cache. Si hidrata 100
+  // mensajes nuevos, hace UNA query con IN, no 100.
   const hidratarRemitentes = async (msgs: Mensaje[]) => {
     const faltantes = Array.from(new Set(msgs.map(m => m.remitente))).filter(id => !perfiles[id]);
     if (faltantes.length === 0) return;
@@ -112,13 +154,12 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
     }
   };
 
-  // Auto-scroll al abrir o cambiar de tab. Cleanup para evitar acceso
-  // al ref después de desmontar.
+  // Auto-scroll al abrir o cambiar de canal.
   useEffect(() => {
     if (!abierto) return;
     const t = setTimeout(() => listaRef.current?.scrollTo({ top: 999999 }), 100);
     return () => clearTimeout(t);
-  }, [abierto, tab]);
+  }, [abierto, canalActivo]);
 
   const enviar = async () => {
     if (!perfil || !borrador.trim() || enviando) return;
@@ -147,7 +188,11 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
     }
   };
 
-  const unreadTotal = unreadServicio + unreadGlobal;
+  const unreadTotal = useMemo(
+    () => Object.values(unread).reduce((a, b) => a + b, 0),
+    [unread]
+  );
+  const glow = unreadTotal > 0 && !abierto;
 
   const formatHora = (iso: string) => {
     const d = new Date(iso);
@@ -178,13 +223,23 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
     }
   };
 
+  const muchosCanales = canales.length > 2;
+
   return (
     <>
+      {/* keyframes del glow: no se pueden expresar como estilo inline */}
+      <style>{`
+        @keyframes chatGlowPulse {
+          0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.3); background-color: #0E6755; }
+          50% { box-shadow: 0 0 0 5px rgba(46,212,168,0.5), 0 0 26px 10px rgba(46,212,168,0.95); background-color: #15a37a; }
+        }
+      `}</style>
+
       {/* Botón flotante */}
       <button
         onClick={() => setAbierto(o => !o)}
-        style={botonFlotante}
-        title="Chat de servicios"
+        style={{ ...botonFlotante, ...(glow ? { animation: 'chatGlowPulse 1.1s ease-in-out infinite' } : {}) }}
+        title={glow ? 'Tienes mensajes nuevos' : 'Chat de servicios'}
       >
         💬
         {unreadTotal > 0 && !abierto && (
@@ -201,29 +256,35 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
           </div>
 
           <div style={tabs}>
-            <button
-              onClick={() => setTab('servicio')}
-              style={tab === 'servicio' ? tabActivo : tabInactivo}
-            >
-              🏥 {servicioNombre}
-              {unreadServicio > 0 && tab !== 'servicio' && <span style={tabBadge}>{unreadServicio}</span>}
-            </button>
-            <button
-              onClick={() => setTab('global')}
-              style={tab === 'global' ? tabActivo : tabInactivo}
-            >
-              🌐 Global / Jefatura
-              {unreadGlobal > 0 && tab !== 'global' && <span style={tabBadge}>{unreadGlobal}</span>}
-            </button>
+            {canales.map(c => {
+              const activo = c.canal === canalActivo;
+              const u = unread[c.canal] || 0;
+              return (
+                <button
+                  key={c.canal}
+                  onClick={() => setCanalActivo(c.canal)}
+                  style={{
+                    ...(activo ? tabActivo : tabInactivo),
+                    flex: muchosCanales ? '0 0 auto' : '1 1 0',
+                    minWidth: muchosCanales ? 96 : undefined,
+                    maxWidth: 168,
+                  }}
+                  title={c.etiqueta}
+                >
+                  <span style={tabTexto}>{c.icono} {c.etiqueta}</span>
+                  {u > 0 && !activo && <span style={tabBadge}>{u > 99 ? '99+' : u}</span>}
+                </button>
+              );
+            })}
           </div>
 
           <div ref={listaRef} style={lista}>
             {mensajes.length === 0 ? (
               <div style={vacio}>
                 No hay mensajes todavía.<br />
-                {tab === 'servicio'
-                  ? 'Escribe el primero para tu equipo de servicio.'
-                  : 'Escribe el primero para todo el hospital y la jefatura.'}
+                {esCanalGlobal
+                  ? 'Escribe el primero para todo el hospital y la jefatura.'
+                  : 'Escribe el primero para este servicio.'}
               </div>
             ) : (
               mensajes.map(m => {
@@ -263,9 +324,9 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre }) => {
               value={borrador}
               onChange={e => setBorrador(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder={tab === 'servicio'
-                ? `Escribe a tu equipo de ${servicioNombre}...`
-                : 'Escribe al hospital y la jefatura...'}
+              placeholder={esCanalGlobal
+                ? 'Escribe al hospital y la jefatura...'
+                : `Escribe a ${etiquetaActiva}...`}
               style={textarea}
               rows={2}
               disabled={enviando}
@@ -311,17 +372,23 @@ const panelTitulo: React.CSSProperties = { fontWeight: 700, fontSize: 15 };
 const botonCerrar: React.CSSProperties = {
   background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18,
 };
-const tabs: React.CSSProperties = { display: 'flex', borderBottom: '1px solid #C39C59' };
+const tabs: React.CSSProperties = {
+  display: 'flex', borderBottom: '1px solid #C39C59', overflowX: 'auto',
+};
 const tabInactivo: React.CSSProperties = {
-  flex: 1, padding: '8px 4px', border: 'none', background: '#F5F1E8', color: '#265C4E',
+  padding: '8px 8px', border: 'none', background: '#F5F1E8', color: '#265C4E',
   cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: 'inherit', position: 'relative',
+  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4,
 };
 const tabActivo: React.CSSProperties = {
   ...tabInactivo, background: '#fff', color: '#0E6755', borderBottom: '2px solid #0E6755',
 };
+const tabTexto: React.CSSProperties = {
+  overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+};
 const tabBadge: React.CSSProperties = {
-  marginLeft: 6, background: '#A32D2D', color: '#fff', borderRadius: 10, padding: '1px 5px',
-  fontSize: 10, fontWeight: 700,
+  marginLeft: 2, background: '#A32D2D', color: '#fff', borderRadius: 10, padding: '1px 5px',
+  fontSize: 10, fontWeight: 700, flex: '0 0 auto',
 };
 const lista: React.CSSProperties = { flex: 1, overflowY: 'auto', padding: 10, background: '#fdfaf2' };
 const vacio: React.CSSProperties = { padding: 40, textAlign: 'center', color: '#888', fontSize: 13, lineHeight: 1.6 };

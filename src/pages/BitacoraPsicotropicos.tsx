@@ -209,7 +209,7 @@ export const BitacoraPsicotropicos: React.FC = () => {
       <div style={header}>
         <div>
           <h1 style={titulo}>💊 Bitácora · Control de Medicamentos Psicotrópicos</h1>
-          <p style={subt}>Stock con fondo fijo · entradas y salidas por turno · CLUES BSIMB000672</p>
+          <p style={subt}>Inventario con fondo fijo · entradas y salidas por turno · CLUES BSIMB000672</p>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
           <button onClick={() => window.print()} style={btnImprimir}>🖨️ Hoja del día</button>

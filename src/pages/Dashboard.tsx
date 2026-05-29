@@ -7,12 +7,14 @@ import {
   ROLES_ADMIN_GLOBAL,
   esAdminGlobal,
   tieneScopeDeServicio,
+  supervisionDeScope,
   formatearTitulo,
   formatearRol,
   esJefeOAdmin,
 } from '../types'
 import { usePresence } from '../contexts/PresenceContext'
 import { useServiceWorkerUpdate } from '../hooks/useServiceWorkerUpdate'
+import { ChatPanel } from './components/ChatPanel'
 
 interface Props {
   perfil: Perfil
@@ -49,14 +51,19 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
   }
 
   // Filtrar servicios por scope del rol.
-  // - jefe/subjefe/supervisor: ven todos
+  // - jefe/subjefe: ven todos
+  // - supervisor con grupo (supervision 1/2): solo los servicios de su grupo
   // - gestor/enfermera: solo el suyo
   const serviciosVisibles = useMemo(() => {
     if (tieneScopeDeServicio(perfil.rol) && perfil.servicio_id != null) {
       return servicios.filter(s => s.servicio_id === perfil.servicio_id)
     }
+    const sup = supervisionDeScope(perfil)
+    if (sup != null) {
+      return servicios.filter(s => s.supervision === sup)
+    }
     return servicios
-  }, [servicios, perfil.rol, perfil.servicio_id])
+  }, [servicios, perfil.rol, perfil.servicio_id, perfil.supervision])
 
   const totalCamas = serviciosVisibles.reduce((s, srv) => s + srv.total_camas, 0)
   const totalOcupadas = serviciosVisibles.reduce((s, srv) => s + Number(srv.camas_ocupadas), 0)
@@ -251,6 +258,13 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
           </div>
         )}
       </main>
+
+      {/* Chat flotante del tablero: canal global + todos los servicios
+          visibles. El icono se ilumina con cualquier mensaje nuevo. */}
+      <ChatPanel
+        servicios={serviciosVisibles.map(s => ({ id: s.servicio_id, nombre: s.servicio }))}
+      />
+
       {/* Badge de versión: permite verificar a distancia si un usuario tiene
           la versión más reciente. Cambia automáticamente en cada deploy. */}
       <div style={versionBadgeStyle} title="Versión del bundle desplegado">

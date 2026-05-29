@@ -36,6 +36,20 @@ export interface Perfil {
   activo: boolean
   titulo_display?: string | null
   es_admin_sistema?: boolean
+  // Grupo de supervisión (1 ó 2) para rol 'supervisor'. NULL/ausente = global.
+  supervision?: number | null
+}
+
+/** Para un supervisor con grupo asignado devuelve su número de supervisión
+ *  (1 ó 2); null = alcance global (jefe/subjefe, o supervisor sin grupo). */
+export function supervisionDeScope(
+  p: Pick<Perfil, 'rol' | 'supervision'> | null | undefined
+): number | null {
+  if (!p) return null
+  if (p.rol === 'supervisor' && (p.supervision === 1 || p.supervision === 2)) {
+    return p.supervision
+  }
+  return null
 }
 
 /** Capitaliza la primera letra de un rol. Ej: 'gestor' → 'Gestor'. */
@@ -64,6 +78,7 @@ export interface Servicio {
   nombre: string
   total_camas: number
   orden: number
+  supervision?: number | null
 }
 
 export interface Subservicio {
@@ -114,6 +129,7 @@ export interface OcupacionServicio {
   extras_ocupados?: number
   extras_totales?: number
   orden: number
+  supervision?: number | null
 }
 
 export interface CamaEstado {

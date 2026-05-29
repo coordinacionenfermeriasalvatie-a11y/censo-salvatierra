@@ -763,14 +763,14 @@ const SECCIONES: Seccion[] = [
         pasos: [
           'Subjefes y supervisores: botón "🗂️ Supervisión" directamente en el Dashboard.',
           'Jefatura y administrador del sistema: dentro del Tablero Maestro, botón "🗂️ Supervisión" en el header.',
-          'Verás 4 tarjetas: Bitácora de Supervisión · Stock de Psicotrópicos · Tablero General · Auditoría.',
+          'Verás 4 tarjetas: Bitácora de Supervisión · Fondo Fijo de Psicotrópicos · Tablero General · Auditoría.',
         ],
       },
       {
         titulo: '13.2. Qué puedes hacer en cada herramienta',
         pasos: [
           'Bitácora de Supervisión: concentrado diario de TODOS los vales controlados del hospital. Aprobar, rechazar (con motivo) o marcar como canjeados.',
-          'Stock de Psicotrópicos: ver inventario con fondo fijo (12 medicamentos institucionales), registrar entradas (Recibido) y salidas (Surtido) manuales. El stock se descuenta solo cuando un vale se marca como canjeado.',
+          'Fondo Fijo de Psicotrópicos: ver inventario con fondo fijo (12 medicamentos institucionales), registrar entradas (Recibido) y salidas (Surtido) manuales. El stock se descuenta solo cuando un vale se marca como canjeado.',
           'Tablero General del Hospital: KPIs de ocupación, hemodiálisis, ERC. Vista del día solamente para subjefe/supervisor; vista completa Día/Semana/Mes para jefatura y administrador.',
           'Auditoría: quién hace qué cambios. Subjefes/supervisores ven solo HOY y SU TURNO ACTUAL; jefatura y administrador ven los últimos 30 días completos.',
         ],
@@ -804,7 +804,7 @@ const SECCIONES: Seccion[] = [
         pasos: [
           'Estado 1 PENDIENTE: el gestor del servicio recién lo creó. Aparece en amarillo.',
           'Estado 2 APROBADA: tú das visto bueno con el botón "✓ Aprobar". Aparece en verde. Quedas registrada como supervisora que aprobó.',
-          'Estado 3 CANJEADA: cuando el gestor recoge físicamente el medicamento, marcas "📦 Canjeada". Aparece en azul. Esto descuenta automáticamente el stock de psicotrópicos.',
+          'Estado 3 CANJEADA: cuando el gestor recoge físicamente el medicamento, marcas "📦 Canjeada". Aparece en azul. Esto descuenta automáticamente del Fondo Fijo de Psicotrópicos.',
           'Estado RECHAZADA: si hay un error o problema, usa "✕ Rechazar" y el sistema te pide motivo obligatorio. El vale queda registrado pero invalidado.',
         ],
       },
@@ -819,12 +819,12 @@ const SECCIONES: Seccion[] = [
   },
 
   // ============================================================
-  // 15. STOCK DE PSICOTRÓPICOS (subjefe/supervisor + jefe/admin)
+  // 15. FONDO FIJO DE PSICOTRÓPICOS (subjefe/supervisor + jefe/admin)
   // ============================================================
   {
     key: 'stock_psicotropicos',
     numero: '15',
-    titulo: 'Stock de Psicotrópicos',
+    titulo: 'Fondo Fijo de Psicotrópicos',
     icono: '💉',
     subtitulo: 'Inventario con fondo fijo, entradas y salidas',
     color: '#A32D2D',
@@ -833,7 +833,7 @@ const SECCIONES: Seccion[] = [
       {
         titulo: '15.1. Vista del día',
         pasos: [
-          'Acceso: Carpeta de Supervisión → 💊 Stock de Psicotrópicos.',
+          'Acceso: Carpeta de Supervisión → 💊 Fondo Fijo de Psicotrópicos.',
           '12 medicamentos del fondo fijo institucional: Diazepam, Nalbufina, Buprenorfina, Haloperidol, Midazolam, Propofol, Fentanilo, Morfina, Flumazenil, Amitriptilina, Lorazepam, Clonazepam.',
           'Por cada medicamento ves: Unidad · Fondo fijo · Recibido · Utilizado y Vales por turno (M/V/N) · STOCK ACTUAL (con semáforo: verde >30%, amarillo <30%, rojo agotado).',
           'Abajo se autollena el detalle de vales del día (Folio, Folio salida, Paciente, Medicamento, Médico, Enfermero solicita, Supervisora, Estado).',
@@ -880,7 +880,7 @@ const SECCIONES: Seccion[] = [
       {
         titulo: '16.2. Cambiar de fecha (histórico)',
         pasos: [
-          'En la página de Stock de Psicotrópicos, el selector "Fecha" te permite navegar a cualquier día pasado.',
+          'En la página de Fondo Fijo de Psicotrópicos, el selector "Fecha" te permite navegar a cualquier día pasado.',
           'El sistema reconstruye el día a partir de los movimientos guardados.',
         ],
       },
