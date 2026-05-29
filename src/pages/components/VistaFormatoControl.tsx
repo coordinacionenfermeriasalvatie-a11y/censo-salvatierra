@@ -184,6 +184,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId }) => {
       const { data, error: err } = await supabase
         .from('v_control_servicio')
         .select('*')
+        .eq('servicio_id', servicioId)
         // Orden clínico del subservicio (igual que el censo/PDF), no alfabético.
         .order('subservicio_orden', { nullsFirst: false })
         .order('numero_cama');
