@@ -22,6 +22,8 @@ interface Indicador {
 
 interface Captura {
   indicador_id: number;
+  anio: number;
+  mes: number;
   dia: number;
   turno: 'M' | 'V' | 'N';
   valor: number;
@@ -48,15 +50,22 @@ const COLOR_PROCESO: Record<number, string> = {
   5: '#FCE4EC', 6: '#E0F2F1', 7: '#FFEBEE', 8: '#FFF9C4',
 };
 
-const MESES = [
-  'ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO',
-  'JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'
-];
+const DOW = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+const MESES_CORTO = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+
+// Lunes de la semana que contiene a `ref` (semana Lun–Dom).
+function lunesDeSemana(ref: Date): Date {
+  const d = new Date(ref);
+  const dow = (d.getDay() + 6) % 7; // 0=Lun … 6=Dom
+  d.setDate(d.getDate() - dow);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+interface DiaSemana { fecha: Date; anio: number; mes: number; dia: number; }
 
 export function VistaProductividad({ servicioId, servicioNombre }: Props) {
-  const hoy = new Date();
-  const [anio, setAnio] = useState(hoy.getFullYear());
-  const [mes, setMes]   = useState(hoy.getMonth() + 1);
+  const [semanaInicio, setSemanaInicio] = useState<Date>(() => lunesDeSemana(new Date()));
 
   const [indicadores, setIndicadores] = useState<Indicador[]>([]);
   const [capturas, setCapturas]       = useState<Map<string, {valor: number; origen: string}>>(new Map());
@@ -64,7 +73,29 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
   const [error, setError]             = useState<string | null>(null);
   const [guardando, setGuardando]     = useState<string | null>(null);
 
-  const diasMes = useMemo(() => new Date(anio, mes, 0).getDate(), [anio, mes]);
+  // Los 7 días (Lun–Dom) de la semana seleccionada. Cada día conserva su
+  // anio/mes/dia reales, así que una semana puede cruzar el cambio de mes.
+  const dias = useMemo<DiaSemana[]>(() => (
+    Array.from({ length: 7 }, (_, i) => {
+      const f = new Date(semanaInicio);
+      f.setDate(semanaInicio.getDate() + i);
+      return { fecha: f, anio: f.getFullYear(), mes: f.getMonth() + 1, dia: f.getDate() };
+    })
+  ), [semanaInicio]);
+
+  const cellKey = (indId: number, d: DiaSemana, t: 'M'|'V'|'N') =>
+    `${indId}-${d.anio}-${d.mes}-${d.dia}-${t}`;
+
+  // Etiqueta del rango de la semana (compacta si no cruza de mes).
+  const rangoSemana = useMemo(() => {
+    const ini = dias[0], fin = dias[6];
+    return ini.mes === fin.mes
+      ? `${ini.dia} – ${fin.dia} ${MESES_CORTO[fin.mes - 1]} ${fin.anio}`
+      : `${ini.dia} ${MESES_CORTO[ini.mes - 1]} – ${fin.dia} ${MESES_CORTO[fin.mes - 1]} ${fin.anio}`;
+  }, [dias]);
+
+  const moverSemana = (deltaDias: number) =>
+    setSemanaInicio(prev => { const d = new Date(prev); d.setDate(d.getDate() + deltaDias); return d; });
 
   // Cargar catalogo + capturas
   const cargar = useCallback(async () => {
@@ -80,18 +111,22 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
       if (e1) throw e1;
       setIndicadores((cat || []) as Indicador[]);
 
-      // 2. Capturas del mes/anio/servicio
+      // 2. Capturas de la semana. La semana puede abarcar 1 o 2 pares (anio,mes);
+      //    se piden ambos meses completos y se filtran por día al renderizar.
+      const combos = Array.from(new Set(dias.map(d => `${d.anio}-${d.mes}`)))
+        .map(s => { const [a, mm] = s.split('-').map(Number); return { anio: a, mes: mm }; });
+      const orFiltro = combos.map(c => `and(anio.eq.${c.anio},mes.eq.${c.mes})`).join(',');
+
       const { data: caps, error: e2 } = await supabase
         .from('productividad_capturas')
-        .select('indicador_id, dia, turno, valor, origen')
+        .select('indicador_id, anio, mes, dia, turno, valor, origen')
         .eq('servicio_id', servicioId)
-        .eq('anio', anio)
-        .eq('mes', mes);
+        .or(orFiltro);
       if (e2) throw e2;
 
       const m = new Map<string, {valor: number; origen: string}>();
       (caps || []).forEach((c: Captura) => {
-        m.set(`${c.indicador_id}-${c.dia}-${c.turno}`, {
+        m.set(`${c.indicador_id}-${c.anio}-${c.mes}-${c.dia}-${c.turno}`, {
           valor: Number(c.valor),
           origen: c.origen || 'MANUAL'
         });
@@ -102,18 +137,18 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
     } finally {
       setCargando(false);
     }
-  }, [servicioId, anio, mes]);
+  }, [servicioId, dias]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
   // Guardar una celda
   const guardarCelda = async (
     indicadorId: number,
-    dia: number,
+    d: DiaSemana,
     turno: 'M'|'V'|'N',
     valor: number
   ) => {
-    const key = `${indicadorId}-${dia}-${turno}`;
+    const key = cellKey(indicadorId, d, turno);
     setGuardando(key);
     try {
       const { error: e } = await supabase
@@ -122,7 +157,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
           {
             servicio_id: servicioId,
             indicador_id: indicadorId,
-            anio, mes, dia, turno, valor,
+            anio: d.anio, mes: d.mes, dia: d.dia, turno, valor,
           },
           { onConflict: 'servicio_id,indicador_id,anio,mes,dia,turno' }
         );
@@ -140,20 +175,17 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
   };
 
   // Calculos por indicador
-  const getValor = (indId: number, dia: number, t: 'M'|'V'|'N') =>
-    capturas.get(`${indId}-${dia}-${t}`)?.valor ?? 0;
+  const getValor = (indId: number, d: DiaSemana, t: 'M'|'V'|'N') =>
+    capturas.get(cellKey(indId, d, t))?.valor ?? 0;
 
   // Bloque 5: leer el origen REAL de la captura (no solo del catálogo)
-  const getOrigen = (indId: number, dia: number, t: 'M'|'V'|'N'): string | null =>
-    capturas.get(`${indId}-${dia}-${t}`)?.origen ?? null;
+  const getOrigen = (indId: number, d: DiaSemana, t: 'M'|'V'|'N'): string | null =>
+    capturas.get(cellKey(indId, d, t))?.origen ?? null;
 
-  const totalTurno = (indId: number, t: 'M'|'V'|'N') => {
-    let s = 0;
-    for (let d = 1; d <= diasMes; d++) s += getValor(indId, d, t);
-    return s;
-  };
+  const totalTurno = (indId: number, t: 'M'|'V'|'N') =>
+    dias.reduce((s, d) => s + getValor(indId, d, t), 0);
 
-  const totalMes = (indId: number) =>
+  const totalSemana = (indId: number) =>
     totalTurno(indId, 'M') + totalTurno(indId, 'V') + totalTurno(indId, 'N');
 
   // Agrupar indicadores por proceso
@@ -171,12 +203,12 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
   // Resumen por proceso
   const totalProceso = (procesoId: number) => {
     const inds = indicadores.filter(i => i.proceso_id === procesoId);
-    return inds.reduce((acc, i) => acc + totalMes(i.id), 0);
+    return inds.reduce((acc, i) => acc + totalSemana(i.id), 0);
   };
 
   const totalGeneral = useMemo(
-    () => indicadores.reduce((acc, i) => acc + totalMes(i.id), 0),
-    [indicadores, capturas, diasMes]
+    () => indicadores.reduce((acc, i) => acc + totalSemana(i.id), 0),
+    [indicadores, capturas, dias]
   );
 
   if (cargando) {
@@ -201,20 +233,15 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
             Bitácora de Productividad — {servicioNombre}
           </strong>
           <div style={{ fontSize: 11, color: '#888', marginTop: 2 }}>
-            73 indicadores oficiales IMSS-Bienestar · 31 días × turnos M/V/N
+            73 indicadores oficiales IMSS-Bienestar · semana (Lun–Dom) × turnos M/V/N
           </div>
         </div>
 
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <label style={labelMes}>Mes:</label>
-          <select value={mes} onChange={e => setMes(Number(e.target.value))} style={select}>
-            {MESES.map((m, i) => (
-              <option key={i+1} value={i+1}>{m}</option>
-            ))}
-          </select>
-          <select value={anio} onChange={e => setAnio(Number(e.target.value))} style={select}>
-            {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-          </select>
+          <button onClick={() => moverSemana(-7)} style={btnNav} title="Semana anterior">◀</button>
+          <span style={etiquetaSemana}>{rangoSemana}</span>
+          <button onClick={() => moverSemana(7)} style={btnNav} title="Semana siguiente">▶</button>
+          <button onClick={() => setSemanaInicio(lunesDeSemana(new Date()))} style={btnHoy}>Hoy</button>
         </div>
       </div>
 
@@ -234,19 +261,21 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
           <thead>
             <tr>
               <th style={{ ...thFijo, minWidth: 320 }}>Indicador / Proceso</th>
-              {Array.from({ length: diasMes }, (_, i) => i + 1).map(d => (
-                <th key={d} colSpan={3} style={thDia}>D{d}</th>
+              {dias.map((d, i) => (
+                <th key={`${d.anio}-${d.mes}-${d.dia}`} colSpan={3} style={thDia}>
+                  {DOW[i]}<br/>{d.dia}
+                </th>
               ))}
               <th style={thTotal}>T<br/>M</th>
               <th style={thTotal}>T<br/>V</th>
               <th style={thTotal}>T<br/>N</th>
-              <th style={thTotal}>T<br/>MES</th>
+              <th style={thTotal}>T<br/>SEM</th>
             </tr>
             <tr>
               <th style={thFijo}></th>
-              {Array.from({ length: diasMes }, (_, i) => i + 1).flatMap(d =>
+              {dias.flatMap(d =>
                 TURNOS.map(t => (
-                  <th key={`${d}${t}`} style={thTurno}>{t}</th>
+                  <th key={`${d.anio}-${d.mes}-${d.dia}${t}`} style={thTurno}>{t}</th>
                 ))
               )}
               <th style={thTotalSub}></th>
@@ -261,7 +290,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
               <React.Fragment key={pid}>
                 {/* Header proceso */}
                 <tr>
-                  <td colSpan={1 + diasMes * 3 + 4} style={{
+                  <td colSpan={1 + dias.length * 3 + 4} style={{
                     ...tdHeaderProceso,
                     background: COLOR_PROCESO[pid] || '#E3F2FD'
                   }}>
@@ -273,24 +302,24 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
                   const tM = totalTurno(ind.id, 'M');
                   const tV = totalTurno(ind.id, 'V');
                   const tN = totalTurno(ind.id, 'N');
-                  const tMes = tM + tV + tN;
+                  const tSem = tM + tV + tN;
                   return (
                     <tr key={ind.id}>
                       <td style={{ ...tdLabel, fontSize: 10 }}>
                         <strong style={{ color: '#666', fontSize: 9 }}>{ind.codigo}</strong>{' '}
                         {ind.etiqueta}
                       </td>
-                      {Array.from({ length: diasMes }, (_, i) => i + 1).map(d => (
+                      {dias.map(d => (
                         TURNOS.map(t => {
                           const v = getValor(ind.id, d, t);
-                          const key = `${ind.id}-${d}-${t}`;
+                          const key = cellKey(ind.id, d, t);
                           const isGuardando = guardando === key;
                           // Bloque 5: color y editabilidad según ORIGEN REAL de la captura
                           // (no del catálogo). Si no hay captura aún, cae al origen del catálogo.
                           const origenCelda = (getOrigen(ind.id, d, t) || ind.origen) as 'AUTO_ING' | 'AUTO_TURNO' | 'AUTO_EVENTO' | 'AUTO_CONTINUIDAD' | 'MANUAL';
                           const isEditable = origenCelda === 'MANUAL';
                           return (
-                            <td key={`${d}${t}`} style={{
+                            <td key={`${d.anio}-${d.mes}-${d.dia}${t}`} style={{
                               ...tdCelda,
                               background: COLOR_ORIGEN[origenCelda],
                               opacity: isGuardando ? 0.5 : 1,
@@ -331,7 +360,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
                       <td style={tdTotal}>{tM || ''}</td>
                       <td style={tdTotal}>{tV || ''}</td>
                       <td style={tdTotal}>{tN || ''}</td>
-                      <td style={{...tdTotal, fontWeight: 700 }}>{tMes || ''}</td>
+                      <td style={{...tdTotal, fontWeight: 700 }}>{tSem || ''}</td>
                     </tr>
                   );
                 })}
@@ -340,7 +369,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
                   <td style={{...tdSubtotal, background: COLOR_PROCESO[pid] }}>
                     SUBTOTAL {pid}. {grupo.nombre}
                   </td>
-                  <td colSpan={diasMes * 3} style={{ background: '#F5F5F5' }}></td>
+                  <td colSpan={dias.length * 3} style={{ background: '#F5F5F5' }}></td>
                   <td colSpan={4} style={{...tdSubtotal, background: COLOR_PROCESO[pid], textAlign: 'center' }}>
                     {totalProceso(pid)}
                   </td>
@@ -351,7 +380,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
             {/* Gran total */}
             <tr>
               <td style={tdGranTotal}>▶ GRAN TOTAL DEL SERVICIO</td>
-              <td colSpan={diasMes * 3} style={{ background: '#1F4E79' }}></td>
+              <td colSpan={dias.length * 3} style={{ background: '#1F4E79' }}></td>
               <td colSpan={4} style={{...tdGranTotal, textAlign: 'center' }}>{totalGeneral}</td>
             </tr>
           </tbody>
@@ -361,13 +390,13 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
       {/* Resumen final */}
       <div style={resumen}>
         <h3 style={{ margin: 0, color: '#265C4E', fontSize: 13 }}>
-          Resumen mensual — {MESES[mes-1]} {anio}
+          Resumen semanal — {rangoSemana}
         </h3>
         <table style={{ width: '100%', marginTop: 8, fontSize: 11 }}>
           <thead>
             <tr>
               <th style={thResumen}>Proceso</th>
-              <th style={thResumen}>Total Mes</th>
+              <th style={thResumen}>Total Semana</th>
               <th style={thResumen}>Prom. Día</th>
             </tr>
           </thead>
@@ -380,7 +409,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
                     {pid}. {grupo.nombre}
                   </td>
                   <td style={{...tdResumen, textAlign: 'center', fontWeight: 700 }}>{t}</td>
-                  <td style={{...tdResumen, textAlign: 'center' }}>{(t / diasMes).toFixed(1)}</td>
+                  <td style={{...tdResumen, textAlign: 'center' }}>{(t / 7).toFixed(1)}</td>
                 </tr>
               );
             })}
@@ -391,7 +420,7 @@ export function VistaProductividad({ servicioId, servicioNombre }: Props) {
               <td style={{...tdResumen, background: '#1F4E79', color: '#FFF',
                 textAlign: 'center', fontWeight: 700 }}>{totalGeneral}</td>
               <td style={{...tdResumen, background: '#1F4E79', color: '#FFF',
-                textAlign: 'center', fontWeight: 700 }}>{(totalGeneral / diasMes).toFixed(1)}</td>
+                textAlign: 'center', fontWeight: 700 }}>{(totalGeneral / 7).toFixed(1)}</td>
             </tr>
           </tbody>
         </table>
@@ -419,10 +448,19 @@ const barraSuperior: React.CSSProperties = {
   padding: '8px 12px', background: '#F5F5F5', border: '1px solid #C39C59',
   borderRadius: 4, marginBottom: 8,
 };
-const labelMes: React.CSSProperties = { fontSize: 11, fontWeight: 700, color: '#265C4E' };
-const select: React.CSSProperties = {
-  padding: '4px 8px', fontSize: 11, border: '1px solid #C39C59',
-  borderRadius: 4, background: '#FFF', color: '#265C4E', fontFamily: 'inherit',
+const btnNav: React.CSSProperties = {
+  padding: '4px 10px', fontSize: 12, border: '1px solid #C39C59',
+  borderRadius: 4, background: '#FFF', color: '#265C4E', cursor: 'pointer',
+  fontFamily: 'inherit', fontWeight: 700,
+};
+const btnHoy: React.CSSProperties = {
+  padding: '4px 10px', fontSize: 11, border: '1px solid #0E6755',
+  borderRadius: 4, background: '#0E6755', color: '#FFF', cursor: 'pointer',
+  fontFamily: 'inherit', fontWeight: 700,
+};
+const etiquetaSemana: React.CSSProperties = {
+  fontSize: 12, fontWeight: 700, color: '#265C4E', minWidth: 150,
+  textAlign: 'center', textTransform: 'capitalize',
 };
 const leyenda: React.CSSProperties = {
   display: 'flex', gap: 8, padding: '6px 12px', marginBottom: 8, flexWrap: 'wrap',

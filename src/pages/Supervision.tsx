@@ -43,6 +43,13 @@ const HERRAMIENTAS: Herramienta[] = [
     ruta: '/tablero?soloDia=1',
     color: '#2c5fa3',
   },
+  {
+    icono: '🩺',
+    titulo: 'Médicos Adscritos',
+    descripcion: 'Catálogo de médicos prescriptores. Alimenta el dropdown de médico en la receta de medicamento controlado (autocompleta cédula y especialidad).',
+    ruta: '/medicos-adscritos',
+    color: '#7d5b2f',
+  },
 ];
 
 export const Supervision: React.FC = () => {

@@ -3,6 +3,7 @@
 
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
+import { cargarLogosWorkbook, insertarEncabezadoExcel } from './encabezadoExcel';
 
 interface BitacoraRow {
   folio: string;
@@ -58,21 +59,22 @@ export async function exportarBitacoraDia(
   wb.creator = generadoPor;
   wb.created = new Date();
 
+  // Logos institucionales: se descargan una vez y se reutilizan en todas las hojas.
+  const logos = await cargarLogosWorkbook(wb);
+
   // === Portada / Resumen ===
   const portada = wb.addWorksheet('Resumen');
-  portada.columns = [{ width: 32 }, { width: 50 }];
+  const WIDTHS_PORTADA = [32, 50];
+  WIDTHS_PORTADA.forEach((w, i) => { portada.getColumn(i + 1).width = w; });
 
-  portada.addRow(['BITÁCORA DE SUPERVISIÓN DE ENFERMERÍA']);
-  portada.addRow(['Medicamentos Controlados (Grupos I-V LGS)']);
-  portada.addRow([]);
-  portada.addRow(['Hospital', 'Benemérito Hospital General con Especialidades IMSS-Bienestar']);
-  portada.addRow(['', '"Juan María de Salvatierra"']);
-  portada.addRow(['CLUES', 'BSIMB000672']);
-  portada.addRow(['Ciudad', 'La Paz, Baja California Sur']);
-  portada.addRow(['Fecha del día', fechaIso]);
-  portada.addRow(['Generado por', generadoPor]);
-  portada.addRow(['Generado el', new Date().toLocaleString('es-MX')]);
-  portada.addRow([]);
+  // Encabezado institucional unificado (logos + 3 renglones, filas 1-4).
+  // El nombre del hospital y la CLUES ya van dentro del encabezado.
+  insertarEncabezadoExcel(portada, {
+    titulo: 'BITÁCORA DE SUPERVISIÓN — MEDICAMENTOS CONTROLADOS (GRUPOS I-V LGS)',
+    subtitulo: `Fecha del día: ${fechaIso}`,
+    charWidths: WIDTHS_PORTADA,
+    logos,
+  });
 
   const total = filas.length;
   const pend = filas.filter(f => f.estado_aprobacion === 'pendiente').length;
@@ -80,39 +82,49 @@ export async function exportarBitacoraDia(
   const canj = filas.filter(f => f.estado_aprobacion === 'canjeada').length;
   const rech = filas.filter(f => f.estado_aprobacion === 'rechazada').length;
 
-  portada.addRow(['Total de vales', total]);
-  portada.addRow(['Pendientes', pend]);
-  portada.addRow(['Aprobadas', apro]);
-  portada.addRow(['Canjeadas', canj]);
-  portada.addRow(['Rechazadas', rech]);
-
-  // Estilo de portada
-  portada.getRow(1).font = { bold: true, size: 14, color: { argb: 'FF0E6755' } };
-  portada.getRow(2).font = { italic: true, size: 11, color: { argb: 'FF7D5B2F' } };
-  for (let i = 4; i <= 15; i++) {
-    portada.getRow(i).getCell(1).font = { bold: true, color: { argb: 'FF7D5B2F' } };
-  }
+  // Metadatos y resumen (a partir de la fila 6)
+  const info: [string, string | number][] = [
+    ['Ciudad', 'La Paz, Baja California Sur'],
+    ['Generado por', generadoPor],
+    ['Generado el', new Date().toLocaleString('es-MX')],
+    ['', ''],
+    ['Total de vales', total],
+    ['Pendientes', pend],
+    ['Aprobadas', apro],
+    ['Canjeadas', canj],
+    ['Rechazadas', rech],
+  ];
+  info.forEach(([label, value], idx) => {
+    const row = portada.getRow(6 + idx);
+    row.getCell(1).value = label;
+    row.getCell(2).value = value;
+    if (label) row.getCell(1).font = { bold: true, color: { argb: 'FF7D5B2F' } };
+  });
 
   // === Una hoja por turno ===
+  // Anchos de columna (también se usan para anclar el logo derecho del encabezado).
+  const WIDTHS_TURNO = [12, 8, 10, 14, 8, 28, 10, 8, 16, 28, 22, 8, 12, 8, 12, 10, 14, 22, 12, 22, 12, 14, 22, 22];
+
   for (const turno of ['M', 'V', 'N'] as const) {
     const filasTurno = filas.filter(f => f.turno === turno);
-    const ws = wb.addWorksheet(`Turno ${turnoLabel(turno)}`);
+    const ws = wb.addWorksheet(`Turno ${turnoLabel(turno)}`, {
+      views: [{ state: 'frozen', ySplit: 5 }],
+      pageSetup: { paperSize: 5, orientation: 'landscape', fitToPage: true, fitToWidth: 1 },
+    });
 
-    // Encabezado institucional
-    ws.mergeCells('A1:X1');
-    ws.getCell('A1').value = `BITÁCORA DE SUPERVISIÓN — TURNO ${turnoLabel(turno).toUpperCase()} — ${fechaIso}`;
-    ws.getCell('A1').font = { bold: true, size: 13, color: { argb: 'FFFFFFFF' } };
-    ws.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_HEADER } };
-    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' };
-    ws.getRow(1).height = 26;
+    WIDTHS_TURNO.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
 
-    ws.mergeCells('A2:X2');
-    ws.getCell('A2').value = 'Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra" · CLUES BSIMB000672';
-    ws.getCell('A2').font = { italic: true, size: 10, color: { argb: 'FF7D5B2F' } };
-    ws.getCell('A2').alignment = { horizontal: 'center' };
+    // Encabezado institucional unificado (logos + 3 renglones, filas 1-4)
+    insertarEncabezadoExcel(ws, {
+      titulo: `BITÁCORA DE SUPERVISIÓN — TURNO ${turnoLabel(turno).toUpperCase()}`,
+      subtitulo: `Fecha: ${fechaIso}`,
+      charWidths: WIDTHS_TURNO,
+      logos,
+    });
 
-    // Headers de columna
-    const headerRow = ws.addRow(HEADERS);
+    // Fila 5 — encabezados de columna
+    const headerRow = ws.getRow(5);
+    headerRow.values = HEADERS;
     headerRow.eachCell(cell => {
       cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_HEADER } };
       cell.font = { bold: true, color: { argb: COLOR_HEADER_FG }, size: 10 };
@@ -124,10 +136,11 @@ export async function exportarBitacoraDia(
     });
     headerRow.height = 32;
 
-    // Filas de datos
+    // Filas de datos (a partir de la fila 6)
     filasTurno.forEach((f, idx) => {
       const hora = new Date(f.creado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-      const row = ws.addRow([
+      const row = ws.getRow(6 + idx);
+      row.values = [
         f.folio, hora,
         f.servicio_codigo, f.paciente_subservicio, f.paciente_cama,
         f.paciente_nombre,
@@ -142,7 +155,7 @@ export async function exportarBitacoraDia(
         f.estado_aprobacion.toUpperCase(),
         f.aprobado_nombre,
         f.observaciones,
-      ]);
+      ];
 
       if (idx % 2 === 1) {
         row.eachCell(cell => {
@@ -171,13 +184,9 @@ export async function exportarBitacoraDia(
       }
     });
 
-    // Anchos de columna
-    const widths = [12, 8, 10, 14, 8, 28, 10, 8, 16, 28, 22, 8, 12, 8, 12, 10, 14, 22, 12, 22, 12, 14, 22, 22];
-    widths.forEach((w, i) => { ws.getColumn(i + 1).width = w; });
-
     // Pie con conteo
-    ws.addRow([]);
-    const pieRow = ws.addRow([`Total turno ${turnoLabel(turno)}: ${filasTurno.length} vale${filasTurno.length !== 1 ? 's' : ''}`]);
+    const pieRow = ws.getRow(6 + filasTurno.length + 1);
+    pieRow.getCell(1).value = `Total turno ${turnoLabel(turno)}: ${filasTurno.length} vale${filasTurno.length !== 1 ? 's' : ''}`;
     pieRow.getCell(1).font = { bold: true, italic: true, color: { argb: 'FF7D5B2F' } };
   }
 

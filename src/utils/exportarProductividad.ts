@@ -18,8 +18,8 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { supabase } from '../lib/supabase';
+import { cargarLogosWorkbook, insertarEncabezadoExcel } from './encabezadoExcel';
 
-const COLOR_DORADO = 'FFC39C59';
 const COLOR_VERDE_IMSS = 'FF0E6755';
 const COLOR_VERDE_OSCURO = 'FF265C4E';
 const COLOR_BEIGE = 'FFF5F1E8';
@@ -104,52 +104,6 @@ function aplicarEstiloDatoNumero(cell: ExcelJS.Cell, origen?: string) {
     cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_MANUAL } };
   }
   aplicarBordeCelda(cell);
-}
-
-// =====================================================================
-// HELPER — Insertar encabezado institucional en una hoja
-// =====================================================================
-
-function insertarEncabezadoInstitucional(
-  sheet: ExcelJS.Worksheet,
-  titulo: string,
-  subtitulo: string,
-  anchoColumnas: number
-) {
-  // Fila 1 — Banda dorada
-  sheet.mergeCells(1, 1, 1, anchoColumnas);
-  const c1 = sheet.getCell(1, 1);
-  c1.value = 'BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR';
-  c1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_DORADO } };
-  c1.font = { name: 'Calibri', size: 13, bold: true, color: { argb: COLOR_BLANCO } };
-  c1.alignment = { horizontal: 'center', vertical: 'middle' };
-  sheet.getRow(1).height = 26;
-
-  // Fila 2 — Banda verde con CLUES
-  sheet.mergeCells(2, 1, 2, anchoColumnas);
-  const c2 = sheet.getCell(2, 1);
-  c2.value = '"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672';
-  c2.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_VERDE_IMSS } };
-  c2.font = { name: 'Calibri', size: 12, bold: true, color: { argb: COLOR_BLANCO } };
-  c2.alignment = { horizontal: 'center', vertical: 'middle' };
-  sheet.getRow(2).height = 22;
-
-  // Fila 3 — Subtítulo
-  sheet.mergeCells(3, 1, 3, anchoColumnas);
-  const c3 = sheet.getCell(3, 1);
-  c3.value = titulo;
-  c3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLOR_BLANCO } };
-  c3.font = { name: 'Calibri', size: 11, bold: true, color: { argb: COLOR_VERDE_IMSS } };
-  c3.alignment = { horizontal: 'center', vertical: 'middle' };
-  sheet.getRow(3).height = 22;
-
-  // Fila 4 — Subtítulo secundario / período
-  sheet.mergeCells(4, 1, 4, anchoColumnas);
-  const c4 = sheet.getCell(4, 1);
-  c4.value = subtitulo;
-  c4.font = { name: 'Calibri', size: 10, italic: true, color: { argb: COLOR_VERDE_OSCURO } };
-  c4.alignment = { horizontal: 'center', vertical: 'middle' };
-  sheet.getRow(4).height = 18;
 }
 
 // =====================================================================
@@ -282,6 +236,9 @@ export async function exportarProductividadMensual(
   workbook.company = 'Benemérito Hospital General con Especialidades IMSS-Bienestar Juan María de Salvatierra · CLUES BSIMB000672';
   workbook.created = new Date();
 
+  // Logos institucionales: se descargan una vez y se reutilizan en todas las hojas.
+  const logos = await cargarLogosWorkbook(workbook);
+
   const periodoTexto = `PERIODO: ${MESES_TEXTO[mes - 1]} ${anio}`;
   const fechaElaboracion = `Elaborado: ${new Date().toLocaleString('es-MX', { timeZone: 'America/Mazatlan' })}`;
 
@@ -295,13 +252,14 @@ export async function exportarProductividadMensual(
     });
 
     const totalCols = 2 + servicios.length + 1; // COD + INDICADOR + N servicios + TOTAL
+    const charWidths = [8, 45, ...servicios.map(() => 12), 13];
 
-    insertarEncabezadoInstitucional(
-      sheet,
-      'PRODUCTIVIDAD MENSUAL CONSOLIDADA POR SERVICIO',
-      `${periodoTexto}    ·    ${fechaElaboracion}`,
-      totalCols
-    );
+    insertarEncabezadoExcel(sheet, {
+      titulo: 'PRODUCTIVIDAD MENSUAL CONSOLIDADA POR SERVICIO',
+      subtitulo: `${periodoTexto}    ·    ${fechaElaboracion}`,
+      charWidths,
+      logos,
+    });
 
     // Fila 5 — vacía
     sheet.getRow(5).height = 8;
@@ -434,12 +392,12 @@ export async function exportarProductividadMensual(
       pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1 },
     });
 
-    insertarEncabezadoInstitucional(
-      sheet,
-      `PRODUCTIVIDAD MENSUAL — ${sv.nombre.toUpperCase()}`,
-      `${periodoTexto}    ·    ${fechaElaboracion}`,
-      6
-    );
+    insertarEncabezadoExcel(sheet, {
+      titulo: `PRODUCTIVIDAD MENSUAL — ${sv.nombre.toUpperCase()}`,
+      subtitulo: `${periodoTexto}    ·    ${fechaElaboracion}`,
+      charWidths: [8, 52, 11, 11, 11, 13],
+      logos,
+    });
 
     sheet.getRow(5).height = 8;
 
@@ -554,12 +512,12 @@ export async function exportarProductividadMensual(
       pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true },
     });
 
-    insertarEncabezadoInstitucional(
-      sheet,
-      'METADATA DE AUDITORÍA — DESGLOSE POR ORIGEN DE CAPTURA',
-      `${periodoTexto}    ·    ${fechaElaboracion}`,
-      5
-    );
+    insertarEncabezadoExcel(sheet, {
+      titulo: 'METADATA DE AUDITORÍA — DESGLOSE POR ORIGEN DE CAPTURA',
+      subtitulo: `${periodoTexto}    ·    ${fechaElaboracion}`,
+      charWidths: [40, 22, 25, 22, 15],
+      logos,
+    });
 
     sheet.getRow(5).height = 8;
 

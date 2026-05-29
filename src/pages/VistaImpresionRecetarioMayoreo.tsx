@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { formatearRol } from '../types';
+import { EncabezadoOficial } from './components/EncabezadoOficial';
 
 interface Cabecera {
   id: string;
@@ -86,21 +87,11 @@ export const VistaImpresionRecetarioMayoreo: React.FC = () => {
       )}
 
       <div style={hoja}>
-        {/* HEADER OFICIAL CON LOGOS */}
-        <div style={headerOficial}>
-          <img src="/logos/salud_imss_bienestar.png" alt="SALUD · Servicios de Salud · IMSS-Bienestar" style={logoIzq} />
-          <div style={headerTexto}>
-            <div style={hospitalNombre}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
-            <div style={hospitalSubNombre}>"JUAN MARÍA DE SALVATIERRA"</div>
-            <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
-            <div style={coordinacion}>COORDINACIÓN DE ENFERMERÍA</div>
-          </div>
-          <img src="/logos/LOGO_HOSPITAL.png" alt='Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"' style={logoDer} />
-        </div>
+        {/* ENCABEZADO INSTITUCIONAL UNIFICADO */}
+        <EncabezadoOficial formato="SOLICITUD DE MEDICAMENTOS A MAYOREO" />
 
-        {/* TÍTULO */}
+        {/* SUBTÍTULO */}
         <div style={tituloRecuadro}>
-          <div style={tituloPrincipal}>SOLICITUD DE MEDICAMENTOS A MAYOREO</div>
           <div style={tituloSub}>Recetario colectivo · solicitud a granel (no por paciente)</div>
         </div>
 

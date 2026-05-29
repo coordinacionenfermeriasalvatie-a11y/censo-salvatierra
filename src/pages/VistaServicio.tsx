@@ -703,7 +703,7 @@ export function VistaServicio() {
                 onClick={() => setCamillasAbiertas(!camillasAbiertas)}
                 style={camillasToggle}
               >
-                <span>{camillasAbiertas ? '▼' : '▶'} 📋 CAMILLAS NO CENSABLES</span>
+                <span>{camillasAbiertas ? '▼' : '▶'} 📋 NO CENSABLES</span>
                 <span style={camillasInfo}>
                   {ocupadasCamillas} de {totalCamillas} ocupadas
                 </span>

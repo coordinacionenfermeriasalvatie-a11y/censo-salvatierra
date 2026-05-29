@@ -17,6 +17,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { EncabezadoOficial } from './components/EncabezadoOficial';
 
 interface FilaExport {
   servicio_id: number;
@@ -151,17 +152,8 @@ export const VistaImpresionProductividad: React.FC = () => {
       )}
 
       <div className="hoja">
-        {/* ENCABEZADO INSTITUCIONAL CON LOGOS — SIN FONDO DE COLOR */}
-        <div className="encabezado-flex">
-          <img src="/logos/salud_imss_bienestar.png" alt="SALUD · Servicios de Salud · IMSS-Bienestar" className="logo-encabezado logo-izq" />
-          <div className="encabezado">
-            <div className="linea-titulo-1">BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
-            <div className="linea-titulo-2">"JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672</div>
-            <div className="linea-coordinacion">COORDINACIÓN DE ENFERMERÍA</div>
-            <div className="linea-subtitulo">PRODUCTIVIDAD MENSUAL CONSOLIDADA — REPORTE EJECUTIVO</div>
-          </div>
-          <img src="/logos/LOGO_HOSPITAL.png" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado logo-der" />
-        </div>
+        {/* ENCABEZADO INSTITUCIONAL UNIFICADO */}
+        <EncabezadoOficial formato="PRODUCTIVIDAD MENSUAL CONSOLIDADA — REPORTE EJECUTIVO" />
 
         <div className="sub-encabezado">
           <div><strong>PERIODO:</strong> {MESES_TEXTO[mes - 1]} {anio}</div>

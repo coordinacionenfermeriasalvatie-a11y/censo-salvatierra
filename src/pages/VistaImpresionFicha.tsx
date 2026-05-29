@@ -19,6 +19,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { EncabezadoOficial } from './components/EncabezadoOficial';
 
 interface FichaPaciente {
   id: string;
@@ -188,12 +189,8 @@ export function VistaImpresionFicha() {
 
       {/* TARJETA */}
       <div className="ficha-card" style={tarjeta}>
-        {/* Encabezado: logos + título */}
-        <div style={cabeza}>
-          <img src="/logos/imss_bienestar.png" alt="IMSS-Bienestar" style={logoIzq} />
-          <div style={titulo}>TARJETA DE IDENTIFICACIÓN</div>
-          <img src="/logos/LOGO_HOSPITAL.png" alt="Benemérito Hospital General con Especialidades IMSS-Bienestar Juan María de Salvatierra" style={logoDer} />
-        </div>
+        {/* ENCABEZADO INSTITUCIONAL UNIFICADO */}
+        <EncabezadoOficial formato="TARJETA DE IDENTIFICACIÓN" alturaLogos={44} margenInferior={14} />
 
         {/* Nombre + Cama */}
         <div style={filaNombre}>

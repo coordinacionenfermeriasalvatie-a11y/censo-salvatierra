@@ -85,7 +85,7 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
       <header style={styles.header}>
         <div style={styles.headerLogos}>
           <img
-            src="/logos/imss_bienestar.png"
+            src="/logos/salud_imss_bienestar.png"
             alt="IMSS Bienestar"
             style={styles.logoChico}
           />

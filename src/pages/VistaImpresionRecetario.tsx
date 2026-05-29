@@ -345,7 +345,7 @@ export const VistaImpresionRecetario: React.FC = () => {
       </div>
 
       {/* Encabezado institucional con logos */}
-      <EncabezadoOficial subtitulo="RECETARIO COLECTIVO DE PACIENTES — INDICACIONES MÉDICAS" />
+      <EncabezadoOficial formato="RECETARIO COLECTIVO DE PACIENTES — INDICACIONES MÉDICAS" />
 
       {/* Sub-encabezado */}
       <div style={subHeaderBox}>

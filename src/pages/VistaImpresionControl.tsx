@@ -36,6 +36,7 @@ interface PacienteImpresion {
   // Identificación
   id: string;
   numero_cama: string;
+  es_censable: boolean;
   subservicio: string | null;
   subservicio_orden: number | null;
   subservicio_completo: string | null;
@@ -205,6 +206,7 @@ export const VistaImpresionControl: React.FC = () => {
             estado,
             cama:camas!inner (
               numero_cama,
+              es_censable,
               subservicio:subservicios!inner ( id, nombre, nombre_completo, orden, servicio_id )
             ),
             especialidad:catalogo_especialidades ( nombre ),
@@ -234,6 +236,7 @@ export const VistaImpresionControl: React.FC = () => {
           return {
             id: p.id,
             numero_cama: cama?.numero_cama ?? '',
+            es_censable: cama?.es_censable ?? true,
             subservicio: sub?.nombre ?? null,
             subservicio_orden: sub?.orden ?? null,
             subservicio_completo: sub?.nombre_completo ?? null,
@@ -285,6 +288,8 @@ export const VistaImpresionControl: React.FC = () => {
           const oa = a.subservicio_orden ?? 9999;
           const ob = b.subservicio_orden ?? 9999;
           if (oa !== ob) return oa - ob;
+          // Dentro del subservicio: censables primero, luego no censables.
+          if (a.es_censable !== b.es_censable) return a.es_censable ? -1 : 1;
           const na = parseInt(a.numero_cama, 10);
           const nb = parseInt(b.numero_cama, 10);
           if (!isNaN(na) && !isNaN(nb)) return na - nb;
@@ -339,7 +344,7 @@ export const VistaImpresionControl: React.FC = () => {
       </div>
 
       {/* Encabezado institucional con logos */}
-      <EncabezadoOficial subtitulo="FORMATO CONTROL DE PACIENTES — INTERVENCIONES DE ENFERMERÍA" />
+      <EncabezadoOficial formato="FORMATO CONTROL DE PACIENTES — INTERVENCIONES DE ENFERMERÍA" />
 
       {/* Sub-encabezado */}
       <div style={subHeaderBox}>
@@ -392,11 +397,12 @@ export const VistaImpresionControl: React.FC = () => {
             <th colSpan={1} className="g-obs">OBS. GENERAL</th>
           </tr>
           <tr className="col-row">
-            {/* IDENTIFICACIÓN (9) — CAMA/EDAD/SEXO horizontal corto, resto vertical */}
+            {/* IDENTIFICACIÓN (9) — CAMA/NOMBRE horizontal; EDAD/SEXO verticales
+                (de abajo hacia arriba) para que no se partan en columna estrecha */}
             <th className="col-h">CAMA</th>
-            <th className="col-v">NOMBRE COMPLETO</th>
-            <th className="col-h">EDAD</th>
-            <th className="col-h">SEXO</th>
+            <th className="col-h">NOMBRE COMPLETO</th>
+            <th className="col-v">EDAD</th>
+            <th className="col-v">SEXO</th>
             <th className="col-v">NSS / CURP / EXPEDIENTE</th>
             <th className="col-v">DIAGNÓSTICO DE INGRESO</th>
             <th className="col-v">ESPECIALIDAD</th>
@@ -445,6 +451,17 @@ export const VistaImpresionControl: React.FC = () => {
             const subActual = p.subservicio;
             const subAnterior = idx > 0 ? pacientes[idx - 1].subservicio : null;
             const inicioGrupo = haySubservicios && subActual !== subAnterior;
+            // Divisor "NO CENSABLES": primera cama no censable de su subservicio
+            // (la precede una censable del mismo subservicio). Separa reposets/
+            // cunas/camillas de las camas censables dentro del mismo bloque.
+            const previo = idx > 0 ? pacientes[idx - 1] : null;
+            const inicioNoCensable =
+              !p.es_censable && previo != null && previo.es_censable && previo.subservicio === subActual;
+            const divisorNoCensable = inicioNoCensable ? (
+              <tr key={`nocens-${p.id}`} className="sub-nocensable">
+                <td colSpan={36}>NO CENSABLES</td>
+              </tr>
+            ) : null;
             const encabezadoSub = inicioGrupo ? (
               <tr
                 key={`sub-${subActual}-${p.id}`}
@@ -461,6 +478,7 @@ export const VistaImpresionControl: React.FC = () => {
             return (
               <React.Fragment key={p.id}>
                 {encabezadoSub}
+                {divisorNoCensable}
                 <tr>
               {/* IDENTIFICACIÓN */}
               <td className="c-cama">{p.numero_cama}</td>
@@ -596,6 +614,23 @@ export const VistaImpresionControl: React.FC = () => {
           font-size: 9pt;
           color: #7d5b2f;
           text-transform: uppercase;
+        }
+        /* Divisor de camas no censables (reposets/cunas/camillas) dentro
+           del mismo subservicio. NO rompe página: queda pegado a su bloque. */
+        .tabla-control .sub-nocensable td {
+          background: #F3EFE3 !important;
+          border-left: 6px solid #9c7b3f;
+          border-top: 2px dashed #C39C59;
+          padding: 3px 10px;
+          text-align: left;
+          font-family: Arial, sans-serif;
+          font-size: 9pt;
+          font-weight: 800;
+          letter-spacing: 1px;
+          color: #7d5b2f;
+          text-transform: uppercase;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
         }
 
         @media screen {

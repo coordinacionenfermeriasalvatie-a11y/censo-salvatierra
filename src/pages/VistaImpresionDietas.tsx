@@ -20,6 +20,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { EncabezadoOficial } from './components/EncabezadoOficial';
 
 interface DietaImpresion {
   paciente_id: string;
@@ -50,6 +51,8 @@ export const VistaImpresionDietas: React.FC = () => {
   const [servicio, setServicio] = useState<ServicioInfo | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Solicitante = usuario que imprime; se firma con su nombre y matrícula.
+  const [solicitante, setSolicitante] = useState<{ nombre_completo: string; matricula: string } | null>(null);
 
   // =====================================================================
   // CARGA DE DATOS
@@ -108,6 +111,17 @@ export const VistaImpresionDietas: React.FC = () => {
         });
 
         setDietas(unidas);
+
+        // Quién imprime/solicita: su nombre y matrícula van en la firma.
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: usr } = await supabase
+            .from('perfiles')
+            .select('nombre_completo, matricula')
+            .eq('id', user.id)
+            .single();
+          if (usr) setSolicitante(usr as { nombre_completo: string; matricula: string });
+        }
       } catch (e: any) {
         console.error('Error cargando dietas:', e);
         setError(`No se pudo cargar: ${e.message || e}`);
@@ -197,31 +211,14 @@ export const VistaImpresionDietas: React.FC = () => {
             ✕ Cerrar
           </button>
           <span className="vista-info">
-            Vista previa · Tamaño: <strong>Carta vertical</strong> · {dietas.length} pacientes · {dietasActivas} dietas activas
+            Vista previa · Tamaño: <strong>Carta horizontal</strong> · {dietas.length} pacientes · {dietasActivas} dietas activas
           </span>
         </div>
       )}
 
       <div className="hoja">
-        {/* ENCABEZADO INSTITUCIONAL CON LOGOS — SIN FONDO DE COLOR */}
-        <div className="encabezado-flex">
-          <img src="/logos/salud_imss_bienestar.png" alt="SALUD · Servicios de Salud · IMSS-Bienestar" className="logo-encabezado logo-izq" />
-          <div className="encabezado">
-            <div className="linea-titulo-1">
-              BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR
-            </div>
-            <div className="linea-titulo-2">
-              "JUAN MARÍA DE SALVATIERRA" — CLUES BSIMB000672
-            </div>
-            <div className="linea-coordinacion">
-              COORDINACIÓN DE ENFERMERÍA
-            </div>
-            <div className="linea-subtitulo">
-              SOLICITUD DE DIETAS — SERVICIO DE NUTRICIÓN Y DIETOLOGÍA
-            </div>
-          </div>
-          <img src="/logos/LOGO_HOSPITAL.png" alt='Hospital "Juan María de Salvatierra"' className="logo-encabezado logo-der" />
-        </div>
+        {/* ENCABEZADO INSTITUCIONAL UNIFICADO */}
+        <EncabezadoOficial formato="SOLICITUD DE DIETAS — SERVICIO DE NUTRICIÓN Y DIETOLOGÍA" />
 
         {/* SUB-ENCABEZADO DE SERVICIO */}
         <div className="sub-encabezado">
@@ -286,11 +283,14 @@ export const VistaImpresionDietas: React.FC = () => {
           <em>Solicitud emitida por el servicio de enfermería para coordinación con Nutrición y Cocina. Cualquier cambio en tipo o consistencia debe notificarse por escrito.</em>
         </div>
 
-        {/* PIE CON FIRMA — 1 firma: Enfermera(o) solicitante */}
+        {/* PIE CON FIRMA — 1 firma: Enfermera(o) solicitante (auto del usuario) */}
         <div className="firma">
           <div className="linea-firma"></div>
           <div className="firma-titulo">ENFERMERA(O) SOLICITANTE</div>
-          <div className="firma-sub">Nombre completo · Firma · Turno: ______</div>
+          {solicitante && (
+            <div className="firma-nombre">{solicitante.nombre_completo} · Matrícula {solicitante.matricula}</div>
+          )}
+          <div className="firma-sub">Firma · Turno: ______</div>
         </div>
 
         {/* FOOTER */}
@@ -309,8 +309,8 @@ export const VistaImpresionDietas: React.FC = () => {
 // =====================================================================
 const cssImpresion = `
 @page {
-  size: letter portrait;
-  margin: 12mm 10mm;
+  size: letter landscape;
+  margin: 10mm 12mm;
 }
 
 * { box-sizing: border-box; }
@@ -378,8 +378,8 @@ body {
 }
 
 .hoja {
-  width: 190mm;
-  min-height: 273mm;
+  width: 255mm;
+  min-height: 196mm;
   margin: 12px auto;
   padding: 8mm;
   background: #fff;
@@ -597,6 +597,13 @@ body {
   font-weight: 700;
   letter-spacing: 0.5px;
   color: #0E6755;
+  margin-top: 2px;
+}
+
+.firma-nombre {
+  font-size: 8.5pt;
+  font-weight: 700;
+  color: #000;
   margin-top: 2px;
 }
 

@@ -25,8 +25,10 @@ const BitacoraSupervision        = lazy(() => import('./pages/BitacoraSupervisio
 const BitacoraPsicotropicos      = lazy(() => import('./pages/BitacoraPsicotropicos').then(m => ({ default: m.BitacoraPsicotropicos })))
 const VistaImpresionBitacoraSemana = lazy(() => import('./pages/VistaImpresionBitacoraSemana').then(m => ({ default: m.VistaImpresionBitacoraSemana })))
 const Supervision                = lazy(() => import('./pages/Supervision').then(m => ({ default: m.Supervision })))
+const MedicosAdscritos           = lazy(() => import('./pages/MedicosAdscritos').then(m => ({ default: m.MedicosAdscritos })))
 const Instructivo                = lazy(() => import('./pages/Instructivo').then(m => ({ default: m.Instructivo })))
 const VistaImpresionFicha        = lazy(() => import('./pages/VistaImpresionFicha').then(m => ({ default: m.VistaImpresionFicha })))
+const VistaImpresionFondoFijo    = lazy(() => import('./pages/VistaImpresionFondoFijo').then(m => ({ default: m.VistaImpresionFondoFijo })))
 
 /**
  * Layout para rutas autenticadas. Monta el PresenceProvider para que toda
@@ -102,6 +104,7 @@ export function App() {
               <Route path="/bitacora-psicotropicos" element={<BitacoraPsicotropicos />} />
               <Route path="/imprimir/bitacora-semana" element={<VistaImpresionBitacoraSemana />} />
               <Route path="/supervision" element={<Supervision />} />
+              <Route path="/medicos-adscritos" element={<MedicosAdscritos />} />
               <Route path="/instructivo" element={<Instructivo />} />
               <Route path="/cambiar-contrasena" element={<CambiarPassword />} />
               <Route path="/imprimir/dietas/:servicioId" element={<VistaImpresionDietas />} />
@@ -109,6 +112,7 @@ export function App() {
               <Route path="/imprimir/recetario/:servicioId" element={<VistaImpresionRecetario />} />
               <Route path="/imprimir/control/:servicioId" element={<VistaImpresionControl />} />
               <Route path="/imprimir/ficha/:pacienteId" element={<VistaImpresionFicha />} />
+              <Route path="/imprimir/fondo-fijo" element={<VistaImpresionFondoFijo />} />
               <Route path="*" element={<Navigate to="/" />} />
             </Route>
           )}

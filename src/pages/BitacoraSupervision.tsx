@@ -50,6 +50,9 @@ interface BitacoraRow {
   medico_cedula: string | null;
   enfermera_nombre: string;
   enfermera_matricula: string | null;
+  cancelada_en: string | null;
+  cancelada_motivo: string | null;
+  cancelada_nombre: string | null;
 }
 
 const TURNO_INFO: Record<Turno, { label: string; horario: string; color: string }> = {
@@ -111,8 +114,11 @@ export const BitacoraSupervision: React.FC = () => {
   }, [filas]);
 
   const conteoEstado = useMemo(() => {
-    const c = { pendiente: 0, aprobada: 0, canjeada: 0, rechazada: 0 };
-    for (const f of filas) c[f.estado_aprobacion]++;
+    const c = { pendiente: 0, aprobada: 0, canjeada: 0, rechazada: 0, anulada: 0 };
+    for (const f of filas) {
+      if (f.cancelada_en) c.anulada++;
+      else c[f.estado_aprobacion]++;
+    }
     return c;
   }, [filas]);
 
@@ -165,6 +171,23 @@ export const BitacoraSupervision: React.FC = () => {
       })
       .eq('id', id);
     if (err) { alert('Error: ' + err.message); return; }
+    cargar();
+  };
+
+  // Anular un vale (libro de controlados: no se borra, se marca anulado con
+  // motivo; si estaba canjeado, el RPC revierte el movimiento de stock).
+  const anular = async (id: string, folio: string, estaCanjeada: boolean) => {
+    if (!perfil) return;
+    const aviso = estaCanjeada
+      ? `Anular el vale ${folio}. Estaba CANJEADA: se revertirá el medicamento utilizado al stock.\n\nMotivo de la anulación:`
+      : `Anular el vale ${folio} (queda en el historial).\n\nMotivo de la anulación:`;
+    const motivo = window.prompt(aviso);
+    if (motivo === null) return;
+    if (!motivo.trim()) { alert('Debes indicar un motivo para anular.'); return; }
+    const { error: err } = await supabase.rpc('fn_anular_receta_controlada', {
+      p_id: id, p_motivo: motivo.trim(),
+    });
+    if (err) { alert('Error al anular: ' + err.message); return; }
     cargar();
   };
 
@@ -227,6 +250,7 @@ export const BitacoraSupervision: React.FC = () => {
         <Kpi label="Aprobadas"  valor={conteoEstado.aprobada}  color="#0E6755" />
         <Kpi label="Canjeadas"  valor={conteoEstado.canjeada}  color="#2c5fa3" />
         <Kpi label="Rechazadas" valor={conteoEstado.rechazada} color="#A32D2D" />
+        <Kpi label="Anuladas"   valor={conteoEstado.anulada}   color="#666" />
         <Kpi label="Total"      valor={filas.length}           color="#000" />
       </div>
 
@@ -244,6 +268,7 @@ export const BitacoraSupervision: React.FC = () => {
             onAprobar={aprobar}
             onRechazar={rechazar}
             onCanjear={marcarCanjeada}
+            onAnular={anular}
           />
         ))
       )}
@@ -266,7 +291,8 @@ const SeccionTurno: React.FC<{
   onAprobar: (id: string) => void;
   onRechazar: (id: string) => void;
   onCanjear: (id: string) => void;
-}> = ({ turno, filas, puedeAprobar, onAprobar, onRechazar, onCanjear }) => {
+  onAnular: (id: string, folio: string, estaCanjeada: boolean) => void;
+}> = ({ turno, filas, puedeAprobar, onAprobar, onRechazar, onCanjear, onAnular }) => {
   const info = TURNO_INFO[turno];
   return (
     <div style={seccion}>
@@ -297,8 +323,10 @@ const SeccionTurno: React.FC<{
             </tr>
           </thead>
           <tbody>
-            {filas.map((f, i) => (
-              <tr key={f.id} style={i % 2 === 0 ? trAlt : undefined}>
+            {filas.map((f, i) => {
+              const anulada = !!f.cancelada_en;
+              return (
+              <tr key={f.id} style={{ ...(i % 2 === 0 ? trAlt : {}), ...(anulada ? trAnulada : {}) }}>
                 <td style={td}><strong>{f.folio}</strong></td>
                 <td style={tdSm}>{new Date(f.creado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</td>
                 <td style={tdSm}>{f.servicio_codigo}<br /><span style={{ color: '#888', fontSize: 10 }}>{f.paciente_subservicio}</span></td>
@@ -311,14 +339,18 @@ const SeccionTurno: React.FC<{
                 <td style={tdSm}>{f.medico_nombre}<br /><span style={{ color: '#888', fontSize: 10 }}>Céd. {f.medico_cedula}</span></td>
                 <td style={tdSm}>{f.enfermera_nombre}<br /><span style={{ color: '#888', fontSize: 10 }}>Mat. {f.enfermera_matricula}</span></td>
                 <td style={td}>
-                  <span style={{
-                    ...chipEstado,
-                    background: ESTADO_INFO[f.estado_aprobacion].color,
-                    color: ESTADO_INFO[f.estado_aprobacion].fg,
-                  }}>
-                    {ESTADO_INFO[f.estado_aprobacion].label}
-                  </span>
-                  {f.aprobado_nombre && (
+                  {anulada ? (
+                    <span style={{ ...chipEstado, background: '#eee', color: '#666' }}>Anulada</span>
+                  ) : (
+                    <span style={{
+                      ...chipEstado,
+                      background: ESTADO_INFO[f.estado_aprobacion].color,
+                      color: ESTADO_INFO[f.estado_aprobacion].fg,
+                    }}>
+                      {ESTADO_INFO[f.estado_aprobacion].label}
+                    </span>
+                  )}
+                  {f.aprobado_nombre && !anulada && (
                     <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
                       {f.aprobado_nombre}
                     </div>
@@ -328,15 +360,21 @@ const SeccionTurno: React.FC<{
                       Motivo: {f.rechazo_motivo}
                     </div>
                   )}
+                  {anulada && (
+                    <div style={{ fontSize: 10, color: '#A32D2D', marginTop: 2 }}>
+                      Anulada{f.cancelada_nombre ? ` por ${f.cancelada_nombre}` : ''}
+                      {f.cancelada_motivo ? ` — ${f.cancelada_motivo}` : ''}
+                    </div>
+                  )}
                 </td>
                 <td style={tdAcciones}>
-                  {puedeAprobar && f.estado_aprobacion === 'pendiente' && (
+                  {puedeAprobar && !anulada && f.estado_aprobacion === 'pendiente' && (
                     <>
                       <button onClick={() => onAprobar(f.id)} style={btnAprobar} title="Dar visto bueno">✓ Aprobar</button>
                       <button onClick={() => onRechazar(f.id)} style={btnRechazar} title="Rechazar con motivo">✕ Rechazar</button>
                     </>
                   )}
-                  {puedeAprobar && f.estado_aprobacion === 'aprobada' && (
+                  {puedeAprobar && !anulada && f.estado_aprobacion === 'aprobada' && (
                     <button onClick={() => onCanjear(f.id)} style={btnCanjear} title="Marcar como canjeada (medicamento entregado)">📦 Canjeada</button>
                   )}
                   <button
@@ -344,9 +382,17 @@ const SeccionTurno: React.FC<{
                     style={btnImprimir}
                     title="Ver/imprimir receta"
                   >🖨️</button>
+                  {puedeAprobar && !anulada && (
+                    <button
+                      onClick={() => onAnular(f.id, f.folio, f.estado_aprobacion === 'canjeada')}
+                      style={btnAnular}
+                      title="Anular vale (queda en el historial)"
+                    >✕ Anular</button>
+                  )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}
@@ -364,7 +410,7 @@ const controles: React.CSSProperties = { display: 'flex', gap: 12, marginBottom:
 const lbl: React.CSSProperties = { display: 'block', fontSize: 11, color: '#7d5b2f', fontWeight: 600, marginBottom: 3 };
 const input: React.CSSProperties = { padding: '6px 10px', border: '1px solid #C39C59', borderRadius: 4, fontSize: 13, background: '#fff' };
 const btnExportar: React.CSSProperties = { padding: '8px 14px', background: '#0E6755', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' };
-const kpis: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 12 };
+const kpis: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginBottom: 12 };
 const kpiCard: React.CSSProperties = { background: '#fff', border: '1px solid #C39C59', borderRadius: 6, padding: 10, textAlign: 'center' };
 const kpiValor: React.CSSProperties = { fontSize: 24, fontWeight: 800, lineHeight: 1 };
 const kpiLabel: React.CSSProperties = { fontSize: 10, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 4 };
@@ -377,10 +423,12 @@ const td: React.CSSProperties = { padding: '6px 8px', borderBottom: '1px solid #
 const tdSm: React.CSSProperties = { ...td, fontSize: 10 };
 const tdAcciones: React.CSSProperties = { ...td, whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', gap: 2 };
 const trAlt: React.CSSProperties = { background: '#fafafa' };
+const trAnulada: React.CSSProperties = { background: '#f3f3f3', opacity: 0.6, textDecoration: 'line-through' };
 const chipEstado: React.CSSProperties = { padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700, display: 'inline-block' };
 const btnAprobar: React.CSSProperties = { background: '#0E6755', color: '#fff', border: 'none', borderRadius: 3, padding: '3px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' };
 const btnRechazar: React.CSSProperties = { background: '#A32D2D', color: '#fff', border: 'none', borderRadius: 3, padding: '3px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' };
 const btnCanjear: React.CSSProperties = { background: '#2c5fa3', color: '#fff', border: 'none', borderRadius: 3, padding: '3px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' };
 const btnImprimir: React.CSSProperties = { background: '#fff', color: '#7d5b2f', border: '1px solid #C39C59', borderRadius: 3, padding: '3px 8px', fontSize: 10, fontWeight: 600, cursor: 'pointer' };
+const btnAnular: React.CSSProperties = { background: '#fff', color: '#A32D2D', border: '1px solid #A32D2D', borderRadius: 3, padding: '3px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer' };
 const errBanner: React.CSSProperties = { background: '#fbeaea', border: '1px solid #A32D2D', color: '#A32D2D', padding: 10, borderRadius: 4, marginBottom: 10 };
 const cargandoStyle: React.CSSProperties = { padding: 40, textAlign: 'center', color: '#888', fontStyle: 'italic' };

@@ -54,7 +54,7 @@ export function Login() {
     <div style={styles.contenedor}>
       <header style={styles.header}>
         <img
-          src="/logos/imss_bienestar.png"
+          src="/logos/salud_imss_bienestar.png"
           alt="IMSS Bienestar - Secretaria de Salud"
           style={styles.logoIzquierda}
         />

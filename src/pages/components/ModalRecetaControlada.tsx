@@ -27,6 +27,21 @@ interface MedicamentoControlado {
   grupo_control: 'I' | 'II' | 'III' | 'IV' | 'V';
 }
 
+interface MedicoAdscrito {
+  id: string;
+  nombre: string;
+  cedula: string | null;
+  especialidad: string | null;
+}
+
+// Mismas listas que el recetario general (VistaRecetario / ModalRecetarioMayoreo).
+const VIAS_COMUNES = ['IV', 'IM', 'SC', 'VO', 'SL', 'INH', 'TOP', 'OFT', 'OTICO', 'RECTAL'];
+const FRECUENCIAS_COMUNES = [
+  'CADA 1 HR', 'CADA 2 HRS', 'CADA 4 HRS', 'CADA 6 HRS', 'CADA 8 HRS',
+  'CADA 12 HRS', 'CADA 24 HRS', 'CADA 48 HRS', 'CADA 72 HRS',
+];
+const MEDICO_MANUAL = '__manual__';
+
 interface Props {
   servicioId: number;
   pacientes: Paciente[];          // de la VistaRecetario, ya filtrados al servicio
@@ -45,6 +60,8 @@ const GRUPO_LABEL: Record<string, string> = {
 export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, pacienteInicialId, onCerrar }) => {
   const { perfil } = useAuth();
   const [medicamentos, setMedicamentos] = useState<MedicamentoControlado[]>([]);
+  const [medicos, setMedicos] = useState<MedicoAdscrito[]>([]);
+  const [medicoSel, setMedicoSel] = useState('');
   const [pacienteId, setPacienteId] = useState(pacienteInicialId ?? '');
   const [medicamentoId, setMedicamentoId] = useState<number | ''>('');
   const [dosis, setDosis] = useState('');
@@ -72,6 +89,33 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
       setMedicamentos((data || []) as MedicamentoControlado[]);
     })();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from('medicos_adscritos')
+        .select('id, nombre, cedula, especialidad')
+        .eq('activo', true)
+        .order('nombre');
+      const lista = (data || []) as MedicoAdscrito[];
+      setMedicos(lista);
+      // Catálogo vacío → arrancar en captura manual para no bloquear la receta.
+      if (lista.length === 0) setMedicoSel(MEDICO_MANUAL);
+    })();
+  }, []);
+
+  const onElegirMedico = (val: string) => {
+    setMedicoSel(val);
+    if (val === '' || val === MEDICO_MANUAL) {
+      if (val === '') { setMedicoNombre(''); setMedicoCedula(''); setMedicoEspecialidad(''); }
+      return;
+    }
+    const m = medicos.find(x => x.id === val);
+    if (m) {
+      setMedicoNombre(m.nombre);
+      setMedicoCedula(m.cedula ?? '');
+      setMedicoEspecialidad(m.especialidad ?? '');
+    }
+  };
 
   const paciente = useMemo(
     () => pacientes.find(p => p.paciente_id === pacienteId),
@@ -262,11 +306,17 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
               </div>
               <div>
                 <label style={lbl}>Vía *</label>
-                <input value={via} onChange={e => setVia(e.target.value)} placeholder="IV, oral, SC..." style={input} />
+                <select value={via} onChange={e => setVia(e.target.value)} style={input}>
+                  <option value="">-- elige --</option>
+                  {VIAS_COMUNES.map(v => <option key={v} value={v}>{v}</option>)}
+                </select>
               </div>
               <div>
                 <label style={lbl}>Frecuencia *</label>
-                <input value={frecuencia} onChange={e => setFrecuencia(e.target.value)} placeholder="c/8 h, una vez..." style={input} />
+                <select value={frecuencia} onChange={e => setFrecuencia(e.target.value)} style={input}>
+                  <option value="">-- elige --</option>
+                  {FRECUENCIAS_COMUNES.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
               </div>
               <div>
                 <label style={lbl}>Duración</label>
@@ -295,15 +345,32 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
           <div style={seccion}>
             <div style={seccionTit}>3. Médico prescriptor</div>
             <div style={gridCampos}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={lbl}>Nombre completo *</label>
-                <input value={medicoNombre} onChange={e => setMedicoNombre(e.target.value)} style={input} />
+              <div style={{ gridColumn: 'span 3' }}>
+                <label style={lbl}>Médico *</label>
+                <select value={medicoSel} onChange={e => onElegirMedico(e.target.value)} style={input}>
+                  <option value="">-- elige médico del catálogo --</option>
+                  {medicos.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.nombre}{m.especialidad ? ` · ${m.especialidad}` : ''}
+                    </option>
+                  ))}
+                  <option value={MEDICO_MANUAL}>✍️ Escribir médico manualmente</option>
+                </select>
+                {medicoSel !== MEDICO_MANUAL && medicoSel !== '' && (
+                  <div style={ayuda}>Cédula y especialidad se autocompletaron; puedes ajustarlas abajo.</div>
+                )}
               </div>
+              {medicoSel === MEDICO_MANUAL && (
+                <div style={{ gridColumn: 'span 3' }}>
+                  <label style={lbl}>Nombre completo *</label>
+                  <input value={medicoNombre} onChange={e => setMedicoNombre(e.target.value)} placeholder="Dra. ..." style={input} />
+                </div>
+              )}
               <div>
                 <label style={lbl}>Cédula profesional *</label>
                 <input value={medicoCedula} onChange={e => setMedicoCedula(e.target.value)} style={input} />
               </div>
-              <div>
+              <div style={{ gridColumn: 'span 2' }}>
                 <label style={lbl}>Especialidad</label>
                 <input value={medicoEspecialidad} onChange={e => setMedicoEspecialidad(e.target.value)} style={input} />
               </div>
@@ -358,6 +425,7 @@ const body: React.CSSProperties = { flex: 1, overflowY: 'auto', padding: 16, dis
 const seccion: React.CSSProperties = { border: '1px solid #eee', borderRadius: 6, padding: 12 };
 const seccionTit: React.CSSProperties = { fontWeight: 700, color: '#0E6755', fontSize: 13, marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid #eee' };
 const lbl: React.CSSProperties = { display: 'block', fontSize: 11, color: '#7d5b2f', fontWeight: 600, marginBottom: 3 };
+const ayuda: React.CSSProperties = { fontSize: 10.5, color: '#0E6755', marginTop: 3 };
 const input: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '6px 10px',
   border: '1px solid #C39C59', borderRadius: 4, fontSize: 13, fontFamily: 'inherit', background: '#fff',

@@ -212,7 +212,8 @@ export const BitacoraPsicotropicos: React.FC = () => {
           <p style={subt}>Inventario con fondo fijo · entradas y salidas por turno · CLUES BSIMB000672</p>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-          <button onClick={() => window.print()} style={btnImprimir}>🖨️ Hoja del día</button>
+          <button onClick={() => window.open(`/imprimir/fondo-fijo?fecha=${fecha}&supervision=1`, '_blank')} style={btnImprimir}>🖨️ Hoja Sup. I</button>
+          <button onClick={() => window.open(`/imprimir/fondo-fijo?fecha=${fecha}&supervision=2`, '_blank')} style={btnImprimir}>🖨️ Hoja Sup. II</button>
           {puedeHistoricoYSemanal && (
             <>
               <button onClick={() => window.open(`/imprimir/bitacora-semana?desde=${lunesDeSemana(fecha)}`, '_blank')} style={btnImprimir}>📅 Imprimir Semana</button>

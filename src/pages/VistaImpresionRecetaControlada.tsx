@@ -9,6 +9,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { formatearRol } from '../types';
+import { EncabezadoOficial } from './components/EncabezadoOficial';
 
 interface Receta {
   id: string;
@@ -115,22 +116,12 @@ const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ rece
 
   return (
     <div style={boleta}>
-      {/* HEADER OFICIAL CON LOGOS — SIN FONDOS DE COLOR */}
-      <div style={headerOficial}>
-        <img src="/logos/salud_imss_bienestar.png" alt="SALUD · Servicios de Salud · IMSS-Bienestar" style={logoIzq} />
-        <div style={headerTexto}>
-          <div style={hospitalNombre}>BENEMÉRITO HOSPITAL GENERAL CON ESPECIALIDADES IMSS-BIENESTAR</div>
-          <div style={hospitalSubNombre}>"JUAN MARÍA DE SALVATIERRA"</div>
-          <div style={clues}>CLUES: BSIMB000672 · La Paz, Baja California Sur</div>
-          <div style={coordinacion}>COORDINACIÓN DE ENFERMERÍA</div>
-        </div>
-        <img src="/logos/LOGO_HOSPITAL.png" alt='Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"' style={logoDer} />
-      </div>
+      {/* ENCABEZADO INSTITUCIONAL UNIFICADO */}
+      <EncabezadoOficial formato="SOLICITUD DE MEDICAMENTO CONTROLADO" />
 
       {/* TÍTULO Y BADGE */}
       <div style={tituloFila}>
         <div style={tituloRecuadro}>
-          <div style={tituloPrincipal}>SOLICITUD DE MEDICAMENTO CONTROLADO</div>
           <div style={tituloGrupo}>{GRUPO_LABEL[receta.medicamento_grupo] || `GRUPO ${receta.medicamento_grupo}`}</div>
         </div>
         <div style={{ ...badgeStyle, background: badge.color, color: badge.fg }}>{badge.texto}</div>
@@ -261,9 +252,9 @@ const tituloFila: React.CSSProperties = {
 };
 const tituloRecuadro: React.CSSProperties = {
   background: '#A32D2D', color: '#fff', textAlign: 'center', padding: '4px 6px', borderRadius: 3, flex: 1,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
 };
-const tituloPrincipal: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: 0.5 };
-const tituloGrupo: React.CSSProperties = { fontSize: 9, fontWeight: 600, marginTop: 1 };
+const tituloGrupo: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: 0.5 };
 const badgeStyle: React.CSSProperties = {
   padding: '6px 10px', borderRadius: 3, fontSize: 9, fontWeight: 700, letterSpacing: 0.5,
   display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', maxWidth: 130,
