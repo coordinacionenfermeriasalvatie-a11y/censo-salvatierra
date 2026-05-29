@@ -23,6 +23,7 @@ import {
   esJefeOAdmin,
   formatearRol,
   formatearTitulo,
+  serviciosDeScope,
 } from '../types';
 
 type Periodo = 'dia' | 'semana' | 'mes';
@@ -118,9 +119,14 @@ export function TableroMaestro() {
   const tieneAcceso          = perfil != null && ROLES_VEN_TABLERO.includes(perfil.rol);
   const tieneTableroCompleto = perfil != null && ROLES_TABLERO_COMPLETO.includes(perfil.rol);
   const esAdmin              = esAdminGlobal(perfil?.rol);
-  // Si NO es admin global y tiene servicio asignado, todas las queries se
-  // restringen a ese servicio (gestor de servicio).
-  const servicioRestriccion: number | null = !esAdmin ? (perfil?.servicio_id ?? null) : null;
+  // Si NO es admin global y tiene servicio(s) asignado(s), todas las queries se
+  // restringen a esos servicios (gestor de uno o varios servicios). Lista vacía
+  // (admin o sin servicio) => null = sin restricción.
+  const serviciosRestriccion: number[] | null = (() => {
+    if (esAdmin) return null;
+    const ids = serviciosDeScope(perfil);
+    return ids.length > 0 ? ids : null;
+  })();
 
   // ---- Estado de período ----
   // Para roles sin tablero completo arrancamos en 'dia' (su única opción).
@@ -184,8 +190,8 @@ export function TableroMaestro() {
         .from('v_tablero_ocupacion')
         .select('*')
         .order('orden');
-      if (servicioRestriccion != null) {
-        qOcup = qOcup.eq('servicio_id', servicioRestriccion);
+      if (serviciosRestriccion != null) {
+        qOcup = qOcup.in('servicio_id', serviciosRestriccion);
       }
       const promOcup = qOcup;
 
@@ -202,7 +208,7 @@ export function TableroMaestro() {
           .select('*')
           .eq('anio', anio)
           .eq('mes', mes);
-        if (servicioRestriccion != null) qRes = qRes.eq('servicio_id', servicioRestriccion);
+        if (serviciosRestriccion != null) qRes = qRes.in('servicio_id', serviciosRestriccion);
         promResumen = qRes;
 
         let qProd = supabase
@@ -211,7 +217,7 @@ export function TableroMaestro() {
           .eq('anio', anio)
           .eq('mes', mes)
           .order('indicador_orden');
-        if (servicioRestriccion != null) qProd = qProd.eq('servicio_id', servicioRestriccion);
+        if (serviciosRestriccion != null) qProd = qProd.in('servicio_id', serviciosRestriccion);
         promProductividad = qProd;
       } else {
         // Día o semana: query directo a tablas base
@@ -271,7 +277,7 @@ export function TableroMaestro() {
           });
           q = q.or(clausulas.join(','));
         }
-        if (servicioRestriccion != null) q = q.eq('servicio_id', servicioRestriccion);
+        if (serviciosRestriccion != null) q = q.in('servicio_id', serviciosRestriccion);
         promProductividad = q;
       }
 
@@ -412,8 +418,10 @@ export function TableroMaestro() {
     // rangoFechas se deriva de [periodo, fechaSel, anio, mes] (mismo useMemo)
     // asi que lo omitimos de las deps para no causar un doble fetch cuando
     // ambos cambian a la vez.
+    // serviciosRestriccion es un array (nueva referencia cada render); usamos
+    // una clave por valor para no recrear cargar (y evitar refetch en bucle).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tieneAcceso, anio, mes, periodo, fechaSel, servicioRestriccion]);
+  }, [tieneAcceso, anio, mes, periodo, fechaSel, serviciosRestriccion?.join(',')]);
 
   useEffect(() => { cargar(); }, [cargar]);
 

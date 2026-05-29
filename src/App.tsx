@@ -104,6 +104,7 @@ export function App() {
               <Route path="/bitacora-psicotropicos" element={<BitacoraPsicotropicos />} />
               <Route path="/imprimir/bitacora-semana" element={<VistaImpresionBitacoraSemana />} />
               <Route path="/supervision" element={<Supervision />} />
+              <Route path="/supervision/:sup" element={<Supervision />} />
               <Route path="/medicos-adscritos" element={<MedicosAdscritos />} />
               <Route path="/instructivo" element={<Instructivo />} />
               <Route path="/cambiar-contrasena" element={<CambiarPassword />} />

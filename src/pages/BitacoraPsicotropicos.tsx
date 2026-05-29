@@ -12,10 +12,10 @@
 // pasa a estado='canjeada' (trigger fn_registrar_canje_psicotropico).
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { ROLES_ADMIN_GLOBAL, esJefeOAdmin } from '../types';
+import { ROLES_ADMIN_GLOBAL, esJefeOAdmin, supervisionDeScope } from '../types';
 
 interface StockRow {
   id: number;
@@ -84,6 +84,13 @@ const turnoActual = (): 'M' | 'V' | 'N' => {
 export const BitacoraPsicotropicos: React.FC = () => {
   const { perfil } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Supervisión que se está viendo. Un supervisor con grupo manda (no puede ver
+  // la otra); jefe/subjefe usan ?sup= de la URL, con 1 por defecto.
+  const supUrlRaw = searchParams.get('sup');
+  const supUrl: 1 | 2 | null = supUrlRaw === '1' ? 1 : supUrlRaw === '2' ? 2 : null;
+  const supEfectiva: 1 | 2 = supervisionDeScope(perfil) ?? supUrl ?? 1;
 
   const [fecha, setFecha] = useState(hoyMazatlan());
   const [filas, setFilas] = useState<StockRow[]>([]);
@@ -110,24 +117,33 @@ export const BitacoraPsicotropicos: React.FC = () => {
       setDetalle((det || []) as DetalleRow[]);
 
       if (esHoy) {
-        const { data, error: err } = await supabase.from('v_stock_psicotropicos_hoy').select('*');
+        const { data, error: err } = await supabase.from('v_stock_psicotropicos_hoy')
+          .select('*').eq('supervision', supEfectiva);
         if (err) throw err;
         setFilas((data || []) as StockRow[]);
       } else {
-        // Para fechas pasadas, reconstruir desde movimientos
+        // Para fechas pasadas, reconstruir desde movimientos (por supervisión).
+        // El fondo fijo sale de fondo_fijo_psicotropicos (NO del global).
         const { data: inv } = await supabase.from('inventario_psicotropicos').select('*').eq('activo', true).order('orden');
-        const { data: movs, error: err } = await supabase.from('movimientos_psicotropicos').select('*').eq('fecha', fecha);
+        const { data: ff } = await supabase.from('fondo_fijo_psicotropicos')
+          .select('inventario_id, fondo_fijo, fecha_caducidad').eq('supervision', supEfectiva);
+        const { data: movs, error: err } = await supabase.from('movimientos_psicotropicos')
+          .select('*').eq('fecha', fecha).eq('supervision', supEfectiva);
         if (err) throw err;
+
+        const ffMap = new Map<number, { fondo_fijo: number; fecha_caducidad: string | null }>();
+        (ff || []).forEach((r: any) => ffMap.set(r.inventario_id, { fondo_fijo: r.fondo_fijo, fecha_caducidad: r.fecha_caducidad }));
 
         const map = new Map<number, StockRow>();
         (inv || []).forEach((i: any) => {
+          const fondo = ffMap.get(i.id)?.fondo_fijo ?? 0;
           map.set(i.id, {
             id: i.id, orden: i.orden, nombre: i.nombre, presentacion: i.presentacion,
-            unidad: i.unidad, fondo_fijo: i.fondo_fijo, fecha_caducidad: i.fecha_caducidad,
+            unidad: i.unidad, fondo_fijo: fondo, fecha_caducidad: ffMap.get(i.id)?.fecha_caducidad ?? null,
             recibido_total: 0, surtido_total: 0, utilizado_total: 0, vales_total: 0,
             utilizado_m: 0, utilizado_v: 0, utilizado_n: 0,
             vales_m: 0, vales_v: 0, vales_n: 0,
-            stock_actual: i.fondo_fijo,
+            stock_actual: fondo,
           });
         });
         (movs || []).forEach((m: any) => {
@@ -156,7 +172,7 @@ export const BitacoraPsicotropicos: React.FC = () => {
     } finally {
       setCargando(false);
     }
-  }, [fecha, esHoy]);
+  }, [fecha, esHoy, supEfectiva]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -208,12 +224,11 @@ export const BitacoraPsicotropicos: React.FC = () => {
     <div style={pagina}>
       <div style={header}>
         <div>
-          <h1 style={titulo}>💊 Bitácora · Control de Medicamentos Psicotrópicos</h1>
-          <p style={subt}>Inventario con fondo fijo · entradas y salidas por turno · CLUES BSIMB000672</p>
+          <h1 style={titulo}>💊 Bitácora · Psicotrópicos — Supervisión {supEfectiva}</h1>
+          <p style={subt}>Fondo fijo de Supervisión {supEfectiva} · entradas y salidas por turno · CLUES BSIMB000672</p>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-          <button onClick={() => window.open(`/imprimir/fondo-fijo?fecha=${fecha}&supervision=1`, '_blank')} style={btnImprimir}>🖨️ Hoja Sup. I</button>
-          <button onClick={() => window.open(`/imprimir/fondo-fijo?fecha=${fecha}&supervision=2`, '_blank')} style={btnImprimir}>🖨️ Hoja Sup. II</button>
+          <button onClick={() => window.open(`/imprimir/fondo-fijo?fecha=${fecha}&supervision=${supEfectiva}`, '_blank')} style={btnImprimir}>🖨️ Imprimir hoja (Sup. {supEfectiva})</button>
           {puedeHistoricoYSemanal && (
             <>
               <button onClick={() => window.open(`/imprimir/bitacora-semana?desde=${lunesDeSemana(fecha)}`, '_blank')} style={btnImprimir}>📅 Imprimir Semana</button>
@@ -383,6 +398,7 @@ export const BitacoraPsicotropicos: React.FC = () => {
           inv={registrandoEn.inv}
           tipo={registrandoEn.tipo}
           fecha={fecha}
+          supervision={supEfectiva}
           onCerrar={() => setRegistrandoEn(null)}
           onGuardado={() => { setRegistrandoEn(null); cargar(); }}
         />
@@ -396,9 +412,10 @@ const ModalRegistro: React.FC<{
   inv: InventarioRow;
   tipo: 'recibido' | 'surtido';
   fecha: string;
+  supervision: 1 | 2;
   onCerrar: () => void;
   onGuardado: () => void;
-}> = ({ inv, tipo, onCerrar, onGuardado }) => {
+}> = ({ inv, tipo, supervision, onCerrar, onGuardado }) => {
   const { perfil } = useAuth();
   const [cantidad, setCantidad] = useState('1');
   const [observaciones, setObservaciones] = useState('');
@@ -416,6 +433,7 @@ const ModalRegistro: React.FC<{
       inventario_id: inv.id,
       tipo,
       cantidad: q,
+      supervision,
       observaciones: observaciones || null,
       capturado_por: perfil.id,
       capturado_nombre: perfil.nombre_completo,

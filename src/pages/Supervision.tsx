@@ -8,7 +8,7 @@
 // Acceso: jefe, subjefe, supervisor (admin global). Gestores/enfermeras NO.
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLES_ADMIN_GLOBAL, formatearTitulo, supervisionDeScope } from '../types';
 
@@ -19,6 +19,9 @@ interface Herramienta {
   ruta: string;
   color: string;
   badge?: string;
+  // Si true, la herramienta depende de la supervisión: se le agrega ?sup=N.
+  // (Fondo fijo y vales cambian por supervisión; Tablero/Médicos son globales.)
+  supParam?: boolean;
 }
 
 const HERRAMIENTAS: Herramienta[] = [
@@ -28,6 +31,7 @@ const HERRAMIENTAS: Herramienta[] = [
     descripcion: 'Concentrado diario de vales controlados por turno (M/V/N). Aprobar, rechazar y canjear vales generados por los gestores.',
     ruta: '/bitacora-supervision',
     color: '#0E6755',
+    supParam: true,
   },
   {
     icono: '💊',
@@ -35,6 +39,7 @@ const HERRAMIENTAS: Herramienta[] = [
     descripcion: 'Inventario con fondo fijo institucional. Existencias actualizadas en tiempo real con cada vale canjeado. Bitácora diaria y semanal con archivo histórico.',
     ruta: '/bitacora-psicotropicos',
     color: '#A32D2D',
+    supParam: true,
   },
   {
     icono: '📊',
@@ -55,10 +60,17 @@ const HERRAMIENTAS: Herramienta[] = [
 export const Supervision: React.FC = () => {
   const { perfil } = useAuth();
   const navigate = useNavigate();
+  const { sup } = useParams<{ sup?: string }>();
 
   if (!perfil) return <div style={cargando}>Verificando perfil...</div>;
 
   const grupoSup = supervisionDeScope(perfil);
+  // Supervisión pedida por la URL (1/2 válidos; cualquier otra cosa = ninguna)
+  const supUrl: 1 | 2 | null = sup === '1' ? 1 : sup === '2' ? 2 : null;
+  // Supervisión efectiva de esta carpeta:
+  //  - supervisor con grupo: SIEMPRE su grupo (no puede abrir el de la otra)
+  //  - jefe/subjefe/supervisor sin grupo: la de la URL, o 1 por defecto
+  const supEfectiva: 1 | 2 = grupoSup ?? supUrl ?? 1;
 
   if (!ROLES_ADMIN_GLOBAL.includes(perfil.rol)) {
     return (
@@ -74,11 +86,11 @@ export const Supervision: React.FC = () => {
       <div style={header}>
         <div>
           <h1 style={titulo}>
-            🗂️ Carpeta de Supervisión{grupoSup ? ` ${grupoSup}` : ''}
+            🗂️ Carpeta de Supervisión {supEfectiva}
           </h1>
           <p style={subt}>
             Herramientas exclusivas para {formatearTitulo(perfil)}
-            {grupoSup ? ` · Supervisión ${grupoSup} (sus servicios)` : ''} · Hospital General Salvatierra
+            {grupoSup ? ` · Supervisión ${grupoSup} (sus servicios)` : ` · viendo Supervisión ${supEfectiva}`} · Hospital General Salvatierra
           </p>
         </div>
         <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>
@@ -86,7 +98,11 @@ export const Supervision: React.FC = () => {
 
       <div style={grid}>
         {HERRAMIENTAS.map(h => (
-          <button key={h.ruta} onClick={() => navigate(h.ruta)} style={tarjeta(h.color)}>
+          <button
+            key={h.ruta}
+            onClick={() => navigate(h.supParam ? `${h.ruta}?sup=${supEfectiva}` : h.ruta)}
+            style={tarjeta(h.color)}
+          >
             <div style={tarjetaHeader(h.color)}>
               <span style={icono}>{h.icono}</span>
               <span style={tarjetaTitulo}>{h.titulo}</span>

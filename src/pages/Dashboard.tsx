@@ -7,6 +7,7 @@ import {
   ROLES_ADMIN_GLOBAL,
   esAdminGlobal,
   tieneScopeDeServicio,
+  serviciosDeScope,
   supervisionDeScope,
   formatearTitulo,
   formatearRol,
@@ -55,15 +56,18 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
   // - supervisor con grupo (supervision 1/2): solo los servicios de su grupo
   // - gestor/enfermera: solo el suyo
   const serviciosVisibles = useMemo(() => {
-    if (tieneScopeDeServicio(perfil.rol) && perfil.servicio_id != null) {
-      return servicios.filter(s => s.servicio_id === perfil.servicio_id)
+    if (tieneScopeDeServicio(perfil.rol)) {
+      const propios = serviciosDeScope(perfil)
+      if (propios.length > 0) {
+        return servicios.filter(s => propios.includes(s.servicio_id))
+      }
     }
     const sup = supervisionDeScope(perfil)
     if (sup != null) {
       return servicios.filter(s => s.supervision === sup)
     }
     return servicios
-  }, [servicios, perfil.rol, perfil.servicio_id, perfil.supervision])
+  }, [servicios, perfil.rol, perfil.servicio_id, perfil.servicios_extra, perfil.supervision])
 
   const totalCamas = serviciosVisibles.reduce((s, srv) => s + srv.total_camas, 0)
   const totalOcupadas = serviciosVisibles.reduce((s, srv) => s + Number(srv.camas_ocupadas), 0)
@@ -72,6 +76,9 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
   const porcentajeGlobal =
     totalCamas > 0 ? Math.round((totalOcupadas / totalCamas) * 100) : 0
   const esAdmin = esAdminGlobal(perfil.rol)
+  // Grupo de supervisión del usuario: 1/2 para supervisor con grupo, null = global
+  // (jefe/subjefe o supervisor sin grupo). Decide qué pestañas de carpeta ve.
+  const grupoSup = supervisionDeScope(perfil)
 
   function colorOcupacion(pct: number): string {
     if (pct >= 80) return '#A32D2D'
@@ -108,9 +115,14 @@ export function Dashboard({ perfil, onCerrarSesion }: Props) {
               📊 Tablero Maestro
             </button>
           )}
-          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && (
-            <button onClick={() => navigate('/supervision')} style={styles.botonTablero}>
-              🗂️ Supervisión
+          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && (grupoSup === null || grupoSup === 1) && (
+            <button onClick={() => navigate('/supervision/1')} style={styles.botonTablero}>
+              🗂️ Supervisión I
+            </button>
+          )}
+          {ROLES_ADMIN_GLOBAL.includes(perfil.rol) && (grupoSup === null || grupoSup === 2) && (
+            <button onClick={() => navigate('/supervision/2')} style={styles.botonTablero}>
+              🗂️ Supervisión II
             </button>
           )}
           <button onClick={() => navigate('/instructivo')} style={styles.botonInstructivo}>

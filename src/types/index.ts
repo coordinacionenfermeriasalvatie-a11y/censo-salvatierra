@@ -32,6 +32,9 @@ export interface Perfil {
   nombre_completo: string
   rol: Rol
   servicio_id: number | null
+  // Servicios ADICIONALES que administra un gestor, además de servicio_id.
+  // Permite que una sola cuenta gestione varios servicios (ej. HH1 + HH2).
+  servicios_extra?: number[] | null
   turno_principal: string | null
   activo: boolean
   titulo_display?: string | null
@@ -40,11 +43,26 @@ export interface Perfil {
   supervision?: number | null
 }
 
+/** Todos los servicios que un perfil con scope de servicio (gestor/enfermera)
+ *  administra: su servicio_id más servicios_extra, deduplicado. Vacío si no
+ *  tiene servicio asignado. */
+export function serviciosDeScope(
+  p: Pick<Perfil, 'servicio_id' | 'servicios_extra'> | null | undefined
+): number[] {
+  if (!p) return []
+  const ids = new Set<number>()
+  if (p.servicio_id != null) ids.add(p.servicio_id)
+  for (const s of p.servicios_extra ?? []) {
+    if (s != null) ids.add(s)
+  }
+  return [...ids]
+}
+
 /** Para un supervisor con grupo asignado devuelve su número de supervisión
  *  (1 ó 2); null = alcance global (jefe/subjefe, o supervisor sin grupo). */
 export function supervisionDeScope(
   p: Pick<Perfil, 'rol' | 'supervision'> | null | undefined
-): number | null {
+): 1 | 2 | null {
   if (!p) return null
   if (p.rol === 'supervisor' && (p.supervision === 1 || p.supervision === 2)) {
     return p.supervision

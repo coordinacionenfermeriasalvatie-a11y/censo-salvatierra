@@ -58,13 +58,13 @@ const hoyMazatlan = (): string => {
   return `${get('year')}-${get('month')}-${get('day')}`;
 };
 
-const filaVacia = (i: any): StockRow => ({
+const filaVacia = (i: any, fondo: number): StockRow => ({
   id: i.id, orden: i.orden, nombre: i.nombre, presentacion: i.presentacion,
-  unidad: i.unidad, fondo_fijo: i.fondo_fijo,
+  unidad: i.unidad, fondo_fijo: fondo,
   recibido_total: 0, surtido_total: 0, utilizado_total: 0, vales_total: 0,
   utilizado_m: 0, utilizado_v: 0, utilizado_n: 0,
   vales_m: 0, vales_v: 0, vales_n: 0,
-  stock_actual: i.fondo_fijo,
+  stock_actual: fondo,
 });
 
 export const VistaImpresionFondoFijo: React.FC = () => {
@@ -73,7 +73,9 @@ export const VistaImpresionFondoFijo: React.FC = () => {
   const fecha = params.get('fecha') || hoyMazatlan();
   const esHoy = fecha === hoyMazatlan();
   const supParam = params.get('supervision');
-  const supervision: 1 | 2 | null = supParam === '1' ? 1 : supParam === '2' ? 2 : null;
+  // Hoja SIEMPRE por supervisión (cada una tiene su propio fondo fijo).
+  // Sin parámetro -> Supervisión I por defecto.
+  const supervision: 1 | 2 = supParam === '2' ? 2 : 1;
 
   const [filas, setFilas] = useState<StockRow[]>([]);
   const [detalle, setDetalle] = useState<DetalleRow[]>([]);
@@ -85,32 +87,35 @@ export const VistaImpresionFondoFijo: React.FC = () => {
   useEffect(() => {
     if (!autorizado) return;
     (async () => {
-      // Detalle de vales del día. Si la hoja es de una supervisión, se
-      // filtran los vales según el servicio de origen. El reparto vive en
-      // la BD (servicios.supervision, mig 58); no se hardcodea aquí.
+      // Detalle de vales del día, filtrado a los servicios de esta supervisión.
+      // El reparto servicio->supervisión vive en la BD (servicios.supervision,
+      // mig 58); no se hardcodea aquí.
       const { data: det } = await supabase.from('v_bitacora_psicotropicos_detalle')
         .select('*').eq('fecha_dia', fecha)
         .order('canjeado_en', { nullsFirst: false });
-      let dets = (det || []) as DetalleRow[];
-      if (supervision != null) {
-        const { data: servs } = await supabase.from('servicios').select('codigo, supervision');
-        const supDe = new Map<string, number | null>((servs || []).map((s: any) => [s.codigo, s.supervision]));
-        dets = dets.filter(d => supDe.get(d.servicio_codigo ?? '') === supervision);
-      }
+      const { data: servs } = await supabase.from('servicios').select('codigo, supervision');
+      const supDe = new Map<string, number | null>((servs || []).map((s: any) => [s.codigo, s.supervision]));
+      const dets = ((det || []) as DetalleRow[]).filter(d => supDe.get(d.servicio_codigo ?? '') === supervision);
       setDetalle(dets);
 
-      // Movimiento del día
+      // Movimiento del día (siempre por supervisión)
       if (esHoy) {
-        const { data } = await supabase.from('v_stock_psicotropicos_hoy').select('*');
+        const { data } = await supabase.from('v_stock_psicotropicos_hoy')
+          .select('*').eq('supervision', supervision);
         setFilas((data || []) as StockRow[]);
       } else {
-        // Reconstruir desde movimientos para la fecha indicada (igual que la bitácora).
+        // Reconstruir desde movimientos para la fecha indicada. El fondo fijo
+        // sale de fondo_fijo_psicotropicos (no del global) y los movimientos
+        // se filtran por supervisión.
         const { data: inv } = await supabase.from('inventario_psicotropicos')
           .select('*').eq('activo', true).order('orden');
+        const { data: ff } = await supabase.from('fondo_fijo_psicotropicos')
+          .select('inventario_id, fondo_fijo').eq('supervision', supervision);
         const { data: movs } = await supabase.from('movimientos_psicotropicos')
-          .select('*').eq('fecha', fecha);
+          .select('*').eq('fecha', fecha).eq('supervision', supervision);
+        const ffMap = new Map<number, number>((ff || []).map((r: any) => [r.inventario_id, r.fondo_fijo]));
         const map = new Map<number, StockRow>();
-        (inv || []).forEach((i: any) => map.set(i.id, filaVacia(i)));
+        (inv || []).forEach((i: any) => map.set(i.id, filaVacia(i, ffMap.get(i.id) ?? 0)));
         (movs || []).forEach((m: any) => {
           const f = map.get(m.inventario_id);
           if (!f) return;
@@ -181,7 +186,7 @@ export const VistaImpresionFondoFijo: React.FC = () => {
 
       {/* META */}
       <div style={metaFila}>
-        <div><strong>Supervisión:</strong> {supervision === 1 ? 'I' : supervision === 2 ? 'II' : 'Todas'}</div>
+        <div><strong>Supervisión:</strong> {supervision === 2 ? 'II' : 'I'}</div>
         <div><strong>Fecha:</strong> {fechaLarga}</div>
         <div><strong>Generó:</strong> {generadoPor || '—'}</div>
         <div><strong>Impreso:</strong> {new Date().toLocaleString('es-MX')}</div>

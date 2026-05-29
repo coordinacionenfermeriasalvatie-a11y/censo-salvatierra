@@ -9,10 +9,10 @@
 //   - Rechazar con motivo si hay problema.
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
-import { ROLES_ADMIN_GLOBAL } from '../types';
+import { ROLES_ADMIN_GLOBAL, supervisionDeScope } from '../types';
 
 type Turno = 'M' | 'V' | 'N';
 type Estado = 'pendiente' | 'aprobada' | 'rechazada' | 'canjeada';
@@ -79,6 +79,13 @@ const hoyMazatlan = (): string => {
 export const BitacoraSupervision: React.FC = () => {
   const { perfil } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Supervisión que se concentra. Supervisor con grupo manda; jefe/subjefe usan
+  // ?sup= de la URL (1 por defecto).
+  const supUrlRaw = searchParams.get('sup');
+  const supUrl: 1 | 2 | null = supUrlRaw === '1' ? 1 : supUrlRaw === '2' ? 2 : null;
+  const supEfectiva: 1 | 2 = supervisionDeScope(perfil) ?? supUrl ?? 1;
 
   const [fecha, setFecha] = useState(hoyMazatlan());
   const [filas, setFilas] = useState<BitacoraRow[]>([]);
@@ -93,9 +100,15 @@ export const BitacoraSupervision: React.FC = () => {
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
+    // Servicios de esta supervisión (trazabilidad: cada vale pertenece al
+    // servicio del paciente, y el servicio pertenece a una supervisión).
+    const { data: svc } = await supabase.from('servicios')
+      .select('codigo').eq('supervision', supEfectiva);
+    const codigos = (svc || []).map((r: any) => r.codigo);
     let q = supabase.from('v_bitacora_supervision')
       .select('*')
       .eq('fecha_dia', fecha)
+      .in('servicio_codigo', codigos)
       .order('creado_en', { ascending: true });
     if (filtroEstado) q = q.eq('estado_aprobacion', filtroEstado);
     if (filtroServicio) q = q.eq('servicio_codigo', filtroServicio);
@@ -103,7 +116,7 @@ export const BitacoraSupervision: React.FC = () => {
     if (err) setError(err.message);
     else setFilas((data || []) as BitacoraRow[]);
     setCargando(false);
-  }, [fecha, filtroEstado, filtroServicio]);
+  }, [fecha, filtroEstado, filtroServicio, supEfectiva]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -209,8 +222,8 @@ export const BitacoraSupervision: React.FC = () => {
     <div style={pagina}>
       <div style={header}>
         <div>
-          <h1 style={titulo}>📋 Bitácora de Supervisión — Medicamentos Controlados</h1>
-          <p style={subt}>Concentrado diario · turnos Matutino, Vespertino y Nocturno · todos los servicios</p>
+          <h1 style={titulo}>📋 Bitácora de Supervisión {supEfectiva} — Medicamentos Controlados</h1>
+          <p style={subt}>Concentrado diario · turnos Matutino, Vespertino y Nocturno · servicios de Supervisión {supEfectiva}</p>
         </div>
         <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>
       </div>
