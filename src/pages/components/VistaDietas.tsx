@@ -141,11 +141,12 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
               <tr style={headerRow}>
                 <th style={{ ...th, width: '8%' }}>SUBSERVICIO</th>
                 <th style={{ ...th, width: '5%' }}>CAMA</th>
-                <th style={{ ...th, width: '20%' }}>NOMBRE</th>
+                <th style={{ ...th, width: '18%' }}>NOMBRE</th>
+                <th style={{ ...th, width: '6%', textAlign: 'center' }}>EDAD</th>
                 <th style={{ ...th, width: '15%' }}>TIPO DE DIETA</th>
                 <th style={{ ...th, width: '12%' }}>CONSISTENCIA</th>
                 <th style={{ ...th, width: '15%' }}>RESTRICCIONES</th>
-                <th style={{ ...th, width: '25%' }}>OBSERVACIONES</th>
+                <th style={{ ...th, width: '21%' }}>OBSERVACIONES</th>
               </tr>
             </thead>
             <tbody>
@@ -155,15 +156,13 @@ export const VistaDietas: React.FC<Props> = ({ servicioId }) => {
                   <td style={{ ...tdAuto, textAlign: 'center', fontWeight: 700 }}>{r.numero_cama}</td>
                   <td style={{ ...tdAuto, fontWeight: 600 }}>
                     {r.nombre_paciente}
-                    {r.edad != null && (
-                      <span style={edadBadge} title="Edad">{r.edad} {r.edad === 1 ? 'año' : 'años'}</span>
-                    )}
                     {aislamientos[r.paciente_id] && (
                       <span style={chipAislamiento} title="Precaución de aislamiento activa">
                         {aislamientos[r.paciente_id]}
                       </span>
                     )}
                   </td>
+                  <td style={tdEdad}>{r.edad != null ? `${r.edad} ${r.edad === 1 ? 'año' : 'años'}` : '—'}</td>
                   <td style={tdEditable}>
                     <select
                       defaultValue={r.tipo_dieta || ''}
@@ -218,7 +217,7 @@ const headerRow: React.CSSProperties = { background: '#265C4E' };
 const th: React.CSSProperties = { padding: '10px 8px', color: '#fff', fontWeight: 700, fontSize: 12, textAlign: 'left', border: '1px solid #1a4639' };
 const tdAuto: React.CSSProperties = { padding: '8px', borderBottom: '1px solid #e8dfc6', background: '#F5F1E8', color: '#265C4E' };
 const chipAislamiento: React.CSSProperties = { display: 'inline-block', marginLeft: 8, fontSize: 10, padding: '2px 6px', background: '#fdecea', color: '#A32D2D', border: '1px solid #A32D2D', borderRadius: 10, fontWeight: 700, whiteSpace: 'nowrap' };
-const edadBadge: React.CSSProperties = { display: 'inline-block', marginLeft: 8, fontSize: 11, padding: '1px 7px', background: '#E8F4EA', color: '#0E6755', border: '1px solid #5CAB34', borderRadius: 10, fontWeight: 700, whiteSpace: 'nowrap' };
+const tdEdad: React.CSSProperties = { ...tdAuto, textAlign: 'center', fontWeight: 600, whiteSpace: 'nowrap' };
 const tdEditable: React.CSSProperties = { padding: '4px', borderBottom: '1px solid #e8dfc6' };
 const rowPar: React.CSSProperties = { background: '#fff' };
 const rowImpar: React.CSSProperties = { background: '#fdfaf2' };
