@@ -234,6 +234,7 @@ export const VistaImpresionDietas: React.FC = () => {
             <tr>
               <th className="c-cama">CAMA</th>
               <th className="c-paciente">PACIENTE</th>
+              <th className="c-edad">EDAD</th>
               <th className="c-tipo">TIPO DE DIETA</th>
               <th className="c-cons">CONSISTENCIA</th>
               <th className="c-restr">RESTRICCIONES</th>
@@ -250,15 +251,16 @@ export const VistaImpresionDietas: React.FC = () => {
                 <React.Fragment key={d.paciente_id}>
                   {inicioGrupo && (
                     <tr className={idx === 0 ? 'sub-grupo primera' : 'sub-grupo'}>
-                      <td colSpan={6}>{d.subservicio}</td>
+                      <td colSpan={7}>{d.subservicio}</td>
                     </tr>
                   )}
                   <tr className={idx % 2 === 0 ? 'fila-par' : 'fila-impar'}>
                     <td className="c-cama">{d.numero_cama}</td>
                     <td className="c-paciente">
                       <div className="p-nombre">{d.nombre_paciente}</div>
-                      <div className="p-sub">{d.edad != null ? `${d.edad} ${d.edad === 1 ? 'año' : 'años'}` : '—'} · {generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
+                      <div className="p-sub">{generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
                     </td>
+                    <td className="c-edad">{d.edad != null ? `${d.edad} ${d.edad === 1 ? 'año' : 'años'}` : '—'}</td>
                     <td className="c-tipo"><strong>{d.tipo_dieta || '—'}</strong></td>
                     <td className="c-cons">{d.consistencia || '—'}</td>
                     <td className="c-restr">{d.restricciones || '—'}</td>
@@ -272,7 +274,7 @@ export const VistaImpresionDietas: React.FC = () => {
             {!haySubservicios && servicio && Array.from({ length: Math.max(0, servicio.total_camas - dietas.length) }).map((_, idx) => (
               <tr key={`vacia-${idx}`} className="fila-vacia">
                 <td className="c-cama">&nbsp;</td>
-                <td colSpan={5}>&nbsp;</td>
+                <td colSpan={6}>&nbsp;</td>
               </tr>
             ))}
           </tbody>
@@ -533,7 +535,15 @@ body {
 }
 
 .c-paciente {
-  width: 28%;
+  width: 25%;
+}
+
+.c-edad {
+  width: 7%;
+  text-align: center;
+  font-weight: 600;
+  font-size: 9pt;
+  white-space: nowrap;
 }
 
 .p-nombre {
@@ -556,12 +566,12 @@ body {
 }
 
 .c-cons {
-  width: 14%;
+  width: 13%;
   text-align: center;
 }
 
 .c-restr {
-  width: 18%;
+  width: 16%;
   font-style: italic;
   font-size: 8.5pt;
 }
