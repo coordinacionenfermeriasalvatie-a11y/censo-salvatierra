@@ -78,6 +78,9 @@ export const Supervision: React.FC = () => {
     else localStorage.removeItem(LS_CONSOLIDAR);
   };
 
+  // Tarjeta informativa de los gestores comodin de emergencia (desplegable).
+  const [verEmergente, setVerEmergente] = useState(false);
+
   // Con modo principal activo, la carpeta de Supervisión 2 redirige a la 1.
   // Solo para admins globales sin grupo propio; un supervisor con grupo manda.
   useEffect(() => {
@@ -160,6 +163,25 @@ export const Supervision: React.FC = () => {
           </button>
         ))}
 
+        {/* Gestor del cuidado comodín de emergencia — tarjeta informativa */}
+        <button
+          key="gestor-emergente"
+          onClick={() => setVerEmergente(v => !v)}
+          style={tarjeta('#b5651d')}
+        >
+          <div style={tarjetaHeader('#b5651d')}>
+            <span style={icono}>🆘</span>
+            <span style={tarjetaTitulo}>Gestor del cuidado — Emergente</span>
+          </div>
+          <div style={tarjetaDesc}>
+            Cuentas comodín (turno M / V / N) para cubrir la <strong>ausencia del titular</strong>:
+            multiservicios y con acceso a cualquier hora. Asígnalas solo en caso necesario.
+          </div>
+          <div style={tarjetaAbrir('#b5651d')}>
+            {verEmergente ? 'Ocultar ▲' : 'Ver instructivo ▾'}
+          </div>
+        </button>
+
         {/* Placeholder para futuras bitácoras */}
         <div style={placeholder}>
           <div style={placeholderTxt}>
@@ -171,6 +193,35 @@ export const Supervision: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {verEmergente && (
+        <div style={emergenteBox}>
+          <div style={emergenteTitulo}>🆘 Gestores del cuidado — comodín de emergencia</div>
+          <p style={emergenteP}>
+            Son <strong>3 cuentas</strong> (turno M, V y N), cada una <strong>multiservicios</strong> (ve y
+            captura en los 15 servicios) y con <strong>acceso a cualquier hora</strong>. Sirven para cubrir la
+            ausencia del titular cuando no hay quién lleve el censo o el recetario de un servicio.
+          </p>
+          <ol style={emergenteOl}>
+            <li>
+              Pide a la <strong>subjefatura</strong> el correo y la contraseña de la cuenta del turno que se va
+              a cubrir. Por seguridad no se muestran aquí (este sistema es de código abierto).
+            </li>
+            <li>
+              <strong>Antes</strong> de entregar el acceso, la subjefatura cambia el nombre de la cuenta al
+              <strong> nombre real de quien cubre</strong>, para que los vales, recetas y capturas queden a su nombre.
+            </li>
+            <li>
+              Al terminar la cobertura, el nombre se regresa a <em>“GESTOR EMERGENTE [turno]”</em> para dejar la
+              cuenta lista para la próxima emergencia.
+            </li>
+          </ol>
+          <div style={emergenteNota}>
+            Úsalas solo en ausencia del titular. No están atadas a un servicio: por eso pueden capturar en
+            cualquiera de los 15.
+          </div>
+        </div>
+      )}
 
       <div style={pie}>
         <strong>Nota:</strong> Esta carpeta crecerá con el tiempo. Pídeme nuevas bitácoras o accesos rápidos cuando los necesites — agregar uno toma minutos.
@@ -252,6 +303,25 @@ const modoLabel: React.CSSProperties = {
 const pie: React.CSSProperties = {
   padding: 12, background: '#fff7e0', border: '1px solid #C39C59', borderRadius: 6,
   fontSize: 12, color: '#7d5b2f', lineHeight: 1.6,
+};
+
+const emergenteBox: React.CSSProperties = {
+  background: '#fff', border: '1px solid #b5651d55', borderLeft: '4px solid #b5651d',
+  borderRadius: 6, padding: '16px 18px', marginBottom: 24,
+};
+const emergenteTitulo: React.CSSProperties = {
+  color: '#b5651d', fontWeight: 700, fontSize: 15, marginBottom: 8,
+};
+const emergenteP: React.CSSProperties = {
+  fontSize: 13, color: '#555', lineHeight: 1.6, margin: '0 0 10px',
+};
+const emergenteOl: React.CSSProperties = {
+  fontSize: 13, color: '#555', lineHeight: 1.6, margin: 0, paddingLeft: 20,
+  display: 'flex', flexDirection: 'column', gap: 6,
+};
+const emergenteNota: React.CSSProperties = {
+  marginTop: 12, padding: '8px 12px', background: '#fdf3e7', borderRadius: 4,
+  fontSize: 12, color: '#7d5b2f', lineHeight: 1.5,
 };
 
 const cargando: React.CSSProperties = { padding: 40, textAlign: 'center' as const, color: '#888', fontStyle: 'italic' as const };
