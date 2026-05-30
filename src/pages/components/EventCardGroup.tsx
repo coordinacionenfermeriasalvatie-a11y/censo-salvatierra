@@ -70,19 +70,21 @@ export const EventCardGroup: React.FC<Props> = ({
     return (c: string) => m.get(c) || '';
   }, [opciones]);
 
-  // Activos arriba, cancelados al fondo. Dentro de cada grupo, mas reciente primero.
-  const ordenados = useMemo(() => {
-    const activos = eventos.filter(e => e.estado !== 'Cancelada');
-    const cancelados = eventos.filter(e => e.estado === 'Cancelada');
-    const byFecha = (a: Evento, b: Evento) => +new Date(b.fecha_solicitud) - +new Date(a.fecha_solicitud);
-    return [...activos.sort(byFecha), ...cancelados.sort(byFecha)];
-  }, [eventos]);
-
   // 'Retirada' y 'Cancelada' son terminales: el evento ya no está activo, así
   // que no cuenta para el cupo (maxEventos) ni bloquea reinstalar el código.
   // Ej.: retiras un CVP y puedes instalar uno nuevo del mismo tipo; retiras la
   // ventilación (cupo 1) y el botón "+ Nuevo evento" vuelve a aparecer.
   const esTerminal = (e: Evento) => e.estado === 'Cancelada' || e.estado === 'Retirada';
+
+  // Activos arriba, terminales (retirados/cancelados) al fondo. Así el área
+  // activa queda limpia y se ve claro que retirar libera el cupo para una
+  // vía nueva. Dentro de cada grupo, mas reciente primero.
+  const ordenados = useMemo(() => {
+    const activos = eventos.filter(e => !esTerminal(e));
+    const terminales = eventos.filter(e => esTerminal(e));
+    const byFecha = (a: Evento, b: Evento) => +new Date(b.fecha_solicitud) - +new Date(a.fecha_solicitud);
+    return [...activos.sort(byFecha), ...terminales.sort(byFecha)];
+  }, [eventos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const realizados = ordenados.filter(e => e.estado === 'Realizada').length;
   const activosCount = ordenados.filter(e => !esTerminal(e)).length;
