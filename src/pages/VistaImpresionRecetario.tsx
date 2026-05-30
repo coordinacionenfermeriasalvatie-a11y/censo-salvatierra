@@ -156,8 +156,8 @@ const RecetarioSeccion: React.FC<{
         <thead>
           <tr className="col-row">
             <th style={{ width: '4%' }}>CAMA</th>
-            <th style={{ width: '25%' }}>PACIENTE</th>
-            <th style={{ width: '34%' }}>MEDICAMENTO</th>
+            <th style={{ width: '21%' }}>PACIENTE</th>
+            <th style={{ width: '38%' }}>MEDICAMENTO</th>
             <th style={{ width: '7%' }}>POSOLOGÍA</th>
             <th style={{ width: '5%' }}>VÍA</th>
             <th style={{ width: '7%' }}>FRECUENCIA</th>
@@ -473,8 +473,8 @@ export const VistaImpresionRecetario: React.FC = () => {
         }
         .tabla-recetario .c-paciente .nombre {
           font-weight: 700;
-          font-size: 11pt;
-          line-height: 1.15;
+          font-size: 12pt;
+          line-height: 1.1;
         }
         .tabla-recetario .c-paciente .datos-pac {
           font-size: 8pt;
@@ -490,11 +490,11 @@ export const VistaImpresionRecetario: React.FC = () => {
         /* Columnas de medicamento */
         .tabla-recetario .c-med {
           font-weight: 600;
-          font-size: 11pt;
+          font-size: 12pt;
         }
         .tabla-recetario .c-pos {
           text-align: center;
-          font-size: 8.5pt;
+          font-size: 9.5pt;
           font-weight: 600;
           color: #265C4E;
           background: #fafafa;
@@ -502,7 +502,7 @@ export const VistaImpresionRecetario: React.FC = () => {
         .tabla-recetario .c-via,
         .tabla-recetario .c-frec {
           text-align: center;
-          font-size: 8.5pt;
+          font-size: 9.5pt;
         }
 
         /* Sección de subservicio (impresión por hoja en Pediatría) */
