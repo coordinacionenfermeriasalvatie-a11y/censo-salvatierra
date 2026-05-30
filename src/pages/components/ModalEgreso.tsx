@@ -35,7 +35,9 @@ export const ModalEgreso: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
 
   const ahora = new Date();
-  const hoyISO  = ahora.toISOString().substring(0, 10);
+  // Fecha LOCAL (no UTC): toISOString() devuelve UTC y de noche (Central UTC-6)
+  // marcaba el día siguiente en el egreso. Se arma con componentes locales.
+  const hoyISO  = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
   const horaISO = ahora.toTimeString().substring(0, 5);
 
   const [motivoId, setMotivoId] = useState<number | null>(null);

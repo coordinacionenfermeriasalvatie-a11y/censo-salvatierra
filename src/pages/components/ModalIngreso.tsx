@@ -35,7 +35,10 @@ export const ModalIngreso: React.FC<Props> = ({
 
   // Estado del formulario
   const ahora = new Date();
-  const hoyISO  = ahora.toISOString().substring(0, 10);
+  // Fecha LOCAL (no UTC): toISOString() devuelve UTC y de noche (Central UTC-6)
+  // marcaba el día siguiente. Se arma con componentes locales para que el
+  // registro caiga en el día real del hospital.
+  const hoyISO  = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
   const horaISO = ahora.toTimeString().substring(0, 5);
 
   const [nombre, setNombre] = useState('');
