@@ -5,6 +5,7 @@
 // de crear los renglones en dietas_paciente, recetario_paciente y formato_control_paciente.
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { hoyMazatlan, horaMazatlan } from '../../utils/fechaHora';
 
 interface Especialidad {
   id: number;
@@ -34,12 +35,11 @@ export const ModalIngreso: React.FC<Props> = ({
   const [error, setError] = useState<string | null>(null);
 
   // Estado del formulario
-  const ahora = new Date();
-  // Fecha LOCAL (no UTC): toISOString() devuelve UTC y de noche (Central UTC-6)
-  // marcaba el día siguiente. Se arma con componentes locales para que el
-  // registro caiga en el día real del hospital.
-  const hoyISO  = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
-  const horaISO = ahora.toTimeString().substring(0, 5);
+  // Fecha/hora en zona horaria oficial del hospital (America/Mazatlan, UTC-7).
+  // No usar getDate()/toTimeString() del dispositivo: si el equipo está en otra
+  // zona (p.ej. CDMX UTC-6) el ingreso caía en el día/hora equivocados.
+  const hoyISO  = hoyMazatlan();
+  const horaISO = horaMazatlan();
 
   const [nombre, setNombre] = useState('');
   const [edad, setEdad] = useState('');

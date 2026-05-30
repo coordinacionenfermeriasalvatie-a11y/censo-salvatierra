@@ -8,6 +8,12 @@
 //   MANUAL           (amarillo claro) - captura del personal
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
+import { hoyMazatlan } from '../../utils/fechaHora';
+
+// "Ahora" anclado a la zona oficial del hospital (America/Mazatlan): se usa el
+// mediodía local del día de Mazatlan para que getDay()/getDate() no se corran
+// de día aunque el dispositivo esté en otra zona horaria.
+const ahoraMazatlan = (): Date => new Date(hoyMazatlan() + 'T12:00:00');
 
 interface Indicador {
   id: number;
@@ -73,7 +79,7 @@ export function VistaProductividad({ servicioId, servicioNombre, servicioCodigo 
   // indicadores neonatales. En el resto se ocultan (solo_pediatria=true).
   const esPediatria = (servicioCodigo || '').includes('PED');
 
-  const [semanaInicio, setSemanaInicio] = useState<Date>(() => lunesDeSemana(new Date()));
+  const [semanaInicio, setSemanaInicio] = useState<Date>(() => lunesDeSemana(ahoraMazatlan()));
 
   const [indicadores, setIndicadores] = useState<Indicador[]>([]);
   const [capturas, setCapturas]       = useState<Map<string, {valor: number; origen: string}>>(new Map());
@@ -253,7 +259,7 @@ export function VistaProductividad({ servicioId, servicioNombre, servicioCodigo 
           <button onClick={() => moverSemana(-7)} style={btnNav} title="Semana anterior">◀</button>
           <span style={etiquetaSemana}>{rangoSemana}</span>
           <button onClick={() => moverSemana(7)} style={btnNav} title="Semana siguiente">▶</button>
-          <button onClick={() => setSemanaInicio(lunesDeSemana(new Date()))} style={btnHoy}>Hoy</button>
+          <button onClick={() => setSemanaInicio(lunesDeSemana(ahoraMazatlan()))} style={btnHoy}>Hoy</button>
         </div>
       </div>
 

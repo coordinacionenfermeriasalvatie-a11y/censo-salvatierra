@@ -16,6 +16,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { ROLES_ADMIN_GLOBAL, esJefeOAdmin, supervisionDeScope } from '../types';
+import { turnoActualMazatlan as turnoActual } from '../utils/fechaHora';
 
 interface StockRow {
   id: number;
@@ -147,14 +148,6 @@ const reconstruirStock = (
     out[sup] = Array.from(map.values()).sort((a, b) => a.orden - b.orden);
   });
   return out;
-};
-
-const turnoActual = (): 'M' | 'V' | 'N' => {
-  const h = new Date().toLocaleString('en-US', { timeZone: 'America/Mazatlan', hour: '2-digit', hour12: false });
-  const hora = parseInt(h, 10);
-  if (hora >= 7 && hora <= 13) return 'M';
-  if (hora >= 14 && hora <= 19) return 'V';
-  return 'N';
 };
 
 export const BitacoraPsicotropicos: React.FC = () => {

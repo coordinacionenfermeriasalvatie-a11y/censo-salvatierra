@@ -23,6 +23,7 @@ import { useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import type { Evento, TipoEvento } from '../hooks/useEventosApoyo';
 import { EncabezadoOficial } from './components/EncabezadoOficial';
+import { partesMazatlan } from '../utils/fechaHora';
 
 // ---------- Tipos ----------
 interface Servicio {
@@ -72,20 +73,29 @@ function formatearFechaCorta(val: string | null): string {
   const s = String(val).trim();
   if (!s || s === '--') return '';
 
-  // Intento 1: parse directo (ISO, '2026-05-19', '2026-05-19 15:05')
-  const d = new Date(s);
+  // Caso A: fecha pura 'YYYY-MM-DD' (sin hora). Se descompone a mano para que
+  // NO la corra la zona horaria (new Date('2026-05-19') = medianoche UTC, que
+  // en UTC-7 cae el día anterior).
+  const soloFecha = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (soloFecha) {
+    const [, , mm, dd] = soloFecha;
+    return `${dd}-${MESES[parseInt(mm, 10) - 1] ?? mm}`;
+  }
+
+  // Caso B: timestamp (ISO con hora / 'YYYY-MM-DD HH:MM'). Se formatea en la
+  // zona oficial del hospital (America/Mazatlan) para no correr día ni hora.
+  const d = new Date(s.includes('T') || s.includes('Z') ? s : s.replace(' ', 'T'));
   if (!isNaN(d.getTime()) && d.getFullYear() > 2000) {
-    const dia = String(d.getDate()).padStart(2, '0');
-    const mes = MESES[d.getMonth()];
-    const hh = d.getHours();
-    const mm = d.getMinutes();
-    if (hh !== 0 || mm !== 0) {
-      return `${dia}-${mes} ${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+    const p = partesMazatlan(d);
+    const dia = String(p.day).padStart(2, '0');
+    const mes = MESES[p.month - 1];
+    if (p.hour !== 0 || p.minute !== 0) {
+      return `${dia}-${mes} ${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`;
     }
     return `${dia}-${mes}`;
   }
 
-  // Intento 2: texto libre → truncar
+  // Caso C: texto libre → truncar
   return s.length > 12 ? s.substring(0, 12) : s;
 }
 
@@ -102,10 +112,11 @@ function limpiar(val: string | null): string {
 }
 
 function fechaHoyLarga(): string {
-  const d = new Date();
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${d.getFullYear()}`;
+  // Fecha de hoy en la zona oficial del hospital (no del dispositivo).
+  const p = partesMazatlan(new Date());
+  const dd = String(p.day).padStart(2, '0');
+  const mm = String(p.month).padStart(2, '0');
+  return `${dd}/${mm}/${p.year}`;
 }
 
 // ---------- Helpers para eventos (Fase B+C) ----------

@@ -5,6 +5,7 @@
 // Hereda patrón visual de ModalIngreso.tsx (overlay, modal, grid, footer).
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { hoyMazatlan, horaMazatlan } from '../../utils/fechaHora';
 
 interface MotivoEgreso {
   id: number;
@@ -34,11 +35,11 @@ export const ModalEgreso: React.FC<Props> = ({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const ahora = new Date();
-  // Fecha LOCAL (no UTC): toISOString() devuelve UTC y de noche (Central UTC-6)
-  // marcaba el día siguiente en el egreso. Se arma con componentes locales.
-  const hoyISO  = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
-  const horaISO = ahora.toTimeString().substring(0, 5);
+  // Fecha/hora en zona horaria oficial del hospital (America/Mazatlan, UTC-7).
+  // No usar getDate()/toTimeString() del dispositivo: si el equipo está en otra
+  // zona (p.ej. CDMX UTC-6) el egreso caía en el día/hora equivocados.
+  const hoyISO  = hoyMazatlan();
+  const horaISO = horaMazatlan();
 
   const [motivoId, setMotivoId] = useState<number | null>(null);
   const [destino, setDestino] = useState('');

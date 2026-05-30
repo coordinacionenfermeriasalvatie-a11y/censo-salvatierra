@@ -138,7 +138,7 @@ export async function exportarBitacoraDia(
 
     // Filas de datos (a partir de la fila 6)
     filasTurno.forEach((f, idx) => {
-      const hora = new Date(f.creado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      const hora = new Date(f.creado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mazatlan' });
       const row = ws.getRow(6 + idx);
       row.values = [
         f.folio, hora,

@@ -8,6 +8,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
+import { hoyMazatlan, turnoActualMazatlan } from '../../utils/fechaHora';
 
 interface Atencion {
   id: string;
@@ -46,21 +47,13 @@ const TIPOS_LESION: Record<number, string> = {
 const turnoColor = (t: string) =>
   t === 'M' ? '#1a5f8a' : t === 'V' ? '#0E6755' : t === 'N' ? '#7d3b8a' : '#888';
 
-const hoyISO = () => new Date().toISOString().slice(0, 10);
-
-const turnoActual = (): 'M' | 'V' | 'N' => {
-  const h = new Date().getHours();
-  if (h >= 7 && h < 15) return 'M';
-  if (h >= 15 && h < 21) return 'V';
-  return 'N';
-};
 
 export const VistaBitacoraHeridas: React.FC<{ servicioId: number }> = ({ servicioId }) => {
   const { perfil } = useAuth();
   const [atenciones, setAtenciones] = useState<Atencion[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filtroFecha, setFiltroFecha] = useState<string>(hoyISO());
+  const [filtroFecha, setFiltroFecha] = useState<string>(hoyMazatlan());
   const [filtroTurno, setFiltroTurno] = useState<string>('');
   const [filtroTipo, setFiltroTipo] = useState<string>('');
   const [filtroTexto, setFiltroTexto] = useState('');
@@ -320,8 +313,8 @@ const ModalNuevaAtencion: React.FC<{
   onGuardar: (data: AtencionFormData) => Promise<boolean>;
 }> = ({ guardando, onCancel, onGuardar }) => {
   const [form, setForm] = useState<AtencionFormData>({
-    fecha: hoyISO(),
-    turno: turnoActual(),
+    fecha: hoyMazatlan(),
+    turno: turnoActualMazatlan(),
     nombre_paciente: '',
     nss_curp: '',
     tipo_lesion: 0,

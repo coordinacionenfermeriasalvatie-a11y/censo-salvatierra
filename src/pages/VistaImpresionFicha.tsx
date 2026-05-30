@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { EncabezadoOficial } from './components/EncabezadoOficial';
+import { partesMazatlan } from '../utils/fechaHora';
 
 interface FichaPaciente {
   id: string;
@@ -160,12 +161,14 @@ export function VistaImpresionFicha() {
   // Fecha y hora de evaluación del dolor: si está capturada, usamos esa;
   // si no, dejamos el día de hoy como guía (queda en blanco si tampoco
   // hay dolor_escala).
-  const evalRef = paciente.dolor_evaluado_en ? new Date(paciente.dolor_evaluado_en) : new Date();
-  const evalDD = String(evalRef.getDate()).padStart(2, '0');
-  const evalMM = MESES_LARGOS[evalRef.getMonth()];
-  const evalAAAA = evalRef.getFullYear();
-  const evalHH = String(evalRef.getHours()).padStart(2, '0');
-  const evalMin = String(evalRef.getMinutes()).padStart(2, '0');
+  // Partes en zona oficial del hospital (America/Mazatlan): dolor_evaluado_en
+  // es timestamptz; con getters del dispositivo se corría hora/día.
+  const evalP = partesMazatlan(paciente.dolor_evaluado_en ? new Date(paciente.dolor_evaluado_en) : new Date());
+  const evalDD = String(evalP.day).padStart(2, '0');
+  const evalMM = MESES_LARGOS[evalP.month - 1];
+  const evalAAAA = evalP.year;
+  const evalHH = String(evalP.hour).padStart(2, '0');
+  const evalMin = String(evalP.minute).padStart(2, '0');
 
   // Datos para imprimir
   const sexo = (paciente.genero || '').startsWith('F') ? 'F' : 'M';

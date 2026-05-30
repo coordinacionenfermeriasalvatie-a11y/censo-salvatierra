@@ -25,6 +25,7 @@ import {
   formatearTitulo,
   serviciosDeScope,
 } from '../types';
+import { hoyMazatlan } from '../utils/fechaHora';
 
 type Periodo = 'dia' | 'semana' | 'mes';
 type Turno = 'M' | 'V' | 'N';
@@ -95,8 +96,8 @@ const MESES_NOMBRE = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT
 // HELPERS DE FECHA
 // ============================================================
 function fechaHoyISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  // Hoy en zona oficial del hospital (America/Mazatlan), no la del dispositivo.
+  return hoyMazatlan();
 }
 
 // Lun-Dom de la fecha dada. Devuelve {ini, fin} como YYYY-MM-DD.
