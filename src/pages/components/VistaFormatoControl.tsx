@@ -27,6 +27,8 @@ interface ControlRenglon {
   fecha_nacimiento: string | null;
   edad_unidad?: 'AÑOS' | 'MESES' | 'DIAS' | string | null;
   diagnostico_ingreso: string;
+  fecha_ingreso?: string | null;
+  dias_estancia?: number | null;
   [key: string]: any;
 }
 
@@ -417,7 +419,7 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId, servicioCodig
               <div key={r.paciente_id} style={tarjeta}>
                 <div style={tarjetaHeader} onClick={() => setPacienteExpandido(expandido ? null : r.paciente_id)}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={camaNumero}>{r.numero_cama}</div>
+                    <div style={camaNumero(r.numero_cama)}>{r.numero_cama}</div>
                     <div>
                       <div style={pacienteNombre}>{r.nombre_paciente}</div>
                       <div style={pacienteSub}>
@@ -433,6 +435,14 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId, servicioCodig
                         )}
                         <br />
                         <span style={{ color: '#7d5b2f' }}>Dx: {r.diagnostico_ingreso}</span>
+                        {r.dias_estancia != null && (
+                          <>
+                            <br />
+                            <span style={{ color: '#0E6755', fontWeight: 600 }}>
+                              Estancia: {r.dias_estancia} día{r.dias_estancia === 1 ? '' : 's'}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -639,7 +649,32 @@ export const VistaFormatoControl: React.FC<Props> = ({ servicioId, servicioCodig
 const cabeceraBanda: React.CSSProperties = { background: '#0E6755', color: '#fff', padding: '8px 16px', fontWeight: 700, fontSize: 14, letterSpacing: 1, borderRadius: 4, textAlign: 'center', marginBottom: 12 };
 const tarjeta: React.CSSProperties = { border: '1px solid #C39C59', borderRadius: 6, background: '#fff', overflow: 'hidden' };
 const tarjetaHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F5F1E8', borderBottom: '1px solid #C39C59', cursor: 'pointer' };
-const camaNumero: React.CSSProperties = { width: 50, height: 50, background: '#0E6755', color: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700 };
+// Badge de cama. Acepta la etiqueta porque en URGENCIAS las camas no
+// censables tienen nombres largos ("PASILLO 02", "SILLA 1") que no caben con
+// fuente fija de 22px: bajamos el tamaño y dejamos que el texto se acomode en
+// dos líneas. Las camas numéricas ("44") conservan el tamaño grande.
+const camaNumero = (label: string): React.CSSProperties => {
+  const len = (label || '').length;
+  return {
+    minWidth: 50,
+    minHeight: 50,
+    flexShrink: 0,
+    padding: '4px 6px',
+    boxSizing: 'border-box',
+    background: '#0E6755',
+    color: '#fff',
+    borderRadius: 6,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    lineHeight: 1.1,
+    fontWeight: 700,
+    fontSize: len > 6 ? 12 : len > 3 ? 16 : 22,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  };
+};
 const pacienteNombre: React.CSSProperties = { fontSize: 14, fontWeight: 700, color: '#265C4E', marginBottom: 2 };
 const pacienteSub: React.CSSProperties = { fontSize: 11, color: '#888', lineHeight: 1.4 };
 const tarjetaBody: React.CSSProperties = { padding: 12, background: '#fdfaf2' };
