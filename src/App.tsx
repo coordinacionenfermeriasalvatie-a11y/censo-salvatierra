@@ -5,6 +5,7 @@ import { PresenceProvider } from './contexts/PresenceContext'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import type { Perfil } from './types'
+import { accesoPermitidoPorHorario, descripcionVentanaAcceso } from './utils/accesoHorario'
 
 // Code-splitting: estas paginas pesadas se cargan solo cuando se visitan.
 // Reduce el bundle inicial de ~424KB gzip a ~150KB gzip aproximadamente.
@@ -49,8 +50,46 @@ function AuthenticatedLayout({ perfil }: { perfil: Perfil }) {
   )
 }
 
+/**
+ * Pantalla de bloqueo para gestor/enfermera que intentan entrar fuera de su
+ * turno asignado. Les indica su ventana de acceso y permite cerrar sesión.
+ */
+function PantallaFueraDeHorario({
+  perfil,
+  onCerrarSesion,
+}: {
+  perfil: Perfil
+  onCerrarSesion: () => void
+}) {
+  const nombre = perfil.nombre_completo?.split(' ')[0] ?? ''
+  return (
+    <div style={pantallaCargando}>
+      <div style={{ maxWidth: 420 }}>
+        <h2 style={{ margin: 0, fontSize: 18, color: '#0E6755' }}>
+          Fuera de tu horario asignado
+        </h2>
+        <p style={{ marginTop: 12, fontSize: 14, lineHeight: 1.5 }}>
+          {nombre ? `Hola ${nombre}, el` : 'El'} acceso al censo está disponible
+          solo dentro de tu turno.
+        </p>
+        <p style={{ marginTop: 8, fontSize: 13, lineHeight: 1.5 }}>
+          {descripcionVentanaAcceso(perfil)}
+        </p>
+        <p style={{ marginTop: 8, fontSize: 12, color: '#265C4E' }}>
+          Si necesitas ingresar fuera de tu turno, contacta a la subjefatura de
+          enfermería.
+        </p>
+        <button onClick={onCerrarSesion} style={btnSalir}>
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function App() {
   const { session, perfil, cargando, cerrarSesion } = useAuth()
+  const fueraDeHorario = !!perfil && !accesoPermitidoPorHorario(perfil)
 
   if (cargando) {
     return (
@@ -92,7 +131,16 @@ export function App() {
             />
           )}
 
-          {session && perfil && (
+          {session && perfil && fueraDeHorario && (
+            <Route
+              path="*"
+              element={
+                <PantallaFueraDeHorario perfil={perfil} onCerrarSesion={cerrarSesion} />
+              }
+            />
+          )}
+
+          {session && perfil && !fueraDeHorario && (
             <Route element={<AuthenticatedLayout perfil={perfil} />}>
               <Route path="/" element={<Dashboard perfil={perfil} onCerrarSesion={cerrarSesion} />} />
               <Route path="/servicio/:servicioId" element={<VistaServicio />} />

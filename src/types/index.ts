@@ -41,6 +41,13 @@ export interface Perfil {
   es_admin_sistema?: boolean
   // Grupo de supervisión (1 ó 2) para rol 'supervisor'. NULL/ausente = global.
   supervision?: number | null
+  // Exime a un gestor/enfermera de la restricción de horario por turno:
+  // si es TRUE, esa cuenta entra 24/7 (lo activa el administrador). Ver mig 83.
+  acceso_24_7?: boolean
+  // Grupo del turno NOCTURNO ('A' ó 'B') para gestor/enfermera con
+  // turno_principal = 'N'. Los grupos se alternan por fecha (ver
+  // accesoHorario.ts). NULL = no rota (entra toda noche en su ventana). Mig 83.
+  grupo_nocturno?: 'A' | 'B' | null
 }
 
 /** Todos los servicios que un perfil con scope de servicio (gestor/enfermera)
