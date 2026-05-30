@@ -193,6 +193,8 @@ export const BitacoraSupervision: React.FC = () => {
       .update({
         estado_aprobacion: 'canjeada',
         canjeado_en: new Date().toISOString(),
+        canjeado_por: perfil.id,
+        canjeado_nombre: perfil.nombre_completo,
       })
       .eq('id', id);
     if (err) { alert('Error: ' + err.message); return; }

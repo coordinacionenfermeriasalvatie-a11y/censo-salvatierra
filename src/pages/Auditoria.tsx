@@ -155,33 +155,40 @@ export const Auditoria: React.FC = () => {
 // Sub 1: Timeline cronológico
 // ============================================================
 // Calcula el rango UTC [inicio, fin) del día+turno actual en Mazatlán.
-// Turnos: M=07-13, V=14-19, N=20-06.
+// Turnos oficiales: M=08:00–14:29, V=14:30–20:29, N=20:30–07:59.
+// Rangos medio-abiertos [ini, fin) con cortes en :30, igual que fn_turno_de_fecha.
 function rangoDiaTurnoActual(): { ini: string; fin: string } {
   const ahora = new Date();
-  // Hora local Mazatlán
-  const horaMaza = parseInt(
-    ahora.toLocaleString('en-US', { timeZone: 'America/Mazatlan', hour: '2-digit', hour12: false }),
-    10
-  );
+  // Hora:minuto local Mazatlán (en-GB da "HH:MM" 24h, sin el "24:00" de en-US).
+  const hhmm = ahora.toLocaleString('en-GB', {
+    timeZone: 'America/Mazatlan', hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  const [hStr, mStr] = hhmm.split(':');
+  const minDelDia = parseInt(hStr, 10) * 60 + parseInt(mStr, 10);
   const fechaMaza = ahora.toLocaleString('en-CA', {
     timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit',
   });
 
-  let horaIni: number, horaFin: number, diaIni = fechaMaza, diaFin = fechaMaza;
-  if (horaMaza >= 7 && horaMaza <= 13) {
-    horaIni = 7; horaFin = 14;
-  } else if (horaMaza >= 14 && horaMaza <= 19) {
-    horaIni = 14; horaFin = 20;
+  const M_INI = 8 * 60;        // 08:00
+  const V_INI = 14 * 60 + 30;  // 14:30
+  const N_INI = 20 * 60 + 30;  // 20:30
+
+  let horaIni: string, horaFin: string, diaIni = fechaMaza, diaFin = fechaMaza;
+  if (minDelDia >= M_INI && minDelDia < V_INI) {
+    horaIni = '08:00'; horaFin = '14:30';
+  } else if (minDelDia >= V_INI && minDelDia < N_INI) {
+    horaIni = '14:30'; horaFin = '20:30';
   } else {
-    horaIni = 20; horaFin = 7;
-    if (horaMaza < 7) {
-      // Estamos en la madrugada, el turno empezó ayer a las 20.
+    // Nocturno: 20:30 → 08:00 del día siguiente.
+    horaIni = '20:30'; horaFin = '08:00';
+    if (minDelDia < M_INI) {
+      // Madrugada: el turno empezó ayer a las 20:30.
       const ayer = new Date(ahora.getTime() - 86400000);
       diaIni = ayer.toLocaleString('en-CA', {
         timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit',
       });
     } else {
-      // Estamos en la noche, el turno termina mañana a las 7.
+      // Noche (≥20:30): el turno termina mañana a las 08:00.
       const manana = new Date(ahora.getTime() + 86400000);
       diaFin = manana.toLocaleString('en-CA', {
         timeZone: 'America/Mazatlan', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -189,9 +196,9 @@ function rangoDiaTurnoActual(): { ini: string; fin: string } {
     }
   }
 
-  // Mazatlán es UTC-7. Convertimos sumando 7 horas para obtener UTC.
-  const toUtcIso = (fecha: string, hora: number) => {
-    const d = new Date(`${fecha}T${String(hora).padStart(2, '0')}:00:00-07:00`);
+  // Mazatlán es UTC-7. Construimos el ISO con offset -07:00 y normalizamos a UTC.
+  const toUtcIso = (fecha: string, hora: string) => {
+    const d = new Date(`${fecha}T${hora}:00-07:00`);
     return d.toISOString();
   };
   return { ini: toUtcIso(diaIni, horaIni), fin: toUtcIso(diaFin, horaFin) };
