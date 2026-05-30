@@ -11,6 +11,8 @@
 // Uso:
 //   import { exportarProductividadMensual } from '../utils/exportarProductividad';
 //   await exportarProductividadMensual(2026, 5, 'Stavros Ayala', 'subjefe');
+//   // Acotado al servicio del gestor (solo sus servicios en todas las hojas):
+//   await exportarProductividadMensual(2026, 5, 'Nombre', 'gestor', [7]);
 //
 // Dependencias: exceljs, file-saver
 // =====================================================================
@@ -160,8 +162,12 @@ export async function exportarProductividadMensual(
   anio: number,
   mes: number,
   nombreFirmante: string,
-  rolFirmante: string
+  rolFirmante: string,
+  serviciosFiltro?: number[]
 ): Promise<void> {
+  // Si se pasa un filtro de servicios (gestor), acotamos todo el reporte a ese scope.
+  const filtroActivo = Array.isArray(serviciosFiltro) && serviciosFiltro.length > 0;
+  const setFiltro = filtroActivo ? new Set(serviciosFiltro) : null;
   // 1. Traer todos los datos del mes en una sola query
   const { data, error } = await supabase
     .from('v_productividad_export_mensual')
@@ -178,9 +184,15 @@ export async function exportarProductividadMensual(
   }
 
   // Filtrar: queremos las filas del mes/año Y las filas donde anio/mes son NULL (sin capturas)
+  // Si hay filtro de servicios (gestor), solo conservamos sus servicios → acota todas las hojas.
   const filas = (data as FilaExport[]).filter(f =>
-    (f.anio === anio && f.mes === mes) || (f.anio === null && f.mes === null)
+    ((f.anio === anio && f.mes === mes) || (f.anio === null && f.mes === null)) &&
+    (!setFiltro || setFiltro.has(f.servicio_id))
   );
+
+  if (filas.length === 0) {
+    throw new Error('No hay datos de productividad para tu servicio en este periodo.');
+  }
 
   // Agrupar: servicios y indicadores
   const serviciosMap = new Map<number, { codigo: string; nombre: string; orden: number }>();
@@ -564,8 +576,11 @@ export async function exportarProductividadMensual(
     });
 
     // Total final
+    const etiquetaTotal = filtroActivo
+      ? (servicios.length === 1 ? `TOTAL ${servicios[0].nombre.toUpperCase()}` : 'TOTAL SERVICIOS')
+      : 'TOTAL HOSPITAL';
     const gt = sheet.getRow(filaActual);
-    gt.values = ['TOTAL HOSPITAL', totalAutoIng, totalAutoTurno, totalManual, totalAll];
+    gt.values = [etiquetaTotal, totalAutoIng, totalAutoTurno, totalManual, totalAll];
     [1, 2, 3, 4, 5].forEach(col => {
       const c = gt.getCell(col);
       c.font = { name: 'Calibri', size: 12, bold: true, color: { argb: COLOR_BLANCO } };
@@ -623,7 +638,11 @@ export async function exportarProductividadMensual(
   // =====================================================================
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const nombreArchivo = `Productividad_BCS_Salvatierra_${MESES_TEXTO[mes - 1]}_${anio}.xlsx`;
+  // Si el reporte está acotado a un solo servicio, lo indicamos en el nombre del archivo.
+  const sufijoServicio = filtroActivo && servicios.length === 1
+    ? `_${servicios[0].codigo.replace(/[^A-Za-z0-9]+/g, '')}`
+    : '';
+  const nombreArchivo = `Productividad_BCS_Salvatierra${sufijoServicio}_${MESES_TEXTO[mes - 1]}_${anio}.xlsx`;
   saveAs(blob, nombreArchivo);
 }
 

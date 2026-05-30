@@ -557,12 +557,19 @@ export function TableroMaestro() {
     try {
       // Dynamic import: exceljs solo se descarga aqui (lazy)
       const { exportarProductividadMensual } = await import('../utils/exportarProductividad');
+      // serviciosRestriccion es null para admin global (export hospitalario completo)
+      // y la lista de servicios del gestor (export acotado a su scope).
       await exportarProductividadMensual(
         anio, mes,
         perfil.nombre_completo || 'Subjefe de Enfermería',
-        perfil.rol || 'subjefe'
+        perfil.rol || 'subjefe',
+        serviciosRestriccion ?? undefined
       );
-      window.open(`/imprimir/productividad/${anio}/${mes}?auto=1`, '_blank', 'noopener,noreferrer');
+      // El PDF imprimible es hospitalario (todos los servicios). Solo lo abrimos
+      // para el admin global; al gestor le entregamos únicamente su Excel acotado.
+      if (esAdmin) {
+        window.open(`/imprimir/productividad/${anio}/${mes}?auto=1`, '_blank', 'noopener,noreferrer');
+      }
     } catch (e: any) {
       setError(`Error al exportar: ${e.message || e}`);
     } finally {
@@ -683,12 +690,14 @@ export function TableroMaestro() {
               <select value={anio} onChange={e => setAnio(parseInt(e.target.value))} style={selectInput}>
                 {[2024,2025,2026,2027].map(a => <option key={a} value={a}>{a}</option>)}
               </select>
-              {/* El export Excel+PDF es de TODO el hospital (hoja consolidada +
-                  una por servicio); se reserva al admin global para no filtrar
-                  servicios ajenos al scope del gestor. */}
-              {esAdmin && (
+              {/* Export Excel: el admin global obtiene el reporte hospitalario
+                  completo (consolidado + 1 hoja por servicio + PDF); el gestor
+                  obtiene un Excel acotado exclusivamente a su(s) servicio(s). */}
+              {(esAdmin || perfil?.rol === 'gestor') && (
                 <button onClick={handleExportarProductividad} disabled={exportando} style={btnExportar}>
-                  {exportando ? '⏳ Generando...' : '📊 Exportar Excel + PDF'}
+                  {exportando
+                    ? '⏳ Generando...'
+                    : esAdmin ? '📊 Exportar Excel + PDF' : '📊 Exportar Excel de mi servicio'}
                 </button>
               )}
             </>
