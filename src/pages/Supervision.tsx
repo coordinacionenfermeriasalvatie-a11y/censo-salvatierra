@@ -120,7 +120,9 @@ export const Supervision: React.FC = () => {
         <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>
       </div>
 
-      {supEfectiva === 1 && grupoSup == null && (
+      {/* Visible para admins globales (jefe/subjefe) y el supervisor de Sup 1,
+          que es quien absorbe a Sup 2 cuando falta su supervisor. */}
+      {supEfectiva === 1 && (
         <div style={modoBox}>
           <label style={modoLabel}>
             <input
