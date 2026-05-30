@@ -35,6 +35,78 @@ const TODOS_GESTOR_ARRIBA: Rol[] = ['jefe','subjefe','supervisor','gestor'];
 
 const SECCIONES: Seccion[] = [
   // ============================================================
+  // 0. PRIVILEGIOS POR ROL (visible para todos)
+  // ============================================================
+  {
+    key: 'privilegios',
+    numero: '0',
+    titulo: 'Privilegios por rol — qué puede hacer cada quien',
+    icono: '🔑',
+    subtitulo: 'Resumen de lo que ve y puede hacer cada tipo de usuario',
+    color: '#265C4E',
+    contenido: [
+      {
+        titulo: '0.1. Enfermera (personal de piso)',
+        pasos: [
+          'Trabaja dentro de su servicio asignado.',
+          'Captura y consulta de su servicio: 🏥 Censo, 🍽️ Dietas, 💊 Recetario, 📋 Control y 📊 Productividad.',
+          'NO ve el Tablero Maestro ni la Carpeta de Supervisión.',
+          'NO traslada ni cambia de cama (el chip 🔀 no le aparece).',
+          'Cada acción que realiza queda registrada con su nombre y la hora exacta.',
+        ],
+      },
+      {
+        titulo: '0.2. Gestor (jefe de servicio)',
+        pasos: [
+          'Administra UNO o VARIOS servicios (su servicio principal + servicios extra). Todo lo que ve queda acotado a su(s) servicio(s).',
+          'Censo completo de su servicio: ingresar, egresar, trasladar/cambiar de cama (chip 🔀), editar datos y marcar camas no ocupables.',
+          '🍽️ Dietas, 💊 Recetario, 📋 Control y 📊 Productividad de su servicio.',
+          '💊 Receta de medicamento controlado: genera vales de psicotrópicos para sus pacientes.',
+          '🆕 Tablero Maestro COMPLETO pero acotado a su servicio: selector Día / Semana / Mes + resumen ejecutivo mensual. Si su servicio incluye Hemodiálisis, también ve la sección 🩺 Hemodiálisis y Diálisis.',
+          '🆕 Exporta un Excel de productividad acotado EXCLUSIVAMENTE a su(s) servicio(s) (botón "📊 Exportar Excel de mi servicio").',
+          'NO ve la Auditoría, ni la Carpeta de Supervisión (bitácora global de vales, fondo fijo), ni datos de servicios ajenos.',
+        ],
+      },
+      {
+        titulo: '0.3. Supervisor de enfermería',
+        pasos: [
+          'Ve TODOS los servicios del hospital (administrador global).',
+          'Carpeta de Supervisión: Bitácora de vales controlados (aprobar / rechazar / canjear), Fondo Fijo de Psicotrópicos (hoja del día), Tablero General y Auditoría.',
+          'En el Tablero General ve SOLO la vista del Día (no Semana/Mes).',
+          'En la Auditoría ve SOLO los cambios de HOY y de SU TURNO ACTUAL (M/V/N por hora Mazatlán).',
+          'NO ve la hoja semanal ni el histórico de psicotrópicos (exclusivo de jefatura/administrador).',
+        ],
+      },
+      {
+        titulo: '0.4. Subjefe de enfermería',
+        pasos: [
+          'Mismos privilegios globales que el supervisor: ve todos los servicios y la Carpeta de Supervisión completa.',
+          'Si además es Administrador del Sistema, gana los privilegios máximos de jefatura (ver 0.5).',
+        ],
+      },
+      {
+        titulo: '0.5. Jefatura y Administrador del Sistema',
+        pasos: [
+          'Privilegios máximos sobre TODO el hospital.',
+          'Tablero Maestro completo Día / Semana / Mes de todos los servicios, con exportación hospitalaria (Excel consolidado + 1 hoja por servicio + PDF).',
+          'Auditoría completa de los últimos 30 días (todos los turnos, sin restricción).',
+          'Hoja semanal e histórico inmutable de psicotrópicos (snapshots).',
+          'Panel "🟢 En línea ahora" y alta de nuevos colaboradores.',
+        ],
+      },
+      {
+        titulo: '0.6. ¿Quién ve el Tablero Maestro y con qué alcance?',
+        pasos: [
+          'Jefatura / Administrador: todo el hospital · Día/Semana/Mes · auditoría completa · exportación hospitalaria.',
+          'Subjefe / Supervisor: todo el hospital · SOLO el Día · auditoría limitada a hoy/turno.',
+          'Gestor: SOLO su(s) servicio(s) · Día/Semana/Mes + resumen ejecutivo + Excel acotado · SIN auditoría.',
+          'Enfermera: no tiene acceso al Tablero Maestro.',
+        ],
+      },
+    ],
+  },
+
+  // ============================================================
   // 1. ARRANQUE
   // ============================================================
   {
@@ -508,23 +580,35 @@ const SECCIONES: Seccion[] = [
         titulo: '8.1. Acceder al Tablero',
         pasos: [
           'Desde la pantalla principal, toca el botón "📊 Tablero Maestro" en la barra superior.',
+          'Lo ven: jefatura, subjefatura, supervisión y gestores (jefes de servicio). El personal de enfermería de piso no tiene este botón.',
           'Verás los KPIs del día: Camas totales, Ocupadas, Disponibles, % de ocupación.',
           'En URGENCIAS también aparece el KPI "Camillas/Sillas" con los espacios extra.',
         ],
       },
       {
-        titulo: '8.2. Cambiar el periodo (Día / Semana / Mes)',
+        titulo: '8.2. Qué alcance ves según tu rol',
         pasos: [
-          'En la parte superior del Tablero, hay tabs para Día, Semana, Mes.',
-          'Selecciona el periodo deseado.',
-          'Los datos del resumen y la productividad se actualizan al instante.',
+          'Jefatura / Administrador y Subjefatura / Supervisión: ven TODOS los servicios del hospital.',
+          'Gestor (jefe de servicio): ve SOLO su(s) servicio(s); todos los KPIs, el resumen ejecutivo y las gráficas quedan acotados a su scope.',
+          'La sección 🩺 Hemodiálisis y Diálisis aparece para los administradores globales y para el gestor cuyo servicio incluya Hemodiálisis.',
+          'La 🔍 Auditoría NO aparece para el gestor.',
         ],
       },
       {
-        titulo: '8.3. Exportar el reporte',
+        titulo: '8.3. Cambiar el periodo (Día / Semana / Mes)',
         pasos: [
-          'En el Tablero, toca "📥 Exportar Excel" para el reporte tabular.',
-          'O "📄 Exportar PDF" para una versión imprimible.',
+          'En la parte superior del Tablero hay tabs para Día, Semana y Mes.',
+          'Jefatura / Administrador y Gestor: disponen de las tres vistas (Día, Semana y Mes), con resumen ejecutivo mensual.',
+          'Subjefatura y Supervisión: ven SOLO la vista del Día.',
+          'Al cambiar el periodo, el resumen y la productividad se actualizan al instante.',
+        ],
+      },
+      {
+        titulo: '8.4. Exportar el reporte',
+        pasos: [
+          'El botón de exportación aparece únicamente en la vista de Mes.',
+          'Jefatura / Administrador: "📊 Exportar Excel + PDF" → reporte hospitalario completo (hoja consolidada + 1 hoja por servicio) más la versión PDF imprimible.',
+          '🆕 Gestor: "📊 Exportar Excel de mi servicio" → archivo .xlsx acotado EXCLUSIVAMENTE a su(s) servicio(s). El gestor no recibe el PDF hospitalario, para no exponer servicios ajenos a su scope.',
         ],
       },
     ],
