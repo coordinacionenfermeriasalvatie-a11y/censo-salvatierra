@@ -1,11 +1,15 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useState, useEffect } from 'react'
 import { useAuth } from './hooks/useAuth'
 import { PresenceProvider } from './contexts/PresenceContext'
 import { Login } from './pages/Login'
 import { Dashboard } from './pages/Dashboard'
 import type { Perfil } from './types'
-import { accesoPermitidoPorHorario, descripcionVentanaAcceso } from './utils/accesoHorario'
+import {
+  accesoPermitidoPorHorario,
+  descripcionVentanaAcceso,
+  rolRestringidoPorHorario,
+} from './utils/accesoHorario'
 
 // Code-splitting: estas paginas pesadas se cargan solo cuando se visitan.
 // Reduce el bundle inicial de ~424KB gzip a ~150KB gzip aproximadamente.
@@ -89,7 +93,21 @@ function PantallaFueraDeHorario({
 
 export function App() {
   const { session, perfil, cargando, cerrarSesion } = useAuth()
-  const fueraDeHorario = !!perfil && !accesoPermitidoPorHorario(perfil)
+
+  // Reloj de reevaluacion en vivo. Solo avanza para roles sujetos a la
+  // restriccion de horario (gestor/enfermera); jefe/subjefe/supervisor NO
+  // tickean, asi que sus tableros pesados no re-renderizan cada 30 s. Esto
+  // expulsa a quien sigue dentro cuando termina su ventana de turno, sin
+  // esperar a que recargue o vuelva a iniciar sesion.
+  const [ahora, setAhora] = useState(() => new Date())
+  const sujetoAHorario = !!perfil && rolRestringidoPorHorario(perfil.rol)
+  useEffect(() => {
+    if (!sujetoAHorario) return
+    const id = setInterval(() => setAhora(new Date()), 30_000)
+    return () => clearInterval(id)
+  }, [sujetoAHorario])
+
+  const fueraDeHorario = !!perfil && !accesoPermitidoPorHorario(perfil, ahora)
 
   if (cargando) {
     return (
