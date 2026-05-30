@@ -86,6 +86,9 @@ export const BitacoraSupervision: React.FC = () => {
   const supUrlRaw = searchParams.get('sup');
   const supUrl: 1 | 2 | null = supUrlRaw === '1' ? 1 : supUrlRaw === '2' ? 2 : null;
   const supEfectiva: 1 | 2 = supervisionDeScope(perfil) ?? supUrl ?? 1;
+  // Modo principal (suplencia): cuando se activa desde la carpeta de Supervisión,
+  // Sup 1 concentra TODOS los vales (Sup 1 + Sup 2). Solo aplica a la principal (1).
+  const consolidado = supEfectiva === 1 && searchParams.get('consol') === '1';
 
   const [fecha, setFecha] = useState(hoyMazatlan());
   const [filas, setFilas] = useState<BitacoraRow[]>([]);
@@ -100,11 +103,20 @@ export const BitacoraSupervision: React.FC = () => {
   const cargar = useCallback(async () => {
     setCargando(true);
     setError(null);
-    // Servicios de esta supervisión (trazabilidad: cada vale pertenece al
-    // servicio del paciente, y el servicio pertenece a una supervisión).
-    const { data: svc } = await supabase.from('servicios')
-      .select('codigo').eq('supervision', supEfectiva);
+    // Servicios a concentrar (trazabilidad: cada vale pertenece al servicio del
+    // paciente, y el servicio pertenece a una supervisión). En modo principal
+    // (consolidado) traemos TODOS para que Supervisión 1 absorba a Supervisión 2.
+    let svcQ = supabase.from('servicios').select('codigo');
+    if (!consolidado) svcQ = svcQ.eq('supervision', supEfectiva);
+    const { data: svc } = await svcQ;
     const codigos = (svc || []).map((r: any) => r.codigo);
+    // Sin servicios en esta supervisión: no mostramos nada. Evita que un filtro
+    // `.in()` vacío degenere en "todos los vales" (vales mezclados entre sup.).
+    if (codigos.length === 0) {
+      setFilas([]);
+      setCargando(false);
+      return;
+    }
     let q = supabase.from('v_bitacora_supervision')
       .select('*')
       .eq('fecha_dia', fecha)
@@ -116,7 +128,7 @@ export const BitacoraSupervision: React.FC = () => {
     if (err) setError(err.message);
     else setFilas((data || []) as BitacoraRow[]);
     setCargando(false);
-  }, [fecha, filtroEstado, filtroServicio, supEfectiva]);
+  }, [fecha, filtroEstado, filtroServicio, supEfectiva, consolidado]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -222,8 +234,11 @@ export const BitacoraSupervision: React.FC = () => {
     <div style={pagina}>
       <div style={header}>
         <div>
-          <h1 style={titulo}>📋 Bitácora de Supervisión {supEfectiva} — Medicamentos Controlados</h1>
-          <p style={subt}>Concentrado diario · turnos Matutino, Vespertino y Nocturno · servicios de Supervisión {supEfectiva}</p>
+          <h1 style={titulo}>📋 Bitácora de Supervisión {consolidado ? '1 · consolidada' : supEfectiva} — Medicamentos Controlados</h1>
+          <p style={subt}>
+            Concentrado diario · turnos Matutino, Vespertino y Nocturno ·
+            {consolidado ? ' MODO PRINCIPAL: concentra Supervisión 1 + 2' : ` servicios de Supervisión ${supEfectiva}`}
+          </p>
         </div>
         <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>
       </div>

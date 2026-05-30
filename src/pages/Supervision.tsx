@@ -7,10 +7,12 @@
 //
 // Acceso: jefe, subjefe, supervisor (admin global). Gestores/enfermeras NO.
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { ROLES_ADMIN_GLOBAL, formatearTitulo, supervisionDeScope } from '../types';
+
+const LS_CONSOLIDAR = 'censo:consolidarSup';
 
 interface Herramienta {
   icono: string;
@@ -62,11 +64,33 @@ export const Supervision: React.FC = () => {
   const navigate = useNavigate();
   const { sup } = useParams<{ sup?: string }>();
 
+  // Supervisión pedida por la URL (1/2 válidos; cualquier otra cosa = ninguna)
+  const supUrl: 1 | 2 | null = sup === '1' ? 1 : sup === '2' ? 2 : null;
+
+  // Modo principal (suplencia): cuando falta el supervisor de un grupo, Sup 1
+  // concentra todo. Manual y persistido por dispositivo (no toca la BD).
+  const [consolidado, setConsolidado] = useState<boolean>(
+    () => localStorage.getItem(LS_CONSOLIDAR) === '1'
+  );
+  const setModo = (v: boolean) => {
+    setConsolidado(v);
+    if (v) localStorage.setItem(LS_CONSOLIDAR, '1');
+    else localStorage.removeItem(LS_CONSOLIDAR);
+  };
+
+  // Con modo principal activo, la carpeta de Supervisión 2 redirige a la 1.
+  // Solo para admins globales sin grupo propio; un supervisor con grupo manda.
+  useEffect(() => {
+    if (!perfil) return;
+    const g = supervisionDeScope(perfil);
+    if (consolidado && supUrl === 2 && g == null) {
+      navigate('/supervision/1', { replace: true });
+    }
+  }, [consolidado, supUrl, perfil, navigate]);
+
   if (!perfil) return <div style={cargando}>Verificando perfil...</div>;
 
   const grupoSup = supervisionDeScope(perfil);
-  // Supervisión pedida por la URL (1/2 válidos; cualquier otra cosa = ninguna)
-  const supUrl: 1 | 2 | null = sup === '1' ? 1 : sup === '2' ? 2 : null;
   // Supervisión efectiva de esta carpeta:
   //  - supervisor con grupo: SIEMPRE su grupo (no puede abrir el de la otra)
   //  - jefe/subjefe/supervisor sin grupo: la de la URL, o 1 por defecto
@@ -96,11 +120,32 @@ export const Supervision: React.FC = () => {
         <button onClick={() => navigate('/')} style={btnVolver}>← Dashboard</button>
       </div>
 
+      {supEfectiva === 1 && grupoSup == null && (
+        <div style={modoBox}>
+          <label style={modoLabel}>
+            <input
+              type="checkbox"
+              checked={consolidado}
+              onChange={e => setModo(e.target.checked)}
+              style={{ width: 18, height: 18, cursor: 'pointer', flexShrink: 0 }}
+            />
+            <span>
+              <strong>Modo principal</strong> — concentra los vales de Supervisión 2 en Supervisión 1.
+              Úsalo cuando falte el supervisor de Sup 2: la bitácora mostrará Sup 1 + 2 y la carpeta de
+              Supervisión II redirigirá aquí. {consolidado ? '🟢 Activo' : '⚪ Inactivo'}
+            </span>
+          </label>
+        </div>
+      )}
+
       <div style={grid}>
         {HERRAMIENTAS.map(h => (
           <button
             key={h.ruta}
-            onClick={() => navigate(h.supParam ? `${h.ruta}?sup=${supEfectiva}` : h.ruta)}
+            onClick={() => {
+              const extra = consolidado && supEfectiva === 1 ? '&consol=1' : '';
+              navigate(h.supParam ? `${h.ruta}?sup=${supEfectiva}${extra}` : h.ruta);
+            }}
             style={tarjeta(h.color)}
           >
             <div style={tarjetaHeader(h.color)}>
@@ -192,6 +237,15 @@ const placeholder: React.CSSProperties = {
   minHeight: 180, color: '#7d5b2f', textAlign: 'center' as const, padding: 20,
 };
 const placeholderTxt: React.CSSProperties = { fontSize: 18 };
+
+const modoBox: React.CSSProperties = {
+  background: '#fff7e0', border: '1px solid #C39C59', borderRadius: 6,
+  padding: '10px 14px', marginBottom: 16,
+};
+const modoLabel: React.CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10, fontSize: 13,
+  color: '#7d5b2f', lineHeight: 1.5, cursor: 'pointer',
+};
 
 const pie: React.CSSProperties = {
   padding: 12, background: '#fff7e0', border: '1px solid #C39C59', borderRadius: 6,
