@@ -8,7 +8,9 @@
 // Formato: Carta HORIZONTAL (11" × 8.5"), una sola hoja con todos los
 // pacientes activos del servicio.
 //
-// Columnas: SERVICIO · CAMA · NOMBRE · EDAD · TIPO DE DIETA · CONSISTENCIA · RESTRICCIONES · OBSERVACIONES
+// Columnas: [SUBSERVICIO] · CAMA · NOMBRE · EDAD · TIPO DE DIETA · CONSISTENCIA · RESTRICCIONES · OBSERVACIONES
+//   La columna SUBSERVICIO solo aparece cuando el servicio tiene subservicios.
+//   El nombre del servicio va en el sub-encabezado (fila con fecha y nº de pacientes).
 //
 // Fuente de datos: vista v_dietas_servicio (JOINs pre-armados).
 // Solo pacientes con estado='ACTIVO' (la vista ya filtra).
@@ -237,7 +239,7 @@ export const VistaImpresionDietas: React.FC = () => {
         <table className="tabla">
           <thead>
             <tr>
-              <th className="c-servicio">SERVICIO</th>
+              {haySubservicios && <th className="c-subservicio">SUBSERVICIO</th>}
               <th className="c-cama">CAMA</th>
               <th className="c-paciente">NOMBRE</th>
               <th className="c-edad">EDAD</th>
@@ -248,39 +250,25 @@ export const VistaImpresionDietas: React.FC = () => {
             </tr>
           </thead>
           <tbody>
-            {dietas.map((d, idx) => {
-              // En servicios con subservicios: encabezado antes del primer
-              // paciente de cada grupo, con salto de página (excepto el 1°).
-              const subAnterior = idx > 0 ? dietas[idx - 1].subservicio : null;
-              const inicioGrupo = haySubservicios && d.subservicio !== subAnterior;
-              return (
-                <React.Fragment key={d.paciente_id}>
-                  {inicioGrupo && (
-                    <tr className={idx === 0 ? 'sub-grupo primera' : 'sub-grupo'}>
-                      <td colSpan={8}>{d.subservicio}</td>
-                    </tr>
-                  )}
-                  <tr className={idx % 2 === 0 ? 'fila-par' : 'fila-impar'}>
-                    <td className="c-servicio">{servicio?.nombre || '—'}</td>
-                    <td className="c-cama">{d.numero_cama}</td>
-                    <td className="c-paciente">
-                      <div className="p-nombre">{d.nombre_paciente}</div>
-                      <div className="p-sub">{generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
-                    </td>
-                    <td className="c-edad">{edadTexto(d.edad)}</td>
-                    <td className="c-tipo"><strong>{d.tipo_dieta || '—'}</strong></td>
-                    <td className="c-cons">{d.consistencia || '—'}</td>
-                    <td className="c-restr">{d.restricciones || '—'}</td>
-                    <td className="c-obs">{d.observaciones || ''}</td>
-                  </tr>
-                </React.Fragment>
-              );
-            })}
+            {dietas.map((d, idx) => (
+              <tr key={d.paciente_id} className={idx % 2 === 0 ? 'fila-par' : 'fila-impar'}>
+                {haySubservicios && <td className="c-subservicio">{d.subservicio || '—'}</td>}
+                <td className="c-cama">{d.numero_cama}</td>
+                <td className="c-paciente">
+                  <div className="p-nombre">{d.nombre_paciente}</div>
+                  <div className="p-sub">{generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
+                </td>
+                <td className="c-edad">{edadTexto(d.edad)}</td>
+                <td className="c-tipo"><strong>{d.tipo_dieta || '—'}</strong></td>
+                <td className="c-cons">{d.consistencia || '—'}</td>
+                <td className="c-restr">{d.restricciones || '—'}</td>
+                <td className="c-obs">{d.observaciones || ''}</td>
+              </tr>
+            ))}
             {/* Filas vacías para completar el total de camas (solo en servicios
                 de un solo subservicio; al agrupar no aplica). */}
             {!haySubservicios && servicio && Array.from({ length: Math.max(0, servicio.total_camas - dietas.length) }).map((_, idx) => (
               <tr key={`vacia-${idx}`} className="fila-vacia">
-                <td className="c-servicio">&nbsp;</td>
                 <td className="c-cama">&nbsp;</td>
                 <td colSpan={6}>&nbsp;</td>
               </tr>
@@ -521,21 +509,9 @@ body {
 .fila-impar { background: #f5f1e8; }
 .fila-vacia td { background: #fff; height: 28px; }
 
-/* Encabezado de subservicio (Urgencias, Toco, Pediatría) */
-.sub-grupo td {
-  background: #DCEFE9;
-  color: #0E6755;
-  font-weight: 700;
-  font-size: 9pt;
-  letter-spacing: 0.4px;
-  text-align: left;
-  padding: 4px 8px;
-  height: auto;
-}
-.sub-grupo:not(.primera) td { page-break-before: always; }
-
-.c-servicio {
-  width: 12%;
+/* Columna de subservicio (solo en servicios con subservicios) */
+.c-subservicio {
+  width: 14%;
   font-weight: 700;
   font-size: 8.5pt;
   color: #265C4E;
@@ -552,7 +528,7 @@ body {
 }
 
 .c-paciente {
-  width: 22%;
+  width: 24%;
 }
 
 .c-edad {
