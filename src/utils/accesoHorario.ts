@@ -1,31 +1,28 @@
 // Restricción de acceso por turno asignado.
 //
 // gestor y enfermera (gestores del cuidado / jefes de servicio / operativos)
-// solo pueden entrar al censo dentro de la ventana de su turno asignado
-// (turno_principal), MÁS 1:30 (90 min) de tolerancia al terminar el turno
-// para cerrar pendientes. jefe / subjefe / supervisor entran 24/7, igual que
-// JORNADA y quien tenga el flag de administrador acceso_24_7.
+// solo pueden entrar al censo dentro de la VENTANA DE ACCESO de su turno
+// asignado (turno_principal). jefe / subjefe / supervisor entran 24/7, igual
+// que JORNADA y quien tenga el flag de administrador acceso_24_7.
 //
-// Las fronteras de turno son las oficiales del hospital (mig 67), en hora
-// local del Pacífico de México (America/Mazatlan, UTC-7):
-//   M = 08:00–14:29   V = 14:30–20:29   N = 20:30–07:59 (cruza medianoche)
+// Ventanas de acceso dictadas por la subjefatura (hora local del Pacífico,
+// America/Mazatlan, UTC-7), con traslape entre turnos para el cambio de guardia:
+//   M = 07:00–15:00   V = 13:00–21:00   N = 19:30–08:30 (cruza medianoche)
 
 import type { Perfil, Rol } from '../types'
 
 const ROLES_RESTRINGIDOS: Rol[] = ['gestor', 'enfermera']
 
-// 1:30 después de terminar el turno, para cerrar pendientes.
-const TOLERANCIA_MIN = 90
-
 // Ventana en minutos desde la medianoche local. `fin` puede pasar de 1440
 // (24:00) cuando la ventana cruza la medianoche (turno Nocturno).
 type Ventana = { inicio: number; fin: number }
 
-// Ventana de ACCESO = ventana del turno + TOLERANCIA_MIN al final.
+// Ventanas de ACCESO dictadas por la subjefatura, con traslape entre turnos
+// para el cambio de guardia. N cruza medianoche, por eso su `fin` pasa de 1440.
 const VENTANAS: Record<'M' | 'V' | 'N', Ventana> = {
-  M: { inicio: 8 * 60, fin: 14 * 60 + 30 + TOLERANCIA_MIN }, // 08:00–16:00
-  V: { inicio: 14 * 60 + 30, fin: 20 * 60 + 30 + TOLERANCIA_MIN }, // 14:30–22:00
-  N: { inicio: 20 * 60 + 30, fin: 24 * 60 + 8 * 60 + TOLERANCIA_MIN }, // 20:30–09:30 (+1 día)
+  M: { inicio: 7 * 60, fin: 15 * 60 }, // 07:00–15:00
+  V: { inicio: 13 * 60, fin: 21 * 60 }, // 13:00–21:00
+  N: { inicio: 19 * 60 + 30, fin: 24 * 60 + 8 * 60 + 30 }, // 19:30–08:30 (+1 día)
 }
 
 type PartesLocal = { anio: number; mes: number; dia: number; minutos: number }
@@ -72,28 +69,28 @@ function grupoDe(perfil: Pick<Perfil, 'grupo_nocturno'>): 'A' | 'B' | null {
 }
 
 /** Grupo nocturno ('A' | 'B') que está de guardia en la NOCHE vigente en este
- *  instante, o null si ahora no hay noche vigente (fuera de 20:30–09:30).
+ *  instante, o null si ahora no hay noche vigente (fuera de 19:30–08:30).
  *
  *  El nocturno se parte en dos grupos que se alternan por la PARIDAD de la
  *  fecha en que ARRANCA la noche: en junio (mes par) las noches de día NON las
  *  cubre A y las pares B; la regla se voltea cada mes. Equivale a: A cubre la
  *  noche cuando (día + mes) es impar; B cuando es par. Como la noche cruza la
- *  medianoche, de 00:00 a 09:29 la noche "arrancó ayer", así que se usa la
+ *  medianoche, de 00:00 a 08:29 la noche "arrancó ayer", así que se usa la
  *  fecha de inicio, no la del reloj. */
 function grupoNocturnoDeGuardia(ahora: Date): 'A' | 'B' | null {
   const { anio, mes, dia, minutos } = partesLocalesMazatlan(ahora)
   let m = mes
   let d = dia
-  if (minutos >= 20 * 60 + 30) {
-    // 20:30–23:59: la noche arranca HOY (mes/día ya correctos).
-  } else if (minutos < 9 * 60 + 30) {
-    // 00:00–09:29: la noche arrancó AYER (usar fecha previa, vía UTC).
+  if (minutos >= 19 * 60 + 30) {
+    // 19:30–23:59: la noche arranca HOY (mes/día ya correctos).
+  } else if (minutos < 8 * 60 + 30) {
+    // 00:00–08:29: la noche arrancó AYER (usar fecha previa, vía UTC).
     const ayer = new Date(Date.UTC(anio, mes - 1, dia))
     ayer.setUTCDate(ayer.getUTCDate() - 1)
     m = ayer.getUTCMonth() + 1
     d = ayer.getUTCDate()
   } else {
-    return null // 09:30–20:29: sin noche vigente.
+    return null // 08:30–19:29: sin noche vigente.
   }
   return (d + m) % 2 === 1 ? 'A' : 'B'
 }
@@ -107,7 +104,7 @@ export function rolRestringidoPorHorario(rol: Rol): boolean {
  *  - Roles globales (jefe/subjefe/supervisor): siempre.
  *  - acceso_24_7 o es_admin_sistema: siempre (excepción del administrador).
  *  - turno JORNADA: siempre.
- *  - turno M/V: solo dentro de su ventana (turno + 1:30 de tolerancia).
+ *  - turno M/V: solo dentro de su ventana de acceso.
  *  - turno N: dentro de la ventana nocturna Y, si tiene grupo (A/B), solo las
  *    noches que le tocan a su grupo. N sin grupo entra cualquier noche.
  *  - sin turno asignado: NO (debe contactar a la jefatura). */
@@ -147,15 +144,15 @@ export function descripcionVentanaAcceso(
 ): string {
   switch (turnoDe(perfil)) {
     case 'M':
-      return 'Tu turno es Matutino: puedes ingresar de 08:00 a 16:00 (turno 08:00–14:29 más 1:30 de tolerancia).'
+      return 'Tu turno es Matutino: puedes ingresar de 07:00 a 15:00.'
     case 'V':
-      return 'Tu turno es Vespertino: puedes ingresar de 14:30 a 22:00 (turno 14:30–20:29 más 1:30 de tolerancia).'
+      return 'Tu turno es Vespertino: puedes ingresar de 13:00 a 21:00.'
     case 'N': {
       const grupo = grupoDe(perfil)
       if (grupo !== null) {
-        return `Eres Nocturno ${grupo}: solo puedes ingresar las noches que le tocan a tu grupo, de 20:30 a 09:30 (más 1:30 de tolerancia). Si esta noche no es de tu grupo, te toca descanso.`
+        return `Eres Nocturno ${grupo}: solo puedes ingresar las noches que le tocan a tu grupo, de 19:30 a 08:30. Si esta noche no es de tu grupo, te toca descanso.`
       }
-      return 'Tu turno es Nocturno: puedes ingresar de 20:30 a 09:30 (turno 20:30–07:59 más 1:30 de tolerancia).'
+      return 'Tu turno es Nocturno: puedes ingresar de 19:30 a 08:30.'
     }
     case 'JORNADA':
       return 'Tu turno es Jornada acumulada (acceso sin restricción de horario).'
