@@ -69,6 +69,26 @@ interface ProdCelda {
   por_turno: { M: number; V: number; N: number };
 }
 
+// Fila de detalle de egreso (vista v_egresados_servicio) para la lista
+// cronologica paciente-por-paciente del Tablero Maestro.
+interface EgresadoDetalle {
+  paciente_id: string;
+  servicio_id: number;
+  servicio_codigo: string;
+  numero_cama: string;
+  nombre_paciente: string;
+  edad: number;
+  edad_unidad?: string | null;
+  diagnostico_ingreso: string | null;
+  fecha_ingreso: string;
+  fecha_egreso: string;
+  hora_egreso: string;
+  motivo_nombre: string | null;
+  destino_egreso: string | null;
+  dias_estancia: number | null;
+  egresado_por_nombre: string | null;
+}
+
 const MESES_NOMBRE = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
 
 // ============================================================
@@ -98,6 +118,14 @@ function fmtFechaLarga(iso: string): string {
   return `${String(d.getDate()).padStart(2,'0')}-${MESES_NOMBRE[d.getMonth()]}-${d.getFullYear()}`;
 }
 
+// Edad con su unidad (neonatos en DIAS, lactantes en MESES, resto AÑOS).
+function fmtEdad(edad: number, unidad?: string | null): string {
+  const u = (unidad || 'AÑOS').toUpperCase();
+  if (u === 'DIAS' || u === 'DÍAS') return `${edad} día${edad === 1 ? '' : 's'}`;
+  if (u === 'MESES') return `${edad} mes${edad === 1 ? '' : 'es'}`;
+  return `${edad} año${edad === 1 ? '' : 's'}`;
+}
+
 // Genera arreglo de (anio, mes, dia) para cada día en el rango [ini..fin] inclusive.
 function diasEnRango(ini: string, fin: string): { anio: number; mes: number; dia: number }[] {
   const out: { anio: number; mes: number; dia: number }[] = [];
@@ -119,6 +147,10 @@ export function TableroMaestro() {
   const tieneAcceso          = perfil != null && ROLES_VEN_TABLERO.includes(perfil.rol);
   const tieneTableroCompleto = perfil != null && ROLES_TABLERO_COMPLETO.includes(perfil.rol);
   const esAdmin              = esAdminGlobal(perfil?.rol);
+  // Detalle de egresados: los supervisores solo ven el dia de hoy; jefe,
+  // subjefe y admin de sistema ven todo el historial; gestores quedan
+  // limitados a su(s) servicio(s) via serviciosRestriccion.
+  const egresadosSoloHoy     = perfil?.rol === 'supervisor';
   // Si NO es admin global y tiene servicio(s) asignado(s), todas las queries se
   // restringen a esos servicios (gestor de uno o varios servicios). Lista vacía
   // (admin o sin servicio) => null = sin restricción.
@@ -159,6 +191,11 @@ export function TableroMaestro() {
   const [hdlStats, setHdlStats] = useState<{ ercTotal: number; ercActivos: number; hdMes: number; dpMes: number }>({
     ercTotal: 0, ercActivos: 0, hdMes: 0, dpMes: 0,
   });
+  // ---- Detalle de egresados (lista cronologica paciente x paciente) ----
+  const [egresadosDet, setEgresadosDet]       = useState<EgresadoDetalle[]>([]);
+  const [egrFiltroServicio, setEgrFiltroServicio] = useState<number | 'todos'>('todos');
+  const [egrAbierto, setEgrAbierto]           = useState(true);
+  const [egrCargando, setEgrCargando]         = useState(false);
 
   // ---- Rango de fechas calculado ----
   const rangoFechas = useMemo(() => {
@@ -424,6 +461,45 @@ export function TableroMaestro() {
   }, [tieneAcceso, anio, mes, periodo, fechaSel, serviciosRestriccion?.join(',')]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // ============================================================
+  // CARGA DEL DETALLE DE EGRESADOS (lista cronologica)
+  // Independiente del periodo: usa la vista v_egresados_servicio directo.
+  //   - supervisor: solo egresos del dia de hoy.
+  //   - jefe/subjefe/admin: todo el historial (limite 200).
+  //   - gestor: limitado a su(s) servicio(s) por serviciosRestriccion.
+  // El filtro de servicio (dropdown) acota aun mas.
+  // ============================================================
+  useEffect(() => {
+    let cancelado = false;
+    (async () => {
+      if (!tieneAcceso) return;
+      setEgrCargando(true);
+      try {
+        let q = supabase
+          .from('v_egresados_servicio')
+          .select('paciente_id, servicio_id, servicio_codigo, numero_cama, nombre_paciente, edad, edad_unidad, diagnostico_ingreso, fecha_ingreso, fecha_egreso, hora_egreso, motivo_nombre, destino_egreso, dias_estancia, egresado_por_nombre')
+          .order('fecha_egreso', { ascending: false })
+          .order('hora_egreso', { ascending: false })
+          .limit(200);
+        if (serviciosRestriccion != null) q = q.in('servicio_id', serviciosRestriccion);
+        if (egrFiltroServicio !== 'todos') q = q.eq('servicio_id', egrFiltroServicio);
+        if (egresadosSoloHoy) q = q.eq('fecha_egreso', fechaHoyISO());
+        const { data, error } = await q;
+        if (cancelado) return;
+        if (error) {
+          console.warn('No se pudo cargar el detalle de egresados:', error.message);
+          setEgresadosDet([]);
+        } else {
+          setEgresadosDet((data || []) as EgresadoDetalle[]);
+        }
+      } finally {
+        if (!cancelado) setEgrCargando(false);
+      }
+    })();
+    return () => { cancelado = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tieneAcceso, egresadosSoloHoy, serviciosRestriccion?.join(','), egrFiltroServicio]);
 
   // ============================================================
   // HOOKS DERIVADOS (todos los useMemo deben ir ANTES de los guards
@@ -737,6 +813,76 @@ export function TableroMaestro() {
             </table>
           </div>
 
+          {/* ===== SECCIÓN 3b: EGRESADOS RECIENTES (DETALLE CRONOLÓGICO) ===== */}
+          <h2
+            style={{ ...seccionTitulo, cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+            onClick={() => setEgrAbierto(o => !o)}
+          >
+            <span>{egrAbierto ? '▼' : '▶'} 🚪 EGRESADOS RECIENTES — DETALLE {egresadosSoloHoy ? '(HOY)' : '(HISTÓRICO)'}</span>
+            <span style={egresadosBadge}>{egresadosDet.length}</span>
+          </h2>
+          {egrAbierto && (
+            <>
+              <div style={egresadosBarra}>
+                <label style={{ fontSize: 12, color: '#265C4E', fontWeight: 600 }}>Servicio:</label>
+                <select
+                  value={egrFiltroServicio === 'todos' ? 'todos' : String(egrFiltroServicio)}
+                  onChange={e => setEgrFiltroServicio(e.target.value === 'todos' ? 'todos' : parseInt(e.target.value))}
+                  style={selectInput}
+                >
+                  <option value="todos">Todos los servicios</option>
+                  {serviciosUnicos.map(sv => (
+                    <option key={sv.id} value={sv.id}>{sv.codigo}</option>
+                  ))}
+                </select>
+                <span style={{ fontSize: 11, color: '#888' }}>
+                  {egrCargando ? 'Cargando…' : `${egresadosDet.length} egreso${egresadosDet.length === 1 ? '' : 's'}`}
+                  {egresadosSoloHoy && ' · solo hoy'}
+                </span>
+              </div>
+              <div style={tablaWrap}>
+                <table style={{ ...tabla, fontSize: 11 }}>
+                  <thead>
+                    <tr style={trHead}>
+                      <th style={th}>SERVICIO</th>
+                      <th style={th}>CAMA</th>
+                      <th style={th}>NOMBRE</th>
+                      <th style={thCentrado}>EDAD</th>
+                      <th style={th}>DIAGNÓSTICO</th>
+                      <th style={thCentrado}>INGRESO</th>
+                      <th style={thCentrado}>EGRESO</th>
+                      <th style={th}>MOTIVO</th>
+                      <th style={th}>DESTINO</th>
+                      <th style={thCentrado}>DÍAS</th>
+                      <th style={th}>EGRESADO POR</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {egresadosDet.length === 0 ? (
+                      <tr><td colSpan={11} style={vacio}>
+                        {egrCargando ? 'Cargando…' : egresadosSoloHoy ? 'Sin egresos registrados hoy.' : 'Sin egresos registrados.'}
+                      </td></tr>
+                    ) : egresadosDet.map((e, idx) => (
+                      <tr key={e.paciente_id} style={idx % 2 === 0 ? trPar : trImpar}>
+                        <td style={{ ...tdServicio, fontWeight: 700 }}>{e.servicio_codigo}</td>
+                        <td style={tdServicio}>{e.numero_cama}</td>
+                        <td style={tdServicio}>{e.nombre_paciente}</td>
+                        <td style={tdCentrado}>{fmtEdad(e.edad, e.edad_unidad)}</td>
+                        <td style={{ ...tdServicio, fontStyle: 'italic', color: '#7d5b2f' }}>{e.diagnostico_ingreso || '—'}</td>
+                        <td style={tdCentrado}>{e.fecha_ingreso}</td>
+                        <td style={tdCentrado}>{e.fecha_egreso}{e.hora_egreso ? ` ${e.hora_egreso.slice(0,5)}` : ''}</td>
+                        <td style={tdServicio}>{e.motivo_nombre || '—'}</td>
+                        <td style={tdServicio}>{e.destino_egreso || '—'}</td>
+                        <td style={{ ...tdCentrado, fontWeight: 700 }}>{e.dias_estancia ?? '—'}</td>
+                        <td style={tdServicio}>{e.egresado_por_nombre || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
           {/* ===== SECCIÓN 4: PRODUCTIVIDAD CONSOLIDADA ===== */}
           <h2 style={seccionTitulo}>
             📊 PRODUCTIVIDAD CONSOLIDADA ({etiquetaPeriodo})
@@ -872,6 +1018,8 @@ const tdBarra: React.CSSProperties = { ...tdServicio, width: 140 };
 const barraOut: React.CSSProperties = { width: '100%', height: 14, background: '#F5F1E8', borderRadius: 3, overflow: 'hidden', border: '1px solid #e8dfc6' };
 const barraIn: React.CSSProperties = { height: '100%', transition: 'width 0.3s', background: '#0E6755' };
 const vacio: React.CSSProperties = { padding: 24, textAlign: 'center', color: '#888', fontStyle: 'italic' };
+const egresadosBadge: React.CSSProperties = { fontSize: 13, background: '#0E6755', color: '#fff', borderRadius: 12, padding: '2px 12px', fontWeight: 700 };
+const egresadosBarra: React.CSSProperties = { display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' };
 const btnExportar: React.CSSProperties = {
   background: 'linear-gradient(135deg, #0E6755 0%, #265C4E 100%)',
   color: '#fff',
