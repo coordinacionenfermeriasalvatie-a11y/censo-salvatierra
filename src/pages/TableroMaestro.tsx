@@ -161,6 +161,17 @@ export function TableroMaestro() {
     return ids.length > 0 ? ids : null;
   })();
 
+  // El gestor (jefe de servicio) obtiene el Tablero Maestro COMPLETO
+  // (selector Día/Semana/Mes + resumen ejecutivo), pero acotado a su(s)
+  // servicio(s) vía serviciosRestriccion. Subjefe/supervisor permanecen en
+  // vista de día (ROLES_TABLERO_COMPLETO = solo jefe) y conservan Auditoría.
+  const puedeVerPeriodos = tieneTableroCompleto || perfil?.rol === 'gestor';
+  // Sección renal: la ven el admin global (jefe/subjefe/supervisor, que ven
+  // todo el hospital) y el gestor cuyo scope incluye HEMODIÁLISIS (servicio_id
+  // 12). Para el resto de gestores no es "su servicio" → se oculta.
+  const SERVICIO_HDL = 12;
+  const muestraHDL = esAdmin || (serviciosRestriccion?.includes(SERVICIO_HDL) ?? false);
+
   // ---- Estado de período ----
   // Para roles sin tablero completo arrancamos en 'dia' (su única opción).
   // Si el query param soloDia=1 está presente (acceso desde Supervisión),
@@ -175,10 +186,10 @@ export function TableroMaestro() {
 
   // Si el rol no permite Semana/Mes (o soloDia=1), forzar Día.
   useEffect(() => {
-    if ((soloDia || (perfil && !tieneTableroCompleto)) && periodo !== 'dia') {
+    if ((soloDia || (perfil && !puedeVerPeriodos)) && periodo !== 'dia') {
       setPeriodo('dia');
     }
-  }, [perfil, tieneTableroCompleto, periodo, soloDia]);
+  }, [perfil, puedeVerPeriodos, periodo, soloDia]);
 
   // ---- Datos ----
   const [ocupacion, setOcupacion]       = useState<Ocupacion[]>([]);
@@ -332,30 +343,34 @@ export function TableroMaestro() {
 
       setOcupacion((ocupData || []) as Ocupacion[]);
 
-      // Cargar stats de HDL en paralelo (no críticas — degradación silenciosa)
-      try {
-        const [{ data: ercAll }, { data: prodHdl }] = await Promise.all([
-          supabase.from('pacientes_erc').select('id, estatus'),
-          supabase
-            .from('productividad_capturas')
-            .select('indicador_id, valor, catalogo_indicadores_productividad(codigo)')
-            .eq('servicio_id', 12) // HDL
-            .eq('anio', anio).eq('mes', mes),
-        ]);
-        const ercTotal = (ercAll || []).length;
-        const ercActivos = (ercAll || []).filter((r: any) => {
-          const s = (r.estatus || '').toUpperCase();
-          return !/EGRESO|BAJA|DEFUNCION/.test(s);
-        }).length;
-        let hdMes = 0, dpMes = 0;
-        for (const c of (prodHdl || []) as any[]) {
-          const cod = c.catalogo_indicadores_productividad?.codigo;
-          if (cod === 'P06') hdMes += Number(c.valor) || 0;
-          else if (cod === 'P05') dpMes += Number(c.valor) || 0;
+      // Cargar stats de HDL en paralelo (no críticas — degradación silenciosa).
+      // Solo se consultan cuando la sección renal es visible (admin global o
+      // gestor de HDL); para otros gestores no es su servicio y se omite.
+      if (muestraHDL) {
+        try {
+          const [{ data: ercAll }, { data: prodHdl }] = await Promise.all([
+            supabase.from('pacientes_erc').select('id, estatus'),
+            supabase
+              .from('productividad_capturas')
+              .select('indicador_id, valor, catalogo_indicadores_productividad(codigo)')
+              .eq('servicio_id', SERVICIO_HDL) // HDL
+              .eq('anio', anio).eq('mes', mes),
+          ]);
+          const ercTotal = (ercAll || []).length;
+          const ercActivos = (ercAll || []).filter((r: any) => {
+            const s = (r.estatus || '').toUpperCase();
+            return !/EGRESO|BAJA|DEFUNCION/.test(s);
+          }).length;
+          let hdMes = 0, dpMes = 0;
+          for (const c of (prodHdl || []) as any[]) {
+            const cod = c.catalogo_indicadores_productividad?.codigo;
+            if (cod === 'P06') hdMes += Number(c.valor) || 0;
+            else if (cod === 'P05') dpMes += Number(c.valor) || 0;
+          }
+          setHdlStats({ ercTotal, ercActivos, hdMes, dpMes });
+        } catch (e) {
+          console.warn('HDL stats failed:', e);
         }
-        setHdlStats({ ercTotal, ercActivos, hdMes, dpMes });
-      } catch (e) {
-        console.warn('HDL stats failed:', e);
       }
 
       // ---- Normalizar resumen ----
@@ -638,7 +653,7 @@ export function TableroMaestro() {
         <div style={selectorMes}>
           {/* Tabs Día/Semana/Mes (Semana/Mes solo para jefe/subjefe) */}
           <div style={tabsPeriodo}>
-            {((tieneTableroCompleto && !soloDia) ? (['dia','semana','mes'] as Periodo[]) : (['dia'] as Periodo[])).map(p => (
+            {((puedeVerPeriodos && !soloDia) ? (['dia','semana','mes'] as Periodo[]) : (['dia'] as Periodo[])).map(p => (
               <button key={p}
                 onClick={() => setPeriodo(p)}
                 style={{
@@ -668,9 +683,14 @@ export function TableroMaestro() {
               <select value={anio} onChange={e => setAnio(parseInt(e.target.value))} style={selectInput}>
                 {[2024,2025,2026,2027].map(a => <option key={a} value={a}>{a}</option>)}
               </select>
-              <button onClick={handleExportarProductividad} disabled={exportando} style={btnExportar}>
-                {exportando ? '⏳ Generando...' : '📊 Exportar Excel + PDF'}
-              </button>
+              {/* El export Excel+PDF es de TODO el hospital (hoja consolidada +
+                  una por servicio); se reserva al admin global para no filtrar
+                  servicios ajenos al scope del gestor. */}
+              {esAdmin && (
+                <button onClick={handleExportarProductividad} disabled={exportando} style={btnExportar}>
+                  {exportando ? '⏳ Generando...' : '📊 Exportar Excel + PDF'}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -697,13 +717,19 @@ export function TableroMaestro() {
           </div>
 
           {/* ===== SECCIÓN HDL: HEMODIÁLISIS + DIÁLISIS ===== */}
-          <h2 style={seccionTitulo}>🩺 HEMODIÁLISIS Y DIÁLISIS</h2>
-          <div style={kpiGrid}>
-            <KPI label="Pacientes ERC (bitácora total)"  valor={`${hdlStats.ercTotal}`}    color="#0E6755" subrayado="HISTÓRICO" />
-            <KPI label="ERC activos hoy"                  valor={`${hdlStats.ercActivos}`} color="#0E6755" />
-            <KPI label="Hemodiálisis del mes (P06)"       valor={`${hdlStats.hdMes}`}      color="#1a5f8a" />
-            <KPI label="Diálisis peritoneal del mes (P05)" valor={`${hdlStats.dpMes}`}     color="#7d5b2f" />
-          </div>
+          {/* Solo admin global o gestor de HDL: para otros gestores no es su
+              servicio (ver muestraHDL). */}
+          {muestraHDL && (
+            <>
+              <h2 style={seccionTitulo}>🩺 HEMODIÁLISIS Y DIÁLISIS</h2>
+              <div style={kpiGrid}>
+                <KPI label="Pacientes ERC (bitácora total)"  valor={`${hdlStats.ercTotal}`}    color="#0E6755" subrayado="HISTÓRICO" />
+                <KPI label="ERC activos hoy"                  valor={`${hdlStats.ercActivos}`} color="#0E6755" />
+                <KPI label="Hemodiálisis del mes (P06)"       valor={`${hdlStats.hdMes}`}      color="#1a5f8a" />
+                <KPI label="Diálisis peritoneal del mes (P05)" valor={`${hdlStats.dpMes}`}     color="#7d5b2f" />
+              </div>
+            </>
+          )}
 
           {/* ===== SECCIÓN 2: OCUPACIÓN POR SERVICIO ===== */}
           <h2 style={seccionTitulo}>📈 OCUPACIÓN ACTUAL POR SERVICIO</h2>
