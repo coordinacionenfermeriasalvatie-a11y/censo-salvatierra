@@ -109,15 +109,19 @@ export const ModalTraslado: React.FC<Props> = ({
   }, [camasFiltradas]);
 
   // ── Restricciones clínicas de traslado (edad / sexo) ───────────────
-  // • Adulto → cama de Pediatría: NO permitido.
-  // • Pediátrico → cama de adultos: NO permitido (solo Pediatría).
-  // • Hombre → cama de Tococirugía: NO permitido.
+  // Banda flexible 12–17: desde los 12 años un menor puede colocarse en
+  // CUALQUIER servicio (adulto, Toco o Pediatría) — adolescentes embarazadas,
+  // con vida sexual activa, matrimonio, abuso de sustancias, etc. Reglas:
+  // • Lactantes (días/meses) y <12 años → solo camas de Pediatría.
+  // • 18+ (adulto) → NO puede ocupar camas de Pediatría.
+  // • 12 a 17 años → sin restricción de edad (libre en todo el hospital).
+  // • Hombre → cama de Tococirugía: NO permitido (cualquier edad).
   // Pediatría = códigos que contienen "PED" (PED, ONC-PED, UPED).
   // Tococirugía = código TOC.
   const esPediatrico = useMemo(() => {
     const u = (edadUnidad || '').toUpperCase();
     if (u === 'DIAS' || u === 'MESES') return true;            // neonatos/lactantes
-    if (edad != null && (u === 'AÑOS' || u === '')) return edad < 18;
+    if (edad != null && (u === 'AÑOS' || u === '')) return edad < 12;
     return false;
   }, [edad, edadUnidad]);
 
@@ -184,7 +188,7 @@ export const ModalTraslado: React.FC<Props> = ({
 
         {hayRestricciones && (
           <div style={infoRestriccion}>
-            {esPediatrico && <div>👶 Paciente pediátrico — solo puede trasladarse a camas de Pediatría.</div>}
+            {esPediatrico && <div>👶 Paciente menor de 12 años — solo puede trasladarse a camas de Pediatría.</div>}
             {esAdulto && <div>🧑 Paciente adulto — no puede ocupar camas de Pediatría.</div>}
             {esHombre && <div>♂ Paciente masculino — no puede ocupar camas de Tococirugía.</div>}
           </div>
