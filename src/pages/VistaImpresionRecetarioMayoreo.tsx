@@ -61,8 +61,8 @@ export const VistaImpresionRecetarioMayoreo: React.FC = () => {
   if (!cab) return <div style={{ padding: 40 }}>Cargando solicitud...</div>;
 
   const fecha = new Date(cab.creado_en);
-  const fechaStr = fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
-  const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const fechaStr = fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Mazatlan' });
+  const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mazatlan' });
 
   // Mínimo de renglones para que la hoja se vea completa aunque haya pocos.
   const MIN_FILAS = 12;

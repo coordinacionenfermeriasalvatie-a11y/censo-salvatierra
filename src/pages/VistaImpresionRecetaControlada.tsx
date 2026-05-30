@@ -107,8 +107,8 @@ export const VistaImpresionRecetaControlada: React.FC = () => {
 // ============================================================
 const Boleta: React.FC<{ receta: Receta; tipo: 'original' | 'copia' }> = ({ receta, tipo }) => {
   const fecha = new Date(receta.creado_en);
-  const fechaStr = fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' });
-  const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+  const fechaStr = fecha.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Mazatlan' });
+  const horaStr = fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mazatlan' });
 
   const badge = tipo === 'original'
     ? { texto: 'ORIGINAL · JEFATURA DE ENFERMERÍA', color: '#7d0a2e', fg: '#fff' }

@@ -1,5 +1,5 @@
 // Bitácora de Supervisión — concentrado de vales controlados del día.
-// Tres turnos: Matutino (07-13), Vespertino (14-19), Nocturno (20-06).
+// Tres turnos: Matutino (08:00-14:29), Vespertino (14:30-20:29), Nocturno (20:30-07:59).
 // Visible para supervisor+, gestor solo ve sus propios vales.
 //
 // Workflow:
@@ -56,9 +56,9 @@ interface BitacoraRow {
 }
 
 const TURNO_INFO: Record<Turno, { label: string; horario: string; color: string }> = {
-  M: { label: 'Matutino', horario: '07:00 — 13:59', color: '#2c5fa3' },
-  V: { label: 'Vespertino', horario: '14:00 — 19:59', color: '#5CAB34' },
-  N: { label: 'Nocturno', horario: '20:00 — 06:59', color: '#A32D2D' },
+  M: { label: 'Matutino', horario: '08:00 — 14:29', color: '#2c5fa3' },
+  V: { label: 'Vespertino', horario: '14:30 — 20:29', color: '#5CAB34' },
+  N: { label: 'Nocturno', horario: '20:30 — 07:59', color: '#A32D2D' },
 };
 
 const ESTADO_INFO: Record<Estado, { label: string; color: string; fg: string }> = {
@@ -356,7 +356,7 @@ const SeccionTurno: React.FC<{
               return (
               <tr key={f.id} style={{ ...(i % 2 === 0 ? trAlt : {}), ...(anulada ? trAnulada : {}) }}>
                 <td style={td}><strong>{f.folio}</strong></td>
-                <td style={tdSm}>{new Date(f.creado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}</td>
+                <td style={tdSm}>{new Date(f.creado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mazatlan' })}</td>
                 <td style={tdSm}>{f.servicio_codigo}<br /><span style={{ color: '#888', fontSize: 10 }}>{f.paciente_subservicio}</span></td>
                 <td style={td}>{f.paciente_cama}</td>
                 <td style={td}>{f.paciente_nombre}<br /><span style={{ color: '#888', fontSize: 10 }}>{f.paciente_edad}{f.paciente_edad_unidad ? ' ' + f.paciente_edad_unidad : ''} · {f.paciente_genero}</span></td>

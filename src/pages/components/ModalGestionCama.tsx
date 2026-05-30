@@ -154,7 +154,7 @@ export const ModalGestionCama: React.FC<Props> = ({
               {notaActual && <div style={infoNota}>{notaActual}</div>}
               {bloqueadaDesde && (
                 <div style={infoFecha}>
-                  Desde: {new Date(bloqueadaDesde).toLocaleString('es-MX')}
+                  Desde: {new Date(bloqueadaDesde).toLocaleString('es-MX', { timeZone: 'America/Mazatlan' })}
                 </div>
               )}
             </div>

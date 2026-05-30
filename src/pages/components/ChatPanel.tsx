@@ -198,7 +198,7 @@ export const ChatPanel: React.FC<Props> = ({ servicioId, servicioNombre, servici
     const d = new Date(iso);
     const hoy = new Date();
     const esHoy = d.toDateString() === hoy.toDateString();
-    const hora = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+    const hora = d.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Mazatlan' });
     return esHoy ? hora : `${d.getDate()}/${d.getMonth()+1} ${hora}`;
   };
 
