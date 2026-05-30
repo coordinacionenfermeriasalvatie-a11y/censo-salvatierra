@@ -42,10 +42,42 @@ const FRECUENCIAS_COMUNES = [
 ];
 const MEDICO_MANUAL = '__manual__';
 
+// Receta existente a editar (snapshot del paciente = solo lectura).
+// Solo jefe/admin del sistema abre el modal en este modo (gate en VistaRecetario).
+export interface RecetaEditar {
+  id: string;
+  folio: string;
+  estado_aprobacion: string;
+  // snapshot del paciente (no editable)
+  paciente_nombre: string;
+  paciente_edad: number | null;
+  paciente_edad_unidad: string | null;
+  paciente_genero: string | null;
+  paciente_nss_curp: string | null;
+  paciente_diagnostico: string | null;
+  paciente_cama: string | null;
+  paciente_subservicio: string | null;
+  // editables
+  medicamento_id: number | null;
+  medicamento_nombre: string;
+  medicamento_grupo: 'I' | 'II' | 'III' | 'IV' | 'V';
+  dosis: string | null;
+  via: string | null;
+  frecuencia: string | null;
+  duracion: string | null;
+  cantidad_numero: string | null;
+  cantidad_letra: string | null;
+  indicaciones: string | null;
+  medico_nombre: string | null;
+  medico_cedula: string | null;
+  medico_especialidad: string | null;
+}
+
 interface Props {
   servicioId: number;
   pacientes: Paciente[];          // de la VistaRecetario, ya filtrados al servicio
   pacienteInicialId?: string;     // opcional pre-selección
+  recetaEditar?: RecetaEditar;    // si viene, el modal abre en MODO EDICIÓN (jefe/admin)
   onCerrar: () => void;
 }
 
@@ -57,23 +89,25 @@ const GRUPO_LABEL: Record<string, string> = {
   'V':   'Grupo V',
 };
 
-export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, pacienteInicialId, onCerrar }) => {
+export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, pacienteInicialId, recetaEditar, onCerrar }) => {
   const { perfil } = useAuth();
+  const esEdicion = !!recetaEditar;
   const [medicamentos, setMedicamentos] = useState<MedicamentoControlado[]>([]);
   const [medicos, setMedicos] = useState<MedicoAdscrito[]>([]);
-  const [medicoSel, setMedicoSel] = useState('');
+  // En edición el médico viene como texto del snapshot → arrancar en captura manual.
+  const [medicoSel, setMedicoSel] = useState(recetaEditar ? MEDICO_MANUAL : '');
   const [pacienteId, setPacienteId] = useState(pacienteInicialId ?? '');
-  const [medicamentoId, setMedicamentoId] = useState<number | ''>('');
-  const [dosis, setDosis] = useState('');
-  const [via, setVia] = useState('');
-  const [frecuencia, setFrecuencia] = useState('');
-  const [duracion, setDuracion] = useState('');
-  const [cantidadNumero, setCantidadNumero] = useState('');
-  const [cantidadLetra, setCantidadLetra] = useState('');
-  const [indicaciones, setIndicaciones] = useState('');
-  const [medicoNombre, setMedicoNombre] = useState('');
-  const [medicoCedula, setMedicoCedula] = useState('');
-  const [medicoEspecialidad, setMedicoEspecialidad] = useState('');
+  const [medicamentoId, setMedicamentoId] = useState<number | ''>(recetaEditar?.medicamento_id ?? '');
+  const [dosis, setDosis] = useState(recetaEditar?.dosis ?? '');
+  const [via, setVia] = useState(recetaEditar?.via ?? '');
+  const [frecuencia, setFrecuencia] = useState(recetaEditar?.frecuencia ?? '');
+  const [duracion, setDuracion] = useState(recetaEditar?.duracion ?? '');
+  const [cantidadNumero, setCantidadNumero] = useState(recetaEditar?.cantidad_numero ?? '');
+  const [cantidadLetra, setCantidadLetra] = useState(recetaEditar?.cantidad_letra ?? '');
+  const [indicaciones, setIndicaciones] = useState(recetaEditar?.indicaciones ?? '');
+  const [medicoNombre, setMedicoNombre] = useState(recetaEditar?.medico_nombre ?? '');
+  const [medicoCedula, setMedicoCedula] = useState(recetaEditar?.medico_cedula ?? '');
+  const [medicoEspecialidad, setMedicoEspecialidad] = useState(recetaEditar?.medico_especialidad ?? '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<{ id: string; folio: string } | null>(null);
@@ -129,6 +163,41 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
 
   const guardar = async () => {
     if (!perfil) { setError('Sin sesión activa'); return; }
+
+    // ---- MODO EDICIÓN (jefe/admin): UPDATE de datos médicos. El snapshot del
+    //      paciente y la enfermera que la creó NO se tocan. El folio se conserva. ----
+    if (esEdicion && recetaEditar) {
+      if (!medicoNombre.trim() || !medicoCedula.trim()) {
+        setError('Nombre y cédula del médico son obligatorios'); return;
+      }
+      if (!dosis.trim() || !via.trim() || !frecuencia.trim()) {
+        setError('Dosis, vía y frecuencia son obligatorios'); return;
+      }
+      // Si el medicamento elegido sigue en el catálogo úsalo; si fue dado de baja,
+      // conserva el original para no perder el registro.
+      const medId     = medicamento ? medicamento.id : recetaEditar.medicamento_id;
+      const medNombre = medicamento ? medicamento.nombre : recetaEditar.medicamento_nombre;
+      const medGrupo  = medicamento ? medicamento.grupo_control : recetaEditar.medicamento_grupo;
+      setGuardando(true);
+      setError(null);
+      const { error: upErr } = await supabase.from('recetas_controladas').update({
+        medicamento_id: medId,
+        medicamento_nombre: medNombre,
+        medicamento_grupo: medGrupo,
+        dosis, via, frecuencia, duracion,
+        cantidad_numero: cantidadNumero,
+        cantidad_letra: cantidadLetra,
+        indicaciones,
+        medico_nombre: medicoNombre.trim(),
+        medico_cedula: medicoCedula.trim(),
+        medico_especialidad: medicoEspecialidad.trim() || null,
+      }).eq('id', recetaEditar.id);
+      setGuardando(false);
+      if (upErr) { setError(upErr.message); return; }
+      setExito({ id: recetaEditar.id, folio: recetaEditar.folio });
+      return;
+    }
+
     if (!paciente) { setError('Selecciona un paciente'); return; }
     if (!medicamento) { setError('Selecciona un medicamento controlado'); return; }
     if (!medicoNombre.trim() || !medicoCedula.trim()) {
@@ -199,13 +268,17 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
       <div style={overlay} onClick={onCerrar}>
         <div style={{ ...modal, maxWidth: 880 }} onClick={e => e.stopPropagation()}>
           <div style={headerExito}>
-            <div style={tituloChip}>✓ SOLICITUD GUARDADA</div>
+            <div style={tituloChip}>{esEdicion ? '✓ RECETA ACTUALIZADA' : '✓ SOLICITUD GUARDADA'}</div>
           </div>
           <div style={{ ...body, gap: 14 }}>
             <div style={exitoCheck}>
               <div style={exitoIcono}>✓</div>
               <div>
-                <div style={exitoTitulo}>La solicitud de medicamento controlado se guardó correctamente.</div>
+                <div style={exitoTitulo}>
+                  {esEdicion
+                    ? 'Los cambios de la receta controlada se guardaron correctamente.'
+                    : 'La solicitud de medicamento controlado se guardó correctamente.'}
+                </div>
                 <div style={exitoFolio}>Folio: <strong>{exito.folio}</strong></div>
               </div>
             </div>
@@ -220,14 +293,24 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
               />
             </div>
 
-            <div style={avisoBox}>
-              <div style={avisoTit}>⚠️ Acción pendiente del gestor del cuidado</div>
-              <div style={avisoTexto}>
-                Acude a <strong>Supervisión de Enfermería</strong> para el <strong>canje del medicamento</strong>,
-                la <strong>recaudación del vale</strong> de la receta controlada y la <strong>impresión</strong>,
-                donde se recabarán las <strong>firmas correspondientes</strong>.
+            {esEdicion ? (
+              <div style={avisoBox}>
+                <div style={avisoTit}>✏️ Corrección aplicada</div>
+                <div style={avisoTexto}>
+                  Verifica la vista previa de arriba. El folio y los datos del paciente
+                  se conservan; solo se actualizaron los datos médicos.
+                </div>
               </div>
-            </div>
+            ) : (
+              <div style={avisoBox}>
+                <div style={avisoTit}>⚠️ Acción pendiente del gestor del cuidado</div>
+                <div style={avisoTexto}>
+                  Acude a <strong>Supervisión de Enfermería</strong> para el <strong>canje del medicamento</strong>,
+                  la <strong>recaudación del vale</strong> de la receta controlada y la <strong>impresión</strong>,
+                  donde se recabarán las <strong>firmas correspondientes</strong>.
+                </div>
+              </div>
+            )}
           </div>
           <div style={footer}>
             <button
@@ -248,8 +331,12 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
       <div style={modal} onClick={e => e.stopPropagation()}>
         <div style={header}>
           <div>
-            <div style={tituloChip}>💊 RECETA DE MEDICAMENTO CONTROLADO</div>
-            <div style={subt}>Grupos I-V (Ley General de Salud)</div>
+            <div style={tituloChip}>
+              {esEdicion ? '✏️ EDITAR RECETA CONTROLADA' : '💊 RECETA DE MEDICAMENTO CONTROLADO'}
+            </div>
+            <div style={subt}>
+              {esEdicion ? `Folio ${recetaEditar?.folio} · corrección por jefe/admin` : 'Grupos I-V (Ley General de Salud)'}
+            </div>
           </div>
           <button onClick={onCerrar} style={btnCerrar}>✕</button>
         </div>
@@ -257,27 +344,39 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
         <div style={body}>
           {/* PACIENTE */}
           <div style={seccion}>
-            <div style={seccionTit}>1. Paciente</div>
-            <select
-              value={pacienteId}
-              onChange={e => setPacienteId(e.target.value)}
-              style={input}
-            >
-              <option value="">-- elige paciente --</option>
-              {pacientes.map(p => (
-                <option key={p.paciente_id} value={p.paciente_id}>
-                  Cama {p.numero_cama} · {p.nombre_paciente}
-                </option>
-              ))}
-            </select>
-            {paciente && (
+            <div style={seccionTit}>1. Paciente {esEdicion && <span style={{ fontWeight: 400, color: '#888' }}>(snapshot, no editable)</span>}</div>
+            {esEdicion && recetaEditar ? (
               <div style={pacienteCard}>
-                <div><strong>Nombre:</strong> {paciente.nombre_paciente}</div>
-                <div><strong>Edad:</strong> {paciente.edad ?? '—'} {paciente.edad_unidad ?? ''} · <strong>Sexo:</strong> {paciente.genero ?? '—'}</div>
-                <div><strong>NSS/Exp:</strong> {paciente.nss_curp ?? '—'}</div>
-                <div><strong>Cama:</strong> {paciente.numero_cama} · <strong>Subservicio:</strong> {paciente.subservicio}</div>
-                <div><strong>Dx ingreso:</strong> {paciente.diagnostico_ingreso ?? '—'}</div>
+                <div><strong>Nombre:</strong> {recetaEditar.paciente_nombre}</div>
+                <div><strong>Edad:</strong> {recetaEditar.paciente_edad ?? '—'} {recetaEditar.paciente_edad_unidad ?? ''} · <strong>Sexo:</strong> {recetaEditar.paciente_genero ?? '—'}</div>
+                <div><strong>NSS/Exp:</strong> {recetaEditar.paciente_nss_curp ?? '—'}</div>
+                <div><strong>Cama:</strong> {recetaEditar.paciente_cama ?? '—'} · <strong>Subservicio:</strong> {recetaEditar.paciente_subservicio ?? '—'}</div>
+                <div><strong>Dx ingreso:</strong> {recetaEditar.paciente_diagnostico ?? '—'}</div>
               </div>
+            ) : (
+              <>
+                <select
+                  value={pacienteId}
+                  onChange={e => setPacienteId(e.target.value)}
+                  style={input}
+                >
+                  <option value="">-- elige paciente --</option>
+                  {pacientes.map(p => (
+                    <option key={p.paciente_id} value={p.paciente_id}>
+                      Cama {p.numero_cama} · {p.nombre_paciente}
+                    </option>
+                  ))}
+                </select>
+                {paciente && (
+                  <div style={pacienteCard}>
+                    <div><strong>Nombre:</strong> {paciente.nombre_paciente}</div>
+                    <div><strong>Edad:</strong> {paciente.edad ?? '—'} {paciente.edad_unidad ?? ''} · <strong>Sexo:</strong> {paciente.genero ?? '—'}</div>
+                    <div><strong>NSS/Exp:</strong> {paciente.nss_curp ?? '—'}</div>
+                    <div><strong>Cama:</strong> {paciente.numero_cama} · <strong>Subservicio:</strong> {paciente.subservicio}</div>
+                    <div><strong>Dx ingreso:</strong> {paciente.diagnostico_ingreso ?? '—'}</div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -394,7 +493,7 @@ export const ModalRecetaControlada: React.FC<Props> = ({ servicioId, pacientes, 
         <div style={footer}>
           <button onClick={onCerrar} disabled={guardando} style={btnSecundario}>Cancelar</button>
           <button onClick={guardar} disabled={guardando} style={btnPrincipal}>
-            {guardando ? 'Guardando...' : '💾 Guardar e imprimir'}
+            {guardando ? 'Guardando...' : (esEdicion ? '💾 Guardar cambios' : '💾 Guardar e imprimir')}
           </button>
         </div>
       </div>

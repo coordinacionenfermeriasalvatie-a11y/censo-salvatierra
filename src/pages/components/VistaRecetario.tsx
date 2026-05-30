@@ -11,8 +11,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { formatEdad } from '../../lib/edad';
-import { ModalRecetaControlada } from './ModalRecetaControlada';
+import { ModalRecetaControlada, type RecetaEditar } from './ModalRecetaControlada';
 import { ModalRecetarioMayoreo } from './ModalRecetarioMayoreo';
+import { esJefeOAdmin } from '../../types';
 
 interface RecetarioRow {
   paciente_id: string;
@@ -140,6 +141,10 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
   const [recetasControladas, setRecetasControladas] = useState<RecetaControladaResumen[]>([]);
   const [panelRcAbierto, setPanelRcAbierto] = useState(true);
   const [previewRecetaId, setPreviewRecetaId] = useState<string | null>(null);
+  // Solo jefe / administrador del sistema puede corregir o anular recetas controladas.
+  const puedeGestionarRc = esJefeOAdmin(perfil);
+  const [recetaEditar, setRecetaEditar] = useState<RecetaEditar | null>(null);
+  const [accionRc, setAccionRc] = useState<string | null>(null); // id en proceso (anular/editar)
 
   const [pacientes, setPacientes] = useState<PacienteAgrupado[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -248,6 +253,35 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
   }, [servicioId, puedeRecetaControlada]);
 
   useEffect(() => { cargarRecetas(); }, [cargarRecetas]);
+
+  // Abrir una receta controlada en MODO EDICIÓN (solo jefe/admin). Trae la fila
+  // completa (snapshot + datos médicos) y la pasa al modal.
+  const abrirEditarRc = async (id: string) => {
+    setAccionRc(id);
+    const { data, error: err } = await supabase
+      .from('recetas_controladas')
+      .select('id, folio, estado_aprobacion, paciente_nombre, paciente_edad, paciente_edad_unidad, paciente_genero, paciente_nss_curp, paciente_diagnostico, paciente_cama, paciente_subservicio, medicamento_id, medicamento_nombre, medicamento_grupo, dosis, via, frecuencia, duracion, cantidad_numero, cantidad_letra, indicaciones, medico_nombre, medico_cedula, medico_especialidad')
+      .eq('id', id)
+      .single();
+    setAccionRc(null);
+    if (err || !data) { setError('No se pudo cargar la receta para editar.'); return; }
+    setRecetaEditar(data as RecetaEditar);
+  };
+
+  // "Borrar" = ANULAR (libro de controlados: el DELETE está bloqueado). Reusa
+  // fn_anular_receta_controlada: deja motivo en el historial y revierte el stock
+  // si ya estaba canjeada.
+  const anularRc = async (id: string, folio: string) => {
+    const motivo = window.prompt(`Anular la receta controlada ${folio}.\n\nIndica el MOTIVO (quedará registrado en el libro de controlados):`);
+    if (motivo == null) return;                       // canceló el prompt
+    if (!motivo.trim()) { setError('Debes indicar un motivo para anular.'); return; }
+    if (!window.confirm(`¿Confirmas ANULAR la receta ${folio}?\nMotivo: ${motivo.trim()}\n\nEsta acción no se puede deshacer.`)) return;
+    setAccionRc(id);
+    const { error: err } = await supabase.rpc('fn_anular_receta_controlada', { p_id: id, p_motivo: motivo.trim() });
+    setAccionRc(null);
+    if (err) { setError('No se pudo anular: ' + err.message); return; }
+    cargarRecetas();
+  };
 
   const agregarMedicamento = async (pacienteId: string) => {
     setGuardando(pacienteId);
@@ -536,6 +570,16 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
         />
       )}
 
+      {/* MODAL — edición de receta controlada (jefe/admin). El paciente es snapshot. */}
+      {recetaEditar && (
+        <ModalRecetaControlada
+          servicioId={servicioId}
+          pacientes={[]}
+          recetaEditar={recetaEditar}
+          onCerrar={() => { setRecetaEditar(null); cargarRecetas(); }}
+        />
+      )}
+
       {modalMayoreoAbierto && (
         <ModalRecetarioMayoreo
           servicioId={servicioId}
@@ -577,6 +621,10 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
                 {recetasControladas.map(r => {
                   const anulada = !!r.cancelada_en;
                   const est = anulada ? RC_ANULADA : (RC_ESTADO[r.estado_aprobacion] || RC_ESTADO.pendiente);
+                  // Solo se puede (re)imprimir mientras esta PENDIENTE de Supervision.
+                  // Una vez aprobada/rechazada/canjeada/anulada queda solo la vista previa,
+                  // para que no se pueda volver a imprimir desde el servicio.
+                  const puedeImprimir = !anulada && r.estado_aprobacion === 'pendiente';
                   return (
                     <div key={r.id} style={rcFila}>
                       <div style={rcOk} title="Esta receta se guardó correctamente">✓</div>
@@ -597,11 +645,31 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
                           style={btnRcPreview}
                           title="Ver la vista previa de impresión de esta receta"
                         >👁 Vista previa</button>
-                        <button
-                          onClick={() => window.open(`/imprimir/receta-controlada/${r.id}`, '_blank', 'noopener,noreferrer')}
-                          style={btnRcImprimir}
-                          title="Abrir vista de impresión"
-                        >🖨️</button>
+                        {puedeImprimir && (
+                          <button
+                            onClick={() => window.open(`/imprimir/receta-controlada/${r.id}`, '_blank', 'noopener,noreferrer')}
+                            style={btnRcImprimir}
+                            title="Abrir vista de impresión"
+                          >🖨️</button>
+                        )}
+                        {/* Editar / Anular: solo jefe o administrador del sistema, y solo
+                            mientras la receta no esté anulada. */}
+                        {puedeGestionarRc && !anulada && (
+                          <>
+                            <button
+                              onClick={() => abrirEditarRc(r.id)}
+                              disabled={accionRc === r.id}
+                              style={btnRcEditar}
+                              title="Corregir datos de esta receta (jefe/admin)"
+                            >✏️ Editar</button>
+                            <button
+                              onClick={() => anularRc(r.id, r.folio)}
+                              disabled={accionRc === r.id}
+                              style={btnRcAnular}
+                              title="Anular esta receta (queda en el libro con motivo)"
+                            >{accionRc === r.id ? '…' : '🗑️ Anular'}</button>
+                          </>
+                        )}
                       </div>
                     </div>
                   );
@@ -613,7 +681,10 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
       )}
 
       {/* MODAL — vista previa de impresión de una receta controlada */}
-      {previewRecetaId && (
+      {previewRecetaId && (() => {
+        const rPrev = recetasControladas.find(x => x.id === previewRecetaId);
+        const puedeImprimirPrev = !!rPrev && !rPrev.cancelada_en && rPrev.estado_aprobacion === 'pendiente';
+        return (
         <div style={overlayPreview} onClick={() => setPreviewRecetaId(null)}>
           <div style={modalPreview} onClick={e => e.stopPropagation()}>
             <div style={modalPreviewHeader}>
@@ -626,15 +697,22 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
               style={iframePreview}
             />
             <div style={modalPreviewFooter}>
-              <button
-                onClick={() => window.open(`/imprimir/receta-controlada/${previewRecetaId}`, '_blank', 'noopener,noreferrer')}
-                style={btnRcImprimirFull}
-              >🖨️ Imprimir</button>
+              {puedeImprimirPrev ? (
+                <button
+                  onClick={() => window.open(`/imprimir/receta-controlada/${previewRecetaId}`, '_blank', 'noopener,noreferrer')}
+                  style={btnRcImprimirFull}
+                >🖨️ Imprimir</button>
+              ) : (
+                <span style={avisoNoImprimir}>
+                  Ya aprobada por Supervisión — solo lectura, no se puede reimprimir.
+                </span>
+              )}
               <button onClick={() => setPreviewRecetaId(null)} style={btnRcCerrarFull}>Cerrar</button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {pacientes.length === 0 ? (
         <div style={vacio}>No hay pacientes activos en este servicio.</div>
@@ -849,6 +927,8 @@ const rcLinea3: React.CSSProperties = { fontSize: 11, color: '#888', marginTop: 
 const rcAcciones: React.CSSProperties = { display: 'flex', gap: 6, flexShrink: 0 };
 const btnRcPreview: React.CSSProperties = { padding: '5px 10px', background: '#0E6755', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' };
 const btnRcImprimir: React.CSSProperties = { padding: '5px 9px', background: '#fff', color: '#0E6755', border: '1px solid #0E6755', borderRadius: 4, fontSize: 13, fontWeight: 700, cursor: 'pointer' };
+const btnRcEditar: React.CSSProperties = { padding: '5px 9px', background: '#fff', color: '#7d5b2f', border: '1px solid #C39C59', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
+const btnRcAnular: React.CSSProperties = { padding: '5px 9px', background: '#fff', color: '#A32D2D', border: '1px solid #A32D2D', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' };
 
 const overlayPreview: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 16 };
 const modalPreview: React.CSSProperties = { background: '#fff', borderRadius: 8, width: '100%', maxWidth: 900, maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.3)', overflow: 'hidden' };
@@ -858,3 +938,4 @@ const iframePreview: React.CSSProperties = { flex: 1, width: '100%', minHeight: 
 const modalPreviewFooter: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', gap: 8, padding: 12, borderTop: '1px solid #eee', background: '#F5F1E8' };
 const btnRcImprimirFull: React.CSSProperties = { padding: '8px 16px', background: '#0E6755', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' };
 const btnRcCerrarFull: React.CSSProperties = { padding: '8px 16px', background: '#fff', color: '#7d5b2f', border: '1px solid #C39C59', borderRadius: 4, fontWeight: 600, cursor: 'pointer' };
+const avisoNoImprimir: React.CSSProperties = { flex: 1, fontSize: 13, color: '#0E6755', fontStyle: 'italic', alignSelf: 'center' };
