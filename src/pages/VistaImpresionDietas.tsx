@@ -5,10 +5,10 @@
 // Benemérito Hospital General con Especialidades IMSS-Bienestar "Juan María de Salvatierra"
 // CLUES BSIMB000672
 //
-// Formato: Carta VERTICAL (8.5" × 11"), una sola hoja con todos los
+// Formato: Carta HORIZONTAL (11" × 8.5"), una sola hoja con todos los
 // pacientes activos del servicio.
 //
-// Columnas: CAMA · PACIENTE · TIPO DE DIETA · CONSISTENCIA · RESTRICCIONES · OBSERVACIONES
+// Columnas: SERVICIO · CAMA · NOMBRE · EDAD · TIPO DE DIETA · CONSISTENCIA · RESTRICCIONES · OBSERVACIONES
 //
 // Fuente de datos: vista v_dietas_servicio (JOINs pre-armados).
 // Solo pacientes con estado='ACTIVO' (la vista ya filtra).
@@ -154,6 +154,11 @@ export const VistaImpresionDietas: React.FC = () => {
     return u.charAt(0);
   };
 
+  const edadTexto = (e: number | null): string => {
+    if (e == null) return '—';
+    return `${e} ${e === 1 ? 'año' : 'años'}`;
+  };
+
   const hoyTexto = (): string => {
     const d = new Date();
     return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
@@ -232,8 +237,10 @@ export const VistaImpresionDietas: React.FC = () => {
         <table className="tabla">
           <thead>
             <tr>
+              <th className="c-servicio">SERVICIO</th>
               <th className="c-cama">CAMA</th>
-              <th className="c-paciente">PACIENTE</th>
+              <th className="c-paciente">NOMBRE</th>
+              <th className="c-edad">EDAD</th>
               <th className="c-tipo">TIPO DE DIETA</th>
               <th className="c-cons">CONSISTENCIA</th>
               <th className="c-restr">RESTRICCIONES</th>
@@ -250,15 +257,17 @@ export const VistaImpresionDietas: React.FC = () => {
                 <React.Fragment key={d.paciente_id}>
                   {inicioGrupo && (
                     <tr className={idx === 0 ? 'sub-grupo primera' : 'sub-grupo'}>
-                      <td colSpan={6}>{d.subservicio}</td>
+                      <td colSpan={8}>{d.subservicio}</td>
                     </tr>
                   )}
                   <tr className={idx % 2 === 0 ? 'fila-par' : 'fila-impar'}>
+                    <td className="c-servicio">{servicio?.nombre || '—'}</td>
                     <td className="c-cama">{d.numero_cama}</td>
                     <td className="c-paciente">
                       <div className="p-nombre">{d.nombre_paciente}</div>
-                      <div className="p-sub">{d.edad} {generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
+                      <div className="p-sub">{generoCorto(d.genero)} · {d.nss_curp || '—'}</div>
                     </td>
+                    <td className="c-edad">{edadTexto(d.edad)}</td>
                     <td className="c-tipo"><strong>{d.tipo_dieta || '—'}</strong></td>
                     <td className="c-cons">{d.consistencia || '—'}</td>
                     <td className="c-restr">{d.restricciones || '—'}</td>
@@ -271,8 +280,9 @@ export const VistaImpresionDietas: React.FC = () => {
                 de un solo subservicio; al agrupar no aplica). */}
             {!haySubservicios && servicio && Array.from({ length: Math.max(0, servicio.total_camas - dietas.length) }).map((_, idx) => (
               <tr key={`vacia-${idx}`} className="fila-vacia">
+                <td className="c-servicio">&nbsp;</td>
                 <td className="c-cama">&nbsp;</td>
-                <td colSpan={5}>&nbsp;</td>
+                <td colSpan={6}>&nbsp;</td>
               </tr>
             ))}
           </tbody>
@@ -305,7 +315,7 @@ export const VistaImpresionDietas: React.FC = () => {
 };
 
 // =====================================================================
-// CSS — Carta VERTICAL (8.5 × 11 in)
+// CSS — Carta HORIZONTAL (11 × 8.5 in)
 // =====================================================================
 const cssImpresion = `
 @page {
@@ -524,8 +534,17 @@ body {
 }
 .sub-grupo:not(.primera) td { page-break-before: always; }
 
+.c-servicio {
+  width: 12%;
+  font-weight: 700;
+  font-size: 8.5pt;
+  color: #265C4E;
+  text-transform: uppercase;
+  line-height: 1.15;
+}
+
 .c-cama {
-  width: 36px;
+  width: 40px;
   text-align: center;
   font-weight: 700;
   color: #0E6755;
@@ -533,7 +552,14 @@ body {
 }
 
 .c-paciente {
-  width: 28%;
+  width: 22%;
+}
+
+.c-edad {
+  width: 8%;
+  text-align: center;
+  font-size: 8.5pt;
+  white-space: nowrap;
 }
 
 .p-nombre {
@@ -550,18 +576,18 @@ body {
 }
 
 .c-tipo {
-  width: 14%;
+  width: 13%;
   text-align: center;
   font-size: 9.5pt;
 }
 
 .c-cons {
-  width: 14%;
+  width: 12%;
   text-align: center;
 }
 
 .c-restr {
-  width: 18%;
+  width: 15%;
   font-style: italic;
   font-size: 8.5pt;
 }
