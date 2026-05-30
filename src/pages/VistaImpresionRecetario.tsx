@@ -155,16 +155,15 @@ const RecetarioSeccion: React.FC<{
       <table className="tabla-recetario">
         <thead>
           <tr className="col-row">
-            <th style={{ width: '5%' }}>CAMA</th>
-            <th style={{ width: '17%' }}>PACIENTE</th>
-            <th style={{ width: '3%' }}>#</th>
-            <th style={{ width: '23%' }}>MEDICAMENTO</th>
-            <th style={{ width: '12%' }}>POSOLOGÍA</th>
-            <th style={{ width: '6%' }}>VÍA</th>
-            <th style={{ width: '12%' }}>FRECUENCIA</th>
+            <th style={{ width: '4%' }}>CAMA</th>
+            <th style={{ width: '25%' }}>PACIENTE</th>
+            <th style={{ width: '34%' }}>MEDICAMENTO</th>
+            <th style={{ width: '7%' }}>POSOLOGÍA</th>
+            <th style={{ width: '5%' }}>VÍA</th>
+            <th style={{ width: '7%' }}>FRECUENCIA</th>
             <th style={{ width: '3%' }}>SOL</th>
             <th style={{ width: '3%' }}>DIS</th>
-            <th style={{ width: '16%' }}>OBSERVACIONES</th>
+            <th style={{ width: '12%' }}>OBSERVACIONES</th>
           </tr>
         </thead>
         <tbody>
@@ -181,7 +180,7 @@ const RecetarioSeccion: React.FC<{
                       {formatEdadCorta(g.edad, g.edad_unidad)} {generoCorto(g.genero)} · {limpiar(g.nss_curp)}
                     </div>
                   </td>
-                  <td colSpan={8} className="c-sin-meds">
+                  <td colSpan={7} className="c-sin-meds">
                     (Sin indicaciones capturadas)
                   </td>
                 </tr>
@@ -202,7 +201,6 @@ const RecetarioSeccion: React.FC<{
                     </td>
                   </>
                 )}
-                <td className="c-num">{m.orden ?? (idx + 1)}</td>
                 <td className="c-med">{limpiar(m.medicamento)}</td>
                 {/* POSOLOGÍA: dose detail (ej. "500 mg", "5 mL", "1 amp") */}
                 <td className="c-pos">{limpiar(m.dosis)}</td>
@@ -216,7 +214,7 @@ const RecetarioSeccion: React.FC<{
           })}
           {grupos.length === 0 && (
             <tr>
-              <td colSpan={10} className="c-vacio">
+              <td colSpan={9} className="c-vacio">
                 Sin pacientes activos en este subservicio.
               </td>
             </tr>
@@ -437,7 +435,7 @@ export const VistaImpresionRecetario: React.FC = () => {
         .tabla-recetario {
           width: 100%;
           border-collapse: collapse;
-          font-size: 8pt;
+          font-size: 9pt;
           table-layout: fixed;
           margin-top: 6px;
         }
@@ -454,7 +452,7 @@ export const VistaImpresionRecetario: React.FC = () => {
           color: white;
           font-weight: 700;
           text-align: center;
-          font-size: 8pt;
+          font-size: 8.5pt;
           padding: 5px 4px;
           letter-spacing: 0.3px;
         }
@@ -475,11 +473,11 @@ export const VistaImpresionRecetario: React.FC = () => {
         }
         .tabla-recetario .c-paciente .nombre {
           font-weight: 700;
-          font-size: 8.5pt;
+          font-size: 11pt;
           line-height: 1.15;
         }
         .tabla-recetario .c-paciente .datos-pac {
-          font-size: 7pt;
+          font-size: 8pt;
           color: #555;
           margin-top: 2px;
         }
@@ -490,18 +488,13 @@ export const VistaImpresionRecetario: React.FC = () => {
         }
 
         /* Columnas de medicamento */
-        .tabla-recetario .c-num {
-          text-align: center;
-          font-weight: 700;
-          background: #fafafa;
-        }
         .tabla-recetario .c-med {
           font-weight: 600;
-          font-size: 8.5pt;
+          font-size: 11pt;
         }
         .tabla-recetario .c-pos {
           text-align: center;
-          font-size: 8pt;
+          font-size: 8.5pt;
           font-weight: 600;
           color: #265C4E;
           background: #fafafa;
@@ -509,7 +502,7 @@ export const VistaImpresionRecetario: React.FC = () => {
         .tabla-recetario .c-via,
         .tabla-recetario .c-frec {
           text-align: center;
-          font-size: 8pt;
+          font-size: 8.5pt;
         }
 
         /* Sección de subservicio (impresión por hoja en Pediatría) */
