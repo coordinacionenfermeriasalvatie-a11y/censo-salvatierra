@@ -30,12 +30,20 @@ interface StockRow {
   surtido_total: number;
   utilizado_total: number;
   vales_total: number;
+  recibido_m: number;
+  recibido_v: number;
+  recibido_n: number;
+  surtido_m: number;
+  surtido_v: number;
+  surtido_n: number;
   utilizado_m: number;
   utilizado_v: number;
   utilizado_n: number;
   vales_m: number;
   vales_v: number;
   vales_n: number;
+  es_ajuste_manual?: boolean;
+  stock_override?: number | null;
   stock_actual: number;
 }
 
@@ -121,8 +129,11 @@ const reconstruirStock = (
         id: i.id, orden: i.orden, nombre: i.nombre, presentacion: i.presentacion,
         unidad: i.unidad, fondo_fijo: fondo, fecha_caducidad: ffMap.get(i.id)?.fecha_caducidad ?? null,
         recibido_total: 0, surtido_total: 0, utilizado_total: 0, vales_total: 0,
+        recibido_m: 0, recibido_v: 0, recibido_n: 0,
+        surtido_m: 0, surtido_v: 0, surtido_n: 0,
         utilizado_m: 0, utilizado_v: 0, utilizado_n: 0,
         vales_m: 0, vales_v: 0, vales_n: 0,
+        es_ajuste_manual: false, stock_override: null,
         stock_actual: fondo,
       });
     });
@@ -132,6 +143,7 @@ const reconstruirStock = (
       const turnoKey = m.turno.toLowerCase() as 'm' | 'v' | 'n';
       if (m.tipo === 'recibido') {
         f.recibido_total += m.cantidad;
+        (f as any)[`recibido_${turnoKey}`] += m.cantidad;
         f.stock_actual += m.cantidad;
       } else if (m.tipo === 'utilizado') {
         f.utilizado_total += m.cantidad;
@@ -139,6 +151,7 @@ const reconstruirStock = (
         f.stock_actual -= m.cantidad;
       } else if (m.tipo === 'surtido') {
         f.surtido_total += m.cantidad;
+        (f as any)[`surtido_${turnoKey}`] += m.cantidad;
         f.stock_actual -= m.cantidad;
       } else if (m.tipo === 'vale') {
         f.vales_total += m.cantidad;
@@ -172,6 +185,7 @@ export const BitacoraPsicotropicos: React.FC = () => {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [registrandoEn, setRegistrandoEn] = useState<{ inv: InventarioRow; tipo: 'recibido' | 'surtido'; supervision: 1 | 2 } | null>(null);
+  const [ajustandoEn, setAjustandoEn] = useState<{ row: StockRow; supervision: 1 | 2 } | null>(null);
   const [detalle, setDetalle] = useState<DetalleRow[]>([]);
   const [guardandoSnapshot, setGuardandoSnapshot] = useState(false);
   const [snapshotMsg, setSnapshotMsg] = useState<string | null>(null);
@@ -189,6 +203,8 @@ export const BitacoraPsicotropicos: React.FC = () => {
   const esHoy = fecha === hoyMazatlan();
   const puedeRegistrar = perfil != null && ROLES_ADMIN_GLOBAL.includes(perfil.rol);
   const puedeHistoricoYSemanal = esJefeOAdmin(perfil);
+  // Editar el fondo fijo (override manual): SOLO jefe o administrador del sistema.
+  const puedeAjustar = esJefeOAdmin(perfil);
 
   const cargar = useCallback(async () => {
     setCargando(true);
@@ -445,7 +461,9 @@ export const BitacoraPsicotropicos: React.FC = () => {
               <TablaStock
                 datos={datosActivos[sup]}
                 esHoy={esHoy}
+                puedeAjustar={puedeAjustar}
                 onRegistrar={(inv, tipo) => setRegistrandoEn({ inv, tipo, supervision: sup })}
+                onAjustar={(row) => setAjustandoEn({ row, supervision: sup })}
               />
             </div>
           ))}
@@ -619,6 +637,16 @@ export const BitacoraPsicotropicos: React.FC = () => {
           onGuardado={() => { setRegistrandoEn(null); cargar(); }}
         />
       )}
+
+      {ajustandoEn && (
+        <ModalAjuste
+          row={ajustandoEn.row}
+          fecha={fecha}
+          supervision={ajustandoEn.supervision}
+          onCerrar={() => setAjustandoEn(null)}
+          onGuardado={() => { setAjustandoEn(null); cargar(); }}
+        />
+      )}
     </div>
   );
 };
@@ -628,8 +656,10 @@ export const BitacoraPsicotropicos: React.FC = () => {
 const TablaStock: React.FC<{
   datos: StockRow[];
   esHoy: boolean;
+  puedeAjustar: boolean;
   onRegistrar: (inv: InventarioRow, tipo: 'recibido' | 'surtido') => void;
-}> = ({ datos, esHoy, onRegistrar }) => (
+  onAjustar: (row: StockRow) => void;
+}> = ({ datos, esHoy, puedeAjustar, onRegistrar, onAjustar }) => (
   <div style={tablaWrap}>
     <table style={tabla}>
       <thead>
@@ -655,6 +685,7 @@ const TablaStock: React.FC<{
           <tr key={f.id} style={i % 2 === 0 ? trAlt : undefined}>
             <td style={tdNombre}>
               <strong>{f.nombre}</strong>
+              {f.es_ajuste_manual && <span style={badgeManual} title="Renglón en modo manual (valores fijados por jefatura)">✏️ manual</span>}
               {f.presentacion && <div style={{ fontSize: 10, color: '#888' }}>{f.presentacion}</div>}
             </td>
             <td style={tdC}>{f.unidad}</td>
@@ -676,6 +707,9 @@ const TablaStock: React.FC<{
                 <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 2 }}>
                   <button onClick={() => onRegistrar({ id: f.id, nombre: f.nombre, presentacion: f.presentacion, unidad: f.unidad, fondo_fijo: f.fondo_fijo }, 'recibido')} style={btnRecibido}>+ Recibido</button>
                   <button onClick={() => onRegistrar({ id: f.id, nombre: f.nombre, presentacion: f.presentacion, unidad: f.unidad, fondo_fijo: f.fondo_fijo }, 'surtido')} style={btnSurtido}>− Surtido</button>
+                  {puedeAjustar && (
+                    <button onClick={() => onAjustar(f)} style={btnAjustar}>✏️ Editar</button>
+                  )}
                 </div>
               )}
             </td>
@@ -753,6 +787,171 @@ const ModalRegistro: React.FC<{
   );
 };
 
+// ============================================================
+// Fila de 3 inputs por turno (M / V / N) usada en el modal de ajuste.
+const AjusteFila: React.FC<{
+  etiqueta: string;
+  valores: [string, string, string];
+  onChange: (turno: 0 | 1 | 2, valor: string) => void;
+}> = ({ etiqueta, valores, onChange }) => (
+  <div style={ajusteFila}>
+    <div style={ajusteEtq}>{etiqueta}</div>
+    {([0, 1, 2] as const).map(t => (
+      <input
+        key={t}
+        type="number"
+        min={0}
+        value={valores[t]}
+        onChange={e => onChange(t, e.target.value)}
+        style={ajusteInput}
+      />
+    ))}
+  </div>
+);
+
+// ============================================================
+// Modal de EDICIÓN del fondo fijo (override manual). Solo jefe/admin.
+// El fondo fijo va al baseline; el resto al override del día (RPC).
+const ModalAjuste: React.FC<{
+  row: StockRow;
+  fecha: string;
+  supervision: 1 | 2;
+  onCerrar: () => void;
+  onGuardado: () => void;
+}> = ({ row, fecha, supervision, onCerrar, onGuardado }) => {
+  const { perfil } = useAuth();
+  const txt = (v: number | null | undefined) => (v == null ? '' : String(v));
+  const [fondo, setFondo] = useState(txt(row.fondo_fijo));
+  const [rec, setRec] = useState<[string, string, string]>([txt(row.recibido_m), txt(row.recibido_v), txt(row.recibido_n)]);
+  const [sur, setSur] = useState<[string, string, string]>([txt(row.surtido_m), txt(row.surtido_v), txt(row.surtido_n)]);
+  const [uti, setUti] = useState<[string, string, string]>([txt(row.utilizado_m), txt(row.utilizado_v), txt(row.utilizado_n)]);
+  const [val, setVal] = useState<[string, string, string]>([txt(row.vales_m), txt(row.vales_v), txt(row.vales_n)]);
+  const [stockAuto, setStockAuto] = useState(row.stock_override == null);
+  const [stockManual, setStockManual] = useState(txt(row.stock_override ?? row.stock_actual));
+  const [guardando, setGuardando] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const toInt = (s: string): number => {
+    const v = parseInt(s, 10);
+    return isNaN(v) || v < 0 ? 0 : v;
+  };
+  const sum3 = (a: [string, string, string]) => toInt(a[0]) + toInt(a[1]) + toInt(a[2]);
+  const setIdx = (
+    setter: React.Dispatch<React.SetStateAction<[string, string, string]>>,
+  ) => (t: 0 | 1 | 2, v: string) => setter(prev => {
+    const next = [...prev] as [string, string, string];
+    next[t] = v;
+    return next;
+  });
+
+  // Stock calculado en vivo con lo que se está editando (vista previa).
+  const stockCalc = toInt(fondo) + sum3(rec) - sum3(uti) - sum3(sur);
+
+  const guardar = async () => {
+    if (!perfil) return;
+    const f = parseInt(fondo, 10);
+    if (isNaN(f) || f < 0) { setErr('Fondo fijo inválido'); return; }
+    setGuardando(true);
+    setErr(null);
+    const { error } = await supabase.rpc('fn_guardar_ajuste_psico', {
+      _fecha: fecha,
+      _supervision: supervision,
+      _inventario_id: row.id,
+      _fondo_fijo: f,
+      _recibido_m: toInt(rec[0]), _recibido_v: toInt(rec[1]), _recibido_n: toInt(rec[2]),
+      _surtido_m: toInt(sur[0]), _surtido_v: toInt(sur[1]), _surtido_n: toInt(sur[2]),
+      _utilizado_m: toInt(uti[0]), _utilizado_v: toInt(uti[1]), _utilizado_n: toInt(uti[2]),
+      _vales_m: toInt(val[0]), _vales_v: toInt(val[1]), _vales_n: toInt(val[2]),
+      _stock_actual: stockAuto ? null : toInt(stockManual),
+    });
+    setGuardando(false);
+    if (error) { setErr(error.message); return; }
+    onGuardado();
+  };
+
+  const restablecer = async () => {
+    if (!perfil) return;
+    setGuardando(true);
+    setErr(null);
+    const { error } = await supabase.rpc('fn_limpiar_ajuste_psico', {
+      _fecha: fecha, _supervision: supervision, _inventario_id: row.id,
+    });
+    setGuardando(false);
+    if (error) { setErr(error.message); return; }
+    onGuardado();
+  };
+
+  return (
+    <div style={overlay} onClick={onCerrar}>
+      <div style={{ ...modal, maxWidth: 520 }} onClick={e => e.stopPropagation()}>
+        <div style={modalHeader}>
+          <div style={{ fontWeight: 700, fontSize: 13 }}>✏️ Editar fondo fijo — Supervisión {supervision}</div>
+          <button onClick={onCerrar} style={btnCerrarModal}>✕</button>
+        </div>
+        <div style={modalBody}>
+          <div style={{ marginBottom: 10 }}>
+            <strong>{row.nombre}</strong>
+            {row.presentacion && <div style={{ fontSize: 11, color: '#888' }}>{row.presentacion}</div>}
+          </div>
+
+          <label style={lbl}>Fondo fijo (base · {row.unidad})</label>
+          <input type="number" min={0} value={fondo} onChange={e => setFondo(e.target.value)} style={input} autoFocus />
+          <div style={{ fontSize: 10, color: '#888', margin: '2px 0 10px' }}>
+            El fondo fijo es la dotación base; al cambiarlo se actualiza para todos los días.
+          </div>
+
+          <div style={ajusteGridHead}>
+            <div style={ajusteEtq}></div>
+            <div style={ajusteCol}>Matutino</div>
+            <div style={ajusteCol}>Vespertino</div>
+            <div style={ajusteCol}>Nocturno</div>
+          </div>
+          <AjusteFila etiqueta="Recibido" valores={rec} onChange={setIdx(setRec)} />
+          <AjusteFila etiqueta="Surtido" valores={sur} onChange={setIdx(setSur)} />
+          <AjusteFila etiqueta="Utilizado" valores={uti} onChange={setIdx(setUti)} />
+          <AjusteFila etiqueta="Vales" valores={val} onChange={setIdx(setVal)} />
+
+          <div style={{ marginTop: 12, padding: 10, background: '#f5f1e8', borderRadius: 4 }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#7d5b2f', cursor: 'pointer' }}>
+              <input type="checkbox" checked={stockAuto} onChange={e => setStockAuto(e.target.checked)} />
+              Calcular stock actual automáticamente
+            </label>
+            {stockAuto ? (
+              <div style={{ fontSize: 12, marginTop: 6, color: '#0E6755' }}>
+                Stock calculado: <strong style={{ fontSize: 15 }}>{stockCalc}</strong>
+                <span style={{ color: '#888' }}> (fondo + recibido − utilizado − surtido)</span>
+              </div>
+            ) : (
+              <div style={{ marginTop: 6 }}>
+                <label style={lbl}>Stock actual (manual)</label>
+                <input type="number" value={stockManual} onChange={e => setStockManual(e.target.value)} style={input} />
+              </div>
+            )}
+          </div>
+
+          <div style={{ marginTop: 10, fontSize: 11, color: '#A32D2D', lineHeight: 1.5 }}>
+            ⚠️ Al guardar, este renglón queda en <strong>modo manual</strong> para el {fecha}: los valores
+            por turno dejan de calcularse solos. Usa «Restablecer» para volver al cálculo automático.
+          </div>
+
+          {err && <div style={errBanner}>⚠️ {err}</div>}
+        </div>
+        <div style={{ ...modalFooter, justifyContent: 'space-between' }}>
+          {row.es_ajuste_manual ? (
+            <button onClick={restablecer} disabled={guardando} style={btnRestablecer}>↩️ Restablecer (auto)</button>
+          ) : <span />}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onCerrar} disabled={guardando} style={btnVolver}>Cancelar</button>
+            <button onClick={guardar} disabled={guardando} style={btnImprimir}>
+              {guardando ? 'Guardando...' : '💾 Guardar ajuste'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Kpi: React.FC<{ label: string; valor: number; color: string }> = ({ label, valor, color }) => (
   <div style={kpiCard}>
     <div style={{ ...kpiValor, color }}>{valor}</div>
@@ -789,6 +988,14 @@ const tdC: React.CSSProperties = { padding: '6px 8px', borderBottom: '1px solid 
 const trAlt: React.CSSProperties = { background: '#fafafa' };
 const btnRecibido: React.CSSProperties = { background: '#2c5fa3', color: '#fff', border: 'none', borderRadius: 3, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const };
 const btnSurtido: React.CSSProperties = { background: '#A32D2D', color: '#fff', border: 'none', borderRadius: 3, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const };
+const btnAjustar: React.CSSProperties = { background: '#7d5b2f', color: '#fff', border: 'none', borderRadius: 3, padding: '3px 6px', fontSize: 10, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const };
+const btnRestablecer: React.CSSProperties = { background: '#fff', border: '1px solid #A32D2D', color: '#A32D2D', padding: '8px 12px', borderRadius: 4, cursor: 'pointer', fontWeight: 600, fontSize: 12 };
+const badgeManual: React.CSSProperties = { display: 'inline-block', marginLeft: 6, background: '#fff7e0', color: '#7d5b2f', border: '1px solid #C39C59', borderRadius: 8, padding: '0 6px', fontSize: 9, fontWeight: 700, verticalAlign: 'middle' as const };
+const ajusteGridHead: React.CSSProperties = { display: 'grid', gridTemplateColumns: '90px 1fr 1fr 1fr', gap: 6, marginTop: 4, alignItems: 'center' };
+const ajusteFila: React.CSSProperties = { display: 'grid', gridTemplateColumns: '90px 1fr 1fr 1fr', gap: 6, marginTop: 6, alignItems: 'center' };
+const ajusteEtq: React.CSSProperties = { fontSize: 12, fontWeight: 700, color: '#7d5b2f' };
+const ajusteCol: React.CSSProperties = { fontSize: 10, fontWeight: 700, color: '#7d5b2f', textAlign: 'center' as const, textTransform: 'uppercase' as const };
+const ajusteInput: React.CSSProperties = { padding: '5px 8px', border: '1px solid #C39C59', borderRadius: 4, fontSize: 13, background: '#fff', width: '100%', boxSizing: 'border-box', textAlign: 'center' as const };
 const errBanner: React.CSSProperties = { background: '#fbeaea', border: '1px solid #A32D2D', color: '#A32D2D', padding: 10, borderRadius: 4, fontSize: 13, marginTop: 8 };
 const cargandoStyle: React.CSSProperties = { padding: 40, textAlign: 'center' as const, color: '#888', fontStyle: 'italic' as const };
 const bloqueado: React.CSSProperties = { padding: 40, textAlign: 'center' as const, color: '#A32D2D', fontSize: 16 };
