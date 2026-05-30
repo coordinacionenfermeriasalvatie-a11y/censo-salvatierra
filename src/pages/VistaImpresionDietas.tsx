@@ -535,7 +535,7 @@ body {
 }
 
 .c-paciente {
-  width: 25%;
+  width: 21%;
 }
 
 .c-edad {
