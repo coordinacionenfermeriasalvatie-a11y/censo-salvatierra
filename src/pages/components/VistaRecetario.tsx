@@ -308,6 +308,37 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
     }
   };
 
+  // "Re-solicitar hoy": reactiva la lista del paciente para una nueva solicitud
+  // del día sin recapturar. Conserva medicamento/posología/vía/frecuencia y la
+  // cantidad SOLICITADA; pone DISPENSADA en 0 para que farmacia vuelva a surtir.
+  const reSolicitarHoy = async (pacienteId: string, nombrePaciente: string) => {
+    const paciente = pacientes.find(p => p.paciente_id === pacienteId);
+    if (!paciente || paciente.medicamentos.length === 0) return;
+    const ok = confirm(
+      `¿Re-solicitar los ${paciente.medicamentos.length} medicamento(s) de ${nombrePaciente} para hoy?\n\n` +
+      `Se conservan los medicamentos y la cantidad SOLICITADA. La cantidad DISPENSADA vuelve a 0 para que farmacia surta de nuevo.`
+    );
+    if (!ok) return;
+    setGuardando(pacienteId);
+    setError(null);
+    try {
+      const { error: err } = await supabase
+        .from('recetario_medicamentos')
+        .update({ dispensada: 0, actualizado_por: perfil?.id })
+        .eq('paciente_id', pacienteId);
+      if (err) throw err;
+      setPacientes(ps => ps.map(p =>
+        p.paciente_id === pacienteId
+          ? { ...p, medicamentos: p.medicamentos.map(m => ({ ...m, dispensada: 0 })) }
+          : p
+      ));
+    } catch (e: any) {
+      setError(`No se pudo re-solicitar: ${e.message}`);
+    } finally {
+      setGuardando(null);
+    }
+  };
+
   if (cargando) return <div style={{ padding: 40, textAlign: 'center', color: '#265C4E' }}>Cargando recetario...</div>;
 
   // Helper que devuelve JSX inline (NO es un componente). Antes era un
@@ -526,7 +557,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
               <div style={panelExpandido}>
                 <div style={panelHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <div style={camaNumero}>{p.numero_cama}</div>
+                    <div style={camaNumero(p.numero_cama)}>{p.numero_cama}</div>
                     <div>
                       <div style={pacienteNombre}>{p.nombre_paciente}</div>
                       <div style={pacienteSub}>
@@ -568,13 +599,23 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
                 </div>
 
                 <div style={panelFooter}>
-                  <button
-                    onClick={() => agregarMedicamento(p.paciente_id)}
-                    style={btnAgregar}
-                    disabled={soloLectura || guardando === p.paciente_id}
-                  >
-                    + Agregar medicamento
-                  </button>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <button
+                      onClick={() => agregarMedicamento(p.paciente_id)}
+                      style={btnAgregar}
+                      disabled={soloLectura || guardando === p.paciente_id}
+                    >
+                      + Agregar medicamento
+                    </button>
+                    <button
+                      onClick={() => reSolicitarHoy(p.paciente_id, p.nombre_paciente)}
+                      style={btnResolicitar}
+                      disabled={soloLectura || guardando === p.paciente_id || p.medicamentos.length === 0}
+                      title="Reactiva la lista de hoy: conserva los medicamentos y la cantidad SOLICITADA, y pone DISPENSADA en 0"
+                    >
+                      🔄 Re-solicitar hoy
+                    </button>
+                  </div>
                   <div style={{ fontSize: 11, color: '#888' }}>
                     {p.medicamentos.length} medicamento{p.medicamentos.length === 1 ? '' : 's'} registrado{p.medicamentos.length === 1 ? '' : 's'}
                   </div>
@@ -606,7 +647,32 @@ const btnExpandirActivo: React.CSSProperties = { padding: '6px 12px', background
 const panelExpandido: React.CSSProperties = { border: '2px solid #C39C59', borderRadius: 6, background: '#fffef9', marginBottom: 12, overflow: 'hidden' };
 const panelHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', background: '#F5F1E8', borderBottom: '1px solid #C39C59' };
 const panelFooter: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: '#F5F1E8', borderTop: '1px solid #C39C59' };
-const camaNumero: React.CSSProperties = { width: 50, height: 50, background: '#0E6755', color: '#fff', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700 };
+// Badge de cama. Acepta la etiqueta porque en URGENCIAS las camas no
+// censables tienen nombres largos ("PASILLO 02", "SILLA 1") que no caben con
+// fuente fija de 22px: bajamos el tamaño y dejamos que el texto se acomode en
+// dos líneas. Las camas numéricas ("44") conservan el tamaño grande.
+const camaNumero = (label: string): React.CSSProperties => {
+  const len = (label || '').length;
+  return {
+    minWidth: 50,
+    minHeight: 50,
+    flexShrink: 0,
+    padding: '4px 6px',
+    boxSizing: 'border-box',
+    background: '#0E6755',
+    color: '#fff',
+    borderRadius: 6,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    lineHeight: 1.1,
+    fontWeight: 700,
+    fontSize: len > 6 ? 12 : len > 3 ? 16 : 22,
+    overflowWrap: 'anywhere',
+    wordBreak: 'break-word',
+  };
+};
 const pacienteNombre: React.CSSProperties = { fontSize: 14, fontWeight: 700, color: '#265C4E', marginBottom: 2 };
 const pacienteSub: React.CSSProperties = { fontSize: 11, color: '#888', lineHeight: 1.4 };
 const btnCerrar: React.CSSProperties = { padding: '6px 12px', background: '#A32D2D', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer' };
@@ -621,6 +687,7 @@ const inputMed: React.CSSProperties = { width: '100%', padding: '5px 8px', borde
 const inputSm: React.CSSProperties = { width: '100%', padding: '5px 6px', border: '1px solid #C39C59', borderRadius: 3, fontSize: 12, background: '#fff', color: '#265C4E', fontFamily: 'inherit' };
 const btnBorrar: React.CSSProperties = { width: '100%', padding: '4px', background: '#A32D2D', color: '#fff', border: 'none', borderRadius: 3, fontSize: 13, fontWeight: 700, cursor: 'pointer' };
 const btnAgregar: React.CSSProperties = { padding: '8px 16px', background: '#0E6755', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 700, cursor: 'pointer' };
+const btnResolicitar: React.CSSProperties = { padding: '8px 16px', background: '#C39C59', color: '#fff', border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 700, cursor: 'pointer' };
 const errorBanner: React.CSSProperties = { background: '#fdecea', color: '#A32D2D', padding: '10px 16px', borderRadius: 4, marginBottom: 12, fontSize: 13 };
 const vacio: React.CSSProperties = { padding: 40, textAlign: 'center', color: '#888', background: '#fff', border: '1px solid #C39C59', borderTop: 'none' };
 const piePagina: React.CSSProperties = { padding: '8px 16px', fontSize: 12, color: '#888', textAlign: 'right' };
