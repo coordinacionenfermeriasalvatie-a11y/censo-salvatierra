@@ -65,6 +65,20 @@ interface MedicamentoFila {
   dispensada: number;
 }
 
+// Resumen de una receta controlada ya creada (para el panel persistente
+// dentro del recetario, que confirma al gestor que su solicitud se guardó).
+interface RecetaControladaResumen {
+  id: string;
+  folio: string;
+  creado_en: string;
+  paciente_nombre: string;
+  paciente_cama: string | null;
+  medicamento_nombre: string;
+  medicamento_grupo: string;
+  estado_aprobacion: 'pendiente' | 'aprobada' | 'rechazada' | 'canjeada';
+  cancelada_en: string | null;
+}
+
 interface Props {
   servicioId: number;
   servicioNombre: string;
@@ -94,6 +108,24 @@ const FRECUENCIAS_COMUNES = [
   'CADA 72 HRS',
 ];
 
+// Estados de la receta controlada (mismos colores que la Bitácora de Supervisión).
+const RC_ESTADO: Record<string, { label: string; bg: string; fg: string }> = {
+  pendiente: { label: 'Pendiente de Supervisión', bg: '#fff7e0', fg: '#7d5b2f' },
+  aprobada:  { label: 'Aprobada',  bg: '#e6f4ea', fg: '#1e7a46' },
+  canjeada:  { label: 'Canjeada',  bg: '#e0e8ff', fg: '#2c5fa3' },
+  rechazada: { label: 'Rechazada', bg: '#fbeaea', fg: '#A32D2D' },
+};
+const RC_ANULADA = { label: 'Anulada', bg: '#ededed', fg: '#888' };
+
+const fmtFechaHora = (iso: string): string => {
+  try {
+    return new Date(iso).toLocaleString('es-MX', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZone: 'America/Mazatlan',
+    });
+  } catch { return iso; }
+};
+
 export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) => {
   const { perfil } = useAuth();
   // Enfermeria de piso solo tiene acceso de LECTURA al recetario
@@ -103,6 +135,11 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
   const puedeMayoreo = puedeRecetaControlada && aceptaMayoreo(servicioNombre);
   const [modalRcAbierto, setModalRcAbierto] = useState<string | null>(null); // paciente_id pre-seleccionado o '' para vacío
   const [modalMayoreoAbierto, setModalMayoreoAbierto] = useState(false);
+
+  // Panel persistente de recetas controladas ya realizadas en este servicio.
+  const [recetasControladas, setRecetasControladas] = useState<RecetaControladaResumen[]>([]);
+  const [panelRcAbierto, setPanelRcAbierto] = useState(true);
+  const [previewRecetaId, setPreviewRecetaId] = useState<string | null>(null);
 
   const [pacientes, setPacientes] = useState<PacienteAgrupado[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -195,6 +232,22 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
   }, [servicioId, pacienteExpandido]);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Carga las recetas controladas YA creadas de este servicio. RLS solo las
+  // devuelve a gestor (de su servicio) o admin global (jefe/subjefe/supervisor),
+  // que son justo quienes pueden crearlas; enfermería (solo lectura) no ve nada.
+  const cargarRecetas = useCallback(async () => {
+    if (!puedeRecetaControlada) { setRecetasControladas([]); return; }
+    const { data, error: err } = await supabase
+      .from('recetas_controladas')
+      .select('id, folio, creado_en, paciente_nombre, paciente_cama, medicamento_nombre, medicamento_grupo, estado_aprobacion, cancelada_en')
+      .eq('servicio_id', servicioId)
+      .order('creado_en', { ascending: false });
+    if (err) { console.warn('No se pudieron cargar las recetas controladas:', err.message); return; }
+    setRecetasControladas((data || []) as RecetaControladaResumen[]);
+  }, [servicioId, puedeRecetaControlada]);
+
+  useEffect(() => { cargarRecetas(); }, [cargarRecetas]);
 
   const agregarMedicamento = async (pacienteId: string) => {
     setGuardando(pacienteId);
@@ -479,7 +532,7 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
             subservicio: p.subservicio,
           }))}
           pacienteInicialId={modalRcAbierto || undefined}
-          onCerrar={() => setModalRcAbierto(null)}
+          onCerrar={() => { setModalRcAbierto(null); cargarRecetas(); }}
         />
       )}
 
@@ -496,6 +549,92 @@ export const VistaRecetario: React.FC<Props> = ({ servicioId, servicioNombre }) 
         </div>
       )}
       {error && <div style={errorBanner}>⚠️ {error}</div>}
+
+      {/* PANEL PERSISTENTE — recetas controladas ya realizadas en este servicio.
+          Confirma al gestor/jefe que su solicitud se guardó (no "desaparece"),
+          con vista previa de impresión, aunque Supervisión aún no la autorice. */}
+      {puedeRecetaControlada && (
+        <div style={panelRc}>
+          <div
+            style={panelRcHeader}
+            onClick={() => setPanelRcAbierto(v => !v)}
+            title="Recetas de medicamento controlado realizadas en este servicio"
+          >
+            <span>
+              💊 Recetas controladas realizadas — este servicio
+              <span style={panelRcCount}>{recetasControladas.length}</span>
+            </span>
+            <span>{panelRcAbierto ? '▲' : '▼'}</span>
+          </div>
+          {panelRcAbierto && (
+            recetasControladas.length === 0 ? (
+              <div style={panelRcVacio}>
+                Aún no se ha realizado ninguna receta controlada en este servicio.
+                Usa el botón <strong>💊 Receta controlada</strong> de arriba para crear una.
+              </div>
+            ) : (
+              <div style={panelRcLista}>
+                {recetasControladas.map(r => {
+                  const anulada = !!r.cancelada_en;
+                  const est = anulada ? RC_ANULADA : (RC_ESTADO[r.estado_aprobacion] || RC_ESTADO.pendiente);
+                  return (
+                    <div key={r.id} style={rcFila}>
+                      <div style={rcOk} title="Esta receta se guardó correctamente">✓</div>
+                      <div style={rcInfo}>
+                        <div style={rcLinea1}>
+                          <span style={rcFolio}>{r.folio}</span>
+                          <span style={{ ...rcBadge, background: est.bg, color: est.fg }}>{est.label}</span>
+                        </div>
+                        <div style={rcLinea2}>
+                          <strong>{r.medicamento_nombre}</strong> <span style={rcGrupo}>[{r.medicamento_grupo}]</span>
+                          {' · '}{r.paciente_nombre}{r.paciente_cama ? ` · Cama ${r.paciente_cama}` : ''}
+                        </div>
+                        <div style={rcLinea3}>Realizada el {fmtFechaHora(r.creado_en)}</div>
+                      </div>
+                      <div style={rcAcciones}>
+                        <button
+                          onClick={() => setPreviewRecetaId(r.id)}
+                          style={btnRcPreview}
+                          title="Ver la vista previa de impresión de esta receta"
+                        >👁 Vista previa</button>
+                        <button
+                          onClick={() => window.open(`/imprimir/receta-controlada/${r.id}`, '_blank', 'noopener,noreferrer')}
+                          style={btnRcImprimir}
+                          title="Abrir vista de impresión"
+                        >🖨️</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
+          )}
+        </div>
+      )}
+
+      {/* MODAL — vista previa de impresión de una receta controlada */}
+      {previewRecetaId && (
+        <div style={overlayPreview} onClick={() => setPreviewRecetaId(null)}>
+          <div style={modalPreview} onClick={e => e.stopPropagation()}>
+            <div style={modalPreviewHeader}>
+              <span>👁 Vista previa — Receta controlada</span>
+              <button onClick={() => setPreviewRecetaId(null)} style={btnCerrarPreview}>✕</button>
+            </div>
+            <iframe
+              src={`/imprimir/receta-controlada/${previewRecetaId}?preview=1`}
+              title="Vista previa de la receta controlada"
+              style={iframePreview}
+            />
+            <div style={modalPreviewFooter}>
+              <button
+                onClick={() => window.open(`/imprimir/receta-controlada/${previewRecetaId}`, '_blank', 'noopener,noreferrer')}
+                style={btnRcImprimirFull}
+              >🖨️ Imprimir</button>
+              <button onClick={() => setPreviewRecetaId(null)} style={btnRcCerrarFull}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pacientes.length === 0 ? (
         <div style={vacio}>No hay pacientes activos en este servicio.</div>
@@ -691,3 +830,31 @@ const btnResolicitar: React.CSSProperties = { padding: '8px 16px', background: '
 const errorBanner: React.CSSProperties = { background: '#fdecea', color: '#A32D2D', padding: '10px 16px', borderRadius: 4, marginBottom: 12, fontSize: 13 };
 const vacio: React.CSSProperties = { padding: 40, textAlign: 'center', color: '#888', background: '#fff', border: '1px solid #C39C59', borderTop: 'none' };
 const piePagina: React.CSSProperties = { padding: '8px 16px', fontSize: 12, color: '#888', textAlign: 'right' };
+
+// --- Panel de recetas controladas realizadas ---
+const panelRc: React.CSSProperties = { border: '1px solid #C39C59', borderRadius: 6, background: '#fffdf7', marginBottom: 16, overflow: 'hidden' };
+const panelRcHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 14px', background: '#A32D2D', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.3, userSelect: 'none' };
+const panelRcCount: React.CSSProperties = { display: 'inline-block', marginLeft: 8, background: '#fff', color: '#A32D2D', borderRadius: 10, padding: '0 8px', fontSize: 12, fontWeight: 700 };
+const panelRcVacio: React.CSSProperties = { padding: '14px 16px', fontSize: 12.5, color: '#7d5b2f', background: '#fff7e0', lineHeight: 1.5 };
+const panelRcLista: React.CSSProperties = { display: 'flex', flexDirection: 'column' };
+const rcFila: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderBottom: '1px solid #eee3c8', background: '#fff' };
+const rcOk: React.CSSProperties = { flexShrink: 0, width: 26, height: 26, borderRadius: '50%', background: '#0E6755', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 15 };
+const rcInfo: React.CSSProperties = { flex: 1, minWidth: 0 };
+const rcLinea1: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' };
+const rcFolio: React.CSSProperties = { fontFamily: 'monospace', fontWeight: 700, color: '#265C4E', fontSize: 13 };
+const rcBadge: React.CSSProperties = { padding: '1px 8px', borderRadius: 10, fontSize: 11, fontWeight: 700 };
+const rcLinea2: React.CSSProperties = { fontSize: 12.5, color: '#333', marginTop: 2 };
+const rcGrupo: React.CSSProperties = { color: '#A32D2D', fontWeight: 700, fontSize: 11 };
+const rcLinea3: React.CSSProperties = { fontSize: 11, color: '#888', marginTop: 1 };
+const rcAcciones: React.CSSProperties = { display: 'flex', gap: 6, flexShrink: 0 };
+const btnRcPreview: React.CSSProperties = { padding: '5px 10px', background: '#0E6755', color: '#fff', border: 'none', borderRadius: 4, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' };
+const btnRcImprimir: React.CSSProperties = { padding: '5px 9px', background: '#fff', color: '#0E6755', border: '1px solid #0E6755', borderRadius: 4, fontSize: 13, fontWeight: 700, cursor: 'pointer' };
+
+const overlayPreview: React.CSSProperties = { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 16 };
+const modalPreview: React.CSSProperties = { background: '#fff', borderRadius: 8, width: '100%', maxWidth: 900, maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.3)', overflow: 'hidden' };
+const modalPreviewHeader: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', background: '#0E6755', color: '#fff', fontWeight: 700, fontSize: 14 };
+const btnCerrarPreview: React.CSSProperties = { background: 'transparent', border: '1px solid #fff', color: '#fff', borderRadius: 4, width: 30, height: 30, cursor: 'pointer', fontSize: 15 };
+const iframePreview: React.CSSProperties = { flex: 1, width: '100%', minHeight: 480, border: 'none', background: '#fff' };
+const modalPreviewFooter: React.CSSProperties = { display: 'flex', justifyContent: 'flex-end', gap: 8, padding: 12, borderTop: '1px solid #eee', background: '#F5F1E8' };
+const btnRcImprimirFull: React.CSSProperties = { padding: '8px 16px', background: '#0E6755', color: '#fff', border: 'none', borderRadius: 4, fontWeight: 700, cursor: 'pointer' };
+const btnRcCerrarFull: React.CSSProperties = { padding: '8px 16px', background: '#fff', color: '#7d5b2f', border: '1px solid #C39C59', borderRadius: 4, fontWeight: 600, cursor: 'pointer' };
