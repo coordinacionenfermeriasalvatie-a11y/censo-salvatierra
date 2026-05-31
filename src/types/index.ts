@@ -1,5 +1,19 @@
 export type Rol = 'jefe' | 'subjefe' | 'supervisor' | 'gestor' | 'enfermera'
-export type Turno = 'M' | 'V' | 'N' | 'JORNADA'
+// Turnos de fin de semana:
+//   ESPECIAL_D / ESPECIAL_N = Sáb/Dom Y días festivos (diurno 07:00–21:00 /
+//                             nocturno 19:00–09:00).
+//   ACUMULADA               = un solo turno, solo Sáb/Dom (sin festivos):
+//                             sábado 07:00–22:00 y domingo 07:00 corrido hasta
+//                             el lunes 09:00.
+// Legacy (se normalizan en accesoHorario.ts): 'JORNADA'/'JORNADA_N' → ESPECIAL;
+// 'ACUMULADA_D'/'ACUMULADA_N' → ACUMULADA.
+export type Turno =
+  | 'M'
+  | 'V'
+  | 'N'
+  | 'ESPECIAL_D'
+  | 'ESPECIAL_N'
+  | 'ACUMULADA'
 export type Genero = 'MASCULINO' | 'FEMENINO'
 export type EstadoPaciente = 'ACTIVO' | 'EGRESADO' | 'TRASLADADO'
 export type EstadoCama = 'DISPONIBLE' | 'OCUPADA'
